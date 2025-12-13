@@ -430,7 +430,13 @@ export const simulateMatchInstant = (home: Team, away: Team): { homeScore: numbe
 
 // --- RICH MATCH EVENTS (VAR, CARDS, DRAMA, INJURIES) ---
 
-export const simulateMatchStep = (minute: number, home: Team, away: Team, currentScore: {h:number, a:number}): MatchEvent | null => {
+export const simulateMatchStep = (
+    minute: number, 
+    home: Team, 
+    away: Team, 
+    currentScore: {h:number, a:number},
+    existingEvents: MatchEvent[] = []
+): MatchEvent | null => {
     // Frequency: Events happen in ~55% of minutes
     if (Math.random() > 0.55) return null; 
 
@@ -444,14 +450,24 @@ export const simulateMatchStep = (minute: number, home: Team, away: Team, curren
     const isHomeAggressive = home.tackling === Tackling.AGGRESSIVE;
     const isAwayAggressive = away.tackling === Tackling.AGGRESSIVE;
 
+    // Filter players who are already sent off to avoid events for them
+    const sentOffPlayers = new Set(existingEvents.filter(e => e.type === 'CARD_RED').map(e => e.playerId));
+
     const getPlayer = (team: Team, includeGK = false) => {
-        const xi = team.players.slice(0, 11);
+        const xi = team.players.slice(0, 11).filter(p => !sentOffPlayers.has(p.id));
+        if (xi.length === 0) return team.players[0]; // Fallback just in case everyone is sent off (unlikely)
+
         const pool = includeGK ? xi : xi.filter(p => p.position !== Position.GK);
-        return pool[Math.floor(Math.random() * pool.length)];
+        // If pool is empty (e.g. only GK left and we excluded GK), fallback to xi
+        const finalPool = pool.length > 0 ? pool : xi;
+        
+        return finalPool[Math.floor(Math.random() * finalPool.length)];
     };
 
     const getScorer = (team: Team) => {
-        const xi = team.players.slice(0, 11);
+        const xi = team.players.slice(0, 11).filter(p => !sentOffPlayers.has(p.id));
+        if(xi.length === 0) return { scorer: team.players[0], assist: team.players[0] };
+
         const fwds = xi.filter(p => p.position === Position.FWD);
         const mids = xi.filter(p => p.position === Position.MID);
         let scorerPool = [...fwds, ...fwds, ...fwds, ...mids, ...mids, ...xi];
@@ -529,10 +545,23 @@ export const simulateMatchStep = (minute: number, home: Team, away: Team, curren
 
         if (cardRoll < redThreshold) { 
              return { minute, description: `${player.name} ${isAggressive ? 'topla alakası olmayan gaddarca' : 'yaptığı'} hareket sonrası direkt KIRMIZI KART gördü!`, type: 'CARD_RED', teamName: foulingTeam.name, playerId: player.id };
-        } else if (cardRoll < yellowThreshold) { 
-             const pool = isAggressive ? YELLOW_CARD_AGGRESSIVE_TEXTS : YELLOW_CARD_TEXTS;
-             const text = fillTemplate(pick(pool), { player: player.name });
-             return { minute, description: text, type: 'CARD_YELLOW', teamName: foulingTeam.name, playerId: player.id };
+        } else if (cardRoll < yellowThreshold) {
+             // CHECK FOR SECOND YELLOW
+             const hasYellow = existingEvents.some(e => e.type === 'CARD_YELLOW' && e.playerId === player.id);
+             
+             if (hasYellow) {
+                 return { 
+                     minute, 
+                     description: `${player.name} ikinci sarı karttan KIRMIZI KART gördü ve oyun dışı kaldı!`, 
+                     type: 'CARD_RED', 
+                     teamName: foulingTeam.name, 
+                     playerId: player.id 
+                 };
+             } else {
+                 const pool = isAggressive ? YELLOW_CARD_AGGRESSIVE_TEXTS : YELLOW_CARD_TEXTS;
+                 const text = fillTemplate(pick(pool), { player: player.name });
+                 return { minute, description: text, type: 'CARD_YELLOW', teamName: foulingTeam.name, playerId: player.id };
+             }
         } else {
              const text = fillTemplate(pick(FOUL_TEXTS), { player: player.name, victim: victim.name });
              return { minute, description: text, type: 'FOUL', teamName: foulingTeam.name };
@@ -543,7 +572,11 @@ export const simulateMatchStep = (minute: number, home: Team, away: Team, curren
          const isHomeSave = Math.random() > homeDominance; 
          const savingTeam = isHomeSave ? away : home; // Defender
          const attackingTeam = isHomeSave ? home : away;
-         const keeper = savingTeam.players.find(p => p.position === Position.GK) || savingTeam.players[0];
+         // Ensure GK is not sent off (though highly unlikely with filtering above unless red happened previously)
+         const keeper = savingTeam.players.find(p => p.position === Position.GK && !sentOffPlayers.has(p.id)) || savingTeam.players.find(p => !sentOffPlayers.has(p.id));
+         
+         if (!keeper) return null; // Can't make save if no players?
+
          const defender = getPlayer(savingTeam);
          const attacker = getPlayer(attackingTeam);
 
@@ -939,74 +972,91 @@ export const applyTraining = (team: Team, type: 'ATTACK' | 'DEFENSE' | 'PHYSICAL
 };
 
 // --- PLAYER COMPLAINTS GENERATOR ---
-export const generatePlayerMessages = (week: number, myTeam: Team): Message[] => {
-    const messages: Message[] = [];
-    if (week < 5) return []; // Need at least 4 games to judge playing time stats
+export const generatePlayerMessages = (week: number, myTeam: Team, fixtures: Fixture[]): Message[] => {
+    // Requires at least 3 weeks of data to judge "last 3 games"
+    if (week <= 3) return [];
 
+    // Find the last 3 matches for the user's team that have been played
+    const teamMatches = fixtures
+        .filter(f => f.played && (f.homeTeamId === myTeam.id || f.awayTeamId === myTeam.id))
+        .sort((a, b) => b.week - a.week) // Sort descending by week (newest first)
+        .slice(0, 3); // Take top 3
+
+    // If for some reason we don't have 3 matches (e.g. bye weeks), skip
+    if (teamMatches.length < 3) return [];
+
+    const complainingPlayers: Player[] = [];
+
+    // Iterate through all players to find those who didn't play
     myTeam.players.forEach(player => {
         // Don't complain if injured or suspended (they know why they aren't playing)
         if (player.injury || (player.suspendedUntilWeek && player.suspendedUntilWeek > week)) return;
 
-        const matchesPlayed = player.seasonStats.matchesPlayed;
-        // Calculate percentage played. Week-1 because current week's match might just finished or about to start.
-        // We use Math.max(1) to avoid division by zero
-        const totalPossibleMatches = Math.max(1, week - 1);
-        const playRatio = matchesPlayed / totalPossibleMatches;
+        // Check if player appeared in ANY of the last 3 matches
+        const playedRecently = teamMatches.some(match => {
+            const stats = match.stats;
+            // Defensive check if stats don't exist
+            if (!stats) return false;
 
-        // Logic: High skill players complain earlier. Low skill players accept bench more.
-        let expectedRatio = 0.3; // Bench players expect ~30%
-        if (player.skill > 80) expectedRatio = 0.75; // Star players expect ~75%
-        else if (player.skill > 70) expectedRatio = 0.5; // Good players expect ~50%
-
-        if (playRatio < expectedRatio) {
-            // Random chance (e.g. 10% per week for unhappy players) to avoid spamming 10 messages at once
-            // Also higher chance if morale is already low
-            const complaintChance = player.morale < 70 ? 0.2 : 0.05;
+            const isHome = match.homeTeamId === myTeam.id;
+            // Check rating lists to see if player played
+            const playerPerformanceList = isHome ? stats.homeRatings : stats.awayRatings;
             
-            if (Math.random() < complaintChance) {
-                const isStar = player.skill > 80;
-                
-                let subject = "Forma Şansı";
-                let text = "Hocam, son haftalarda yeterince süre alamıyorum. Ben oynamak istiyorum.";
-                let options = [
-                    "Çok çalış, formayı kap.",
-                    "Sıran gelecek, sabırlı ol.",
-                    "Şu an kadro planlamamda yoksun."
-                ];
+            return playerPerformanceList.some(p => p.playerId === player.id);
+        });
 
-                if (isStar) {
-                    subject = "Durumum Hakkında Acil";
-                    text = "Hocam, ben yedek kulübesinde oturmak için gelmedim. Eğer oynamayacaksam menajerimle konuşacağım.";
-                    options = [
-                        "Sen bu takımın yıldızısın, haklısın. İlk maçta sahadasın.",
-                        "Kimse bu takımda formayı garanti göremez, çalışacaksın.",
-                        "Kapı orada, gitmek istersen tutmam."
-                    ];
-                } else if (playRatio === 0) {
-                    subject = "Hiç Oynamadım...";
-                    text = "Hocam lig başladı ama hala siftahım yok. Bir şansı hak etmiyor muyum?";
-                    options = [
-                        "Kupa maçlarında şans vereceğim.",
-                        "Antrenman performansın yetersiz.",
-                        "Seni kiralık göndermeyi düşünüyoruz."
-                    ];
-                }
-
-                messages.push({
-                    id: parseInt(generateId() + Math.floor(Math.random() * 1000).toString(), 36) || Date.now() + Math.random(),
-                    sender: player.name,
-                    subject: subject,
-                    preview: text,
-                    date: 'Bugün',
-                    read: false,
-                    avatarColor: player.position === 'GK' ? 'bg-yellow-600' : player.position === 'DEF' ? 'bg-blue-600' : player.position === 'MID' ? 'bg-green-600' : 'bg-red-600',
-                    history: [
-                        { id: Date.now(), text: text, time: '09:00', isMe: false }
-                    ],
-                    options: options
-                });
-            }
+        // If NOT played recently, add to candidates
+        if (!playedRecently) {
+             complainingPlayers.push(player);
         }
     });
-    return messages;
+
+    // Limit to MAXIMUM 1 message per week
+    if (complainingPlayers.length === 0) return [];
+
+    // Pick one random unhappy player
+    const player = complainingPlayers[Math.floor(Math.random() * complainingPlayers.length)];
+
+    // Generate Message Content
+    // Random chance (e.g. 30% per week for unhappy players) to avoid spamming every single week
+    // Also higher chance if morale is already low
+    const complaintChance = player.morale < 70 ? 0.4 : 0.2;
+    
+    if (Math.random() < complaintChance) {
+        const isStar = player.skill > 80;
+        
+        let subject = "Forma Şansı";
+        let text = "Hocam, son 3 maçtır forma yüzü göremiyorum. Kendimi göstermek istiyorum.";
+        let options = [
+            "Çok çalış, formayı kap.",
+            "Sıran gelecek, sabırlı ol.",
+            "Şu an kadro planlamamda yoksun."
+        ];
+
+        if (isStar) {
+            subject = "Durumum Hakkında Acil";
+            text = "Hocam, ben yedek kulübesinde oturmak için gelmedim. Son 3 maçtır yokum, eğer oynamayacaksam menajerimle konuşacağım.";
+            options = [
+                "Sen bu takımın yıldızısın, haklısın. İlk maçta sahadasın.",
+                "Kimse bu takımda formayı garanti göremez, çalışacaksın.",
+                "Kapı orada, gitmek istersen tutmam."
+            ];
+        } 
+
+        return [{
+            id: parseInt(generateId() + Math.floor(Math.random() * 1000).toString(), 36) || Date.now() + Math.random(),
+            sender: player.name,
+            subject: subject,
+            preview: text,
+            date: 'Bugün',
+            read: false,
+            avatarColor: player.position === 'GK' ? 'bg-yellow-600' : player.position === 'DEF' ? 'bg-blue-600' : player.position === 'MID' ? 'bg-green-600' : 'bg-red-600',
+            history: [
+                { id: Date.now(), text: text, time: '09:00', isMe: false }
+            ],
+            options: options
+        }];
+    }
+
+    return [];
 };

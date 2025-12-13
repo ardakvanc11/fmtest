@@ -1,10 +1,14 @@
 
 import React, { useState } from 'react';
 import { Team, MatchStats, MatchEvent } from '../types';
-import { Activity, MonitorPlay, Syringe, Disc, Users, BarChart2, Star } from 'lucide-react';
+import { MonitorPlay, Syringe, Disc, Users, BarChart2, Star } from 'lucide-react';
 
 const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, events, onProceed }: {homeTeam: Team, awayTeam: Team, homeScore: number, awayScore: number, stats: MatchStats, events: MatchEvent[], onProceed: () => void }) => {
     const [statsTab, setStatsTab] = useState<'STATS' | 'RATINGS'>('STATS');
+
+    // Calculate Half Time Score
+    const halfTimeHomeScore = events.filter(e => e.type === 'GOAL' && e.teamName === homeTeam.name && e.minute <= 45).length;
+    const halfTimeAwayScore = events.filter(e => e.type === 'GOAL' && e.teamName === awayTeam.name && e.minute <= 45).length;
 
     // Filter out purely informational events to keep the timeline clean
     const timelineEvents = events.filter(e => 
@@ -12,7 +16,7 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
         e.type === 'CARD_YELLOW' || 
         e.type === 'CARD_RED' || 
         e.type === 'INJURY' || 
-        e.type === 'VAR' ||
+        e.type === 'VAR' || 
         e.type === 'MISS' // Optional: Show missed penalties or huge chances
     ).sort((a,b) => a.minute - b.minute);
 
@@ -23,7 +27,7 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
             case 'CARD_RED': return <div className="w-3 h-4 bg-red-600 rounded-sm border border-red-700 shadow-sm"></div>;
             case 'INJURY': return <Syringe size={16} className="text-red-400"/>;
             case 'VAR': return <MonitorPlay size={16} className="text-purple-400"/>;
-            default: return <Activity size={16} className="text-slate-400"/>;
+            default: return null;
         }
     };
 
@@ -78,7 +82,10 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
                         <img src={homeTeam.logo} className="w-20 h-20 object-contain mb-2"/>
                         <span className="text-sm font-sans font-normal text-slate-400 truncate w-20 text-center">{homeTeam.name}</span>
                      </div>
-                     <span>{homeScore} - {awayScore}</span>
+                     <div className="flex flex-col items-center">
+                        <span>{homeScore} - {awayScore}</span>
+                        <span className="text-xl text-slate-500 font-sans font-bold tracking-widest mt-[-0.5rem]">İY: {halfTimeHomeScore}-{halfTimeAwayScore}</span>
+                     </div>
                      <div className="flex flex-col items-center">
                         <img src={awayTeam.logo} className="w-20 h-20 object-contain mb-2"/>
                         <span className="text-sm font-sans font-normal text-slate-400 truncate w-20 text-center">{awayTeam.name}</span>
@@ -90,7 +97,7 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
                      {/* LEFT COLUMN: MATCH FLOW TIMELINE */}
                      <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 h-96 flex flex-col">
                         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-700 pb-2 text-center flex items-center justify-center gap-2">
-                            <Activity size={16}/> Maç Akışı
+                            Maç Akışı
                         </h3>
                         <div className="flex-1 overflow-y-auto relative px-2">
                              {/* Vertical Spine */}

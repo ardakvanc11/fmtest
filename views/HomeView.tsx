@@ -5,7 +5,7 @@ import { calculateForm } from '../utils/gameEngine';
 import { Home, User, FileText, Heart, History, Calendar, Star, Feather } from 'lucide-react';
 import StandingsTable from '../components/shared/StandingsTable';
 
-const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTeamClick }: { manager: ManagerProfile, team: Team, teams: Team[], myTeamId: string, currentWeek: number, fixtures: Fixture[], onTeamClick: (id: string) => void }) => {
+const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTeamClick, onFixtureClick }: { manager: ManagerProfile, team: Team, teams: Team[], myTeamId: string, currentWeek: number, fixtures: Fixture[], onTeamClick: (id: string) => void, onFixtureClick?: (f: Fixture) => void }) => {
     const [tab, setTab] = useState('GENERAL');
     
     // Calculate stats
@@ -146,8 +146,8 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                                         const res = getMatchResult(f);
                                         
                                         return (
-                                            <div key={f.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/30 p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700/50 transition cursor-pointer" onClick={() => onTeamClick(opponentId)}>
-                                                <div className="flex items-center gap-3">
+                                            <div key={f.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/30 p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700/50 transition">
+                                                <div className="flex items-center gap-3 cursor-pointer" onClick={() => onTeamClick(opponentId)}>
                                                     <div className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold ${res.color}`}>
                                                         {res.label}
                                                     </div>
@@ -156,7 +156,10 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                                                         <span className="text--[10px] text-slate-500 dark:text-slate-400">{isHome ? 'İç Saha' : 'Deplasman'}</span>
                                                     </div>
                                                 </div>
-                                                <div className="font-mono font-bold text-lg text-slate-700 dark:text-slate-200">
+                                                <div 
+                                                    className="font-mono font-bold text-lg text-slate-700 dark:text-slate-200 cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                                                    onClick={() => onFixtureClick && onFixtureClick(f)}
+                                                >
                                                     {f.homeScore} - {f.awayScore}
                                                 </div>
                                             </div>

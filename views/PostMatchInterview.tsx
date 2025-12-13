@@ -139,10 +139,10 @@ const PostMatchInterview = ({ result, onClose }: { result: 'WIN' | 'LOSS' | 'DRA
                 ]
             },
             {
-                question: "Taraftarlar maç sonunda sizi yuhaladı. Bu sizi etkiliyor mu?",
+                question: "Bugün çok kötü bir şekilde rakbinize kaybettiniz sebep ne?",
                 options: [
-                    "Tepkileri anlıyorum, sorumluluk bana ait.",
-                    "Bu formayı taşıyan herkes eleştiriye açık olmalı.",
+                    "Valla çimler uzundu o yüzden kaybettik.",
+                    "Kesinlikle hakemin suçu vardı yoksa ben kötü birisi değilim.",
                     "Bu takım yalnız bırakılmayı hak etmiyor."
                 ]
             },

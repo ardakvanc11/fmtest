@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { NewsItem, Team, Message } from '../types';
-import { Smartphone, Mail, Hash, ChevronLeft, Send, MessageSquare, RotateCcw, Heart, User } from 'lucide-react';
+import { Smartphone, Mail, Hash, ChevronLeft, Send, MessageSquare, RotateCcw, Heart, User, CheckCheck } from 'lucide-react';
 
 const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: NewsItem[], teams: Team[], messages: Message[], onUpdateMessages: (msgs: Message[]) => void }) => {
     const [tab, setTab] = useState<'SOCIAL' | 'MESSAGES' | 'RUMORS'>('SOCIAL');
@@ -145,17 +145,17 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: Ne
         const activeConversation = messages.find(m => m.id === selectedMessageId);
         if(activeConversation) {
             return (
-                <div className="flex flex-col h-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden max-w-4xl mx-auto shadow-sm">
+                <div className="flex flex-col h-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden w-full shadow-sm">
                     {/* Chat Header */}
-                    <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 flex items-center gap-4">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 flex items-center gap-4">
                         <button onClick={() => setSelectedMessageId(null)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 hover:text-black dark:hover:text-white transition">
                             <ChevronLeft size={24}/>
                         </button>
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${activeConversation.avatarColor}`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-lg font-bold ${activeConversation.avatarColor}`}>
                             {activeConversation.sender.charAt(0)}
                         </div>
                         <div>
-                            <div className="font-bold text-slate-900 dark:text-white">{activeConversation.sender}</div>
+                            <div className="font-bold text-lg text-slate-900 dark:text-white leading-tight">{activeConversation.sender}</div>
                             <div className="text-xs text-slate-500 dark:text-slate-400">{activeConversation.subject}</div>
                         </div>
                     </div>
@@ -164,8 +164,8 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: Ne
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-100 dark:bg-slate-800/50">
                         {activeConversation.history.map((msg) => (
                             <div key={msg.id} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[80%] p-3 rounded-xl shadow-sm ${msg.isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-200 dark:border-slate-600'}`}>
-                                    <p className="text-sm">{msg.text}</p>
+                                <div className={`max-w-[85%] p-3 rounded-2xl shadow-sm ${msg.isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-200 dark:border-slate-600'}`}>
+                                    <p className="text-sm leading-relaxed">{msg.text}</p>
                                     <div className={`text-[10px] mt-1 text-right ${msg.isMe ? 'text-blue-200' : 'text-slate-500 dark:text-slate-400'}`}>{msg.time}</div>
                                 </div>
                             </div>
@@ -173,7 +173,7 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: Ne
                         <div ref={messagesEndRef} />
                     </div>
                     
-                    {/* Options Area (Changed from Input) */}
+                    {/* Options Area */}
                     <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex flex-col gap-2">
                         {activeConversation.options.length > 0 ? (
                             <>
@@ -182,15 +182,15 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: Ne
                                     <button 
                                         key={idx}
                                         onClick={() => handleSendChatMessage(opt)}
-                                        className="bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 hover:text-black dark:hover:text-white border border-slate-300 dark:border-slate-600 hover:border-yellow-500 dark:hover:border-yellow-500 p-3 rounded-lg text-sm text-left transition-all font-bold flex gap-2 items-center group shadow-sm"
+                                        className="bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 hover:text-black dark:hover:text-white border border-slate-300 dark:border-slate-600 hover:border-yellow-500 dark:hover:border-yellow-500 p-3 rounded-xl text-sm text-left transition-all font-medium flex gap-3 items-center group shadow-sm"
                                     >
-                                        <span className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 group-hover:bg-yellow-500 group-hover:text-black flex items-center justify-center text-xs shrink-0">{idx + 1}</span>
+                                        <span className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 group-hover:bg-yellow-500 group-hover:text-black flex items-center justify-center text-xs font-bold shrink-0">{idx + 1}</span>
                                         {opt}
                                     </button>
                                 ))}
                             </>
                         ) : (
-                             <div className="text-center text-slate-500 py-4 italic flex items-center justify-center gap-2">
+                             <div className="text-center text-slate-500 py-4 italic flex items-center justify-center gap-2 text-sm">
                                  <span className="animate-pulse">●</span> Karşı taraftan cevap bekleniyor...
                              </div>
                         )}
@@ -201,16 +201,16 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: Ne
     }
 
     return (
-        <div className="max-w-4xl mx-auto h-full flex flex-col">
+        <div className="w-full h-full flex flex-col">
             {/* Social Header with Tabs - Updated Style */}
-            <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-700/50 px-2 mb-6 overflow-x-auto">
+            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700/50 px-2 mb-6 overflow-x-auto">
                 {tabs.map((t) => {
                     const isActive = tab === t.id;
                     return (
                         <button
                             key={t.id}
                             onClick={() => setTab(t.id as any)}
-                            className={`flex items-center gap-2 px-6 py-3 text-base font-bold transition-all relative rounded-t-lg group whitespace-nowrap ${
+                            className={`flex items-center gap-2 px-5 py-3 text-base font-bold transition-all relative rounded-t-xl group whitespace-nowrap ${
                                 isActive 
                                 ? 'text-yellow-600 dark:text-yellow-400 bg-white dark:bg-slate-800' 
                                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800/30'
@@ -222,7 +222,7 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: Ne
                             <t.icon size={18} className={`${isActive ? "text-yellow-600 dark:text-yellow-400" : "text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300"}`} />
                             <span>{t.label}</span>
                             {t.badge && (
-                                <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1 animate-pulse">{t.badge}</span>
+                                <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 animate-pulse">{t.badge}</span>
                             )}
                         </button>
                     );
@@ -230,23 +230,20 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: Ne
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-10">
                 {/* SOCIAL FEED - Now Fan Tweets */}
                 {tab === 'SOCIAL' && news.map((n, idx) => {
-                    // Extract name and handle from 'title' field which we set as "Name|Handle|TeamName" or "Name (Handle)"
+                    // Extract name and handle from 'title' field
                     let name = "Taraftar";
                     let handle = "@taraftar";
                     let teamAffiliation = "";
 
-                    // New format support
                     if (n.title.includes('|')) {
                         const parts = n.title.split('|');
                         name = parts[0];
                         handle = parts[1];
                         teamAffiliation = parts[2];
-                    } 
-                    // Fallback to old format
-                    else if (n.title.includes('(')) {
+                    } else if (n.title.includes('(')) {
                         const parts = n.title.split('(');
                         name = parts[0].trim();
                         handle = parts[1].replace(')', '').trim();
@@ -256,15 +253,12 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: Ne
                     }
                     
                     const avatarColor = getAvatarColor(idx);
-                    
-                    // Find team for badge
                     const fanTeam = teams.find(t => t.name === teamAffiliation);
-                    
                     const stats = interactions[n.id] || { likes: 0, rts: 0, liked: false, rted: false, comments: [], showComments: false };
 
                     return (
-                        <div key={n.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 transition flex gap-4 shadow-sm">
-                            <div className={`w-12 h-12 rounded-full shrink-0 flex items-center justify-center ${avatarColor} text-white font-bold`}>
+                        <div key={n.id} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 transition flex gap-4 shadow-sm w-full">
+                            <div className={`w-12 h-12 rounded-full shrink-0 flex items-center justify-center ${avatarColor} text-white text-lg font-bold`}>
                                 {name.charAt(0)}
                             </div>
                             <div className="flex-1">
@@ -283,23 +277,23 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: Ne
                                         </span>
                                     ) : null}
 
-                                    <span className="text-slate-500 dark:text-slate-600 text-xs ml-auto">• {n.week}. Hafta</span>
+                                    <span className="text-slate-400 dark:text-slate-500 text-xs ml-auto font-medium">{n.week}. Hf</span>
                                 </div>
                                 {/* Tweet Content */}
-                                <p className="text-slate-700 dark:text-slate-200 text-base leading-relaxed mb-2">{n.content}</p>
+                                <p className="text-slate-800 dark:text-slate-100 text-sm leading-relaxed mb-3">{n.content}</p>
                                 
-                                <div className="mt-2 flex gap-6 text-slate-500 text-xs font-bold border-t border-slate-200 dark:border-slate-700/50 pt-2 items-center">
+                                <div className="flex gap-6 text-slate-500 text-xs font-bold border-t border-slate-200 dark:border-slate-700/50 pt-2 items-center">
                                     <button 
                                         onClick={() => toggleComments(n.id)}
-                                        className={`flex items-center gap-1 cursor-pointer transition ${stats.showComments ? 'text-blue-400' : 'hover:text-blue-400'}`}
+                                        className={`flex items-center gap-1.5 cursor-pointer transition ${stats.showComments ? 'text-blue-500' : 'hover:text-blue-500'}`}
                                     >
-                                        <MessageSquare size={16} className={stats.showComments ? 'fill-blue-400 text-blue-400' : ''}/> 
+                                        <MessageSquare size={16} className={stats.showComments ? 'fill-blue-500 text-blue-500' : ''}/> 
                                         {Math.floor(stats.likes/10) + stats.comments.length}
                                     </button>
                                     
                                     <button 
                                         onClick={() => toggleRt(n.id)}
-                                        className={`flex items-center gap-1 cursor-pointer transition ${stats.rted ? 'text-green-500' : 'hover:text-green-500'}`}
+                                        className={`flex items-center gap-1.5 cursor-pointer transition ${stats.rted ? 'text-green-600' : 'hover:text-green-600'}`}
                                     >
                                         <RotateCcw size={16} /> 
                                         {stats.rts}
@@ -307,7 +301,7 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: Ne
                                     
                                     <button 
                                         onClick={() => toggleLike(n.id)}
-                                        className={`flex items-center gap-1 cursor-pointer transition ${stats.liked ? 'text-red-500' : 'hover:text-red-500'}`}
+                                        className={`flex items-center gap-1.5 cursor-pointer transition ${stats.liked ? 'text-red-500' : 'hover:text-red-500'}`}
                                     >
                                         <Heart size={16} className={stats.liked ? 'fill-red-500 text-red-500' : ''}/> 
                                         {stats.likes}
@@ -316,19 +310,19 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: Ne
 
                                 {/* Comments Section */}
                                 {stats.showComments && (
-                                    <div className="mt-4 animate-in fade-in slide-in-from-top-2">
+                                    <div className="mt-4 animate-in fade-in slide-in-from-top-2 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl">
                                         {/* Existing Comments */}
                                         {stats.comments.length > 0 && (
-                                            <div className="space-y-3 mb-4 pl-4 border-l-2 border-slate-200 dark:border-slate-700">
+                                            <div className="space-y-3 mb-3">
                                                 {stats.comments.map((comment, i) => (
                                                     <div key={i} className="flex gap-3">
                                                         <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-300 dark:border-slate-600">
                                                             <User size={16} className="text-slate-500 dark:text-slate-400"/>
                                                         </div>
-                                                        <div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-bold text-slate-900 dark:text-white text-sm">Ben</span>
-                                                                <span className="text-xs text-slate-500">Şimdi</span>
+                                                        <div className="bg-white dark:bg-slate-700 p-2.5 rounded-lg rounded-tl-none shadow-sm flex-1">
+                                                            <div className="flex items-center gap-2 mb-0.5">
+                                                                <span className="font-bold text-slate-900 dark:text-white text-xs">Ben</span>
+                                                                <span className="text-[10px] text-slate-500">Şimdi</span>
                                                             </div>
                                                             <p className="text-slate-700 dark:text-slate-300 text-sm">{comment}</p>
                                                         </div>
@@ -344,13 +338,13 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: Ne
                                                 value={replyText}
                                                 onChange={(e) => setReplyText(e.target.value)}
                                                 placeholder="Yorumunu yaz..." 
-                                                className="flex-1 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-blue-500 transition placeholder-slate-500 dark:placeholder-slate-600"
+                                                className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-blue-500 transition placeholder-slate-400 dark:placeholder-slate-600"
                                                 onKeyDown={(e) => e.key === 'Enter' && submitComment(n.id)}
                                             />
                                             <button 
                                                 onClick={() => submitComment(n.id)}
                                                 disabled={!replyText.trim()}
-                                                className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold transition flex items-center"
+                                                className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-bold transition flex items-center"
                                             >
                                                 <Send size={16} />
                                             </button>
@@ -363,47 +357,70 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: Ne
                 })}
 
                 {/* MESSAGES */}
-                {tab === 'MESSAGES' && messages.map(msg => (
-                    <div 
-                        key={msg.id} 
-                        onClick={() => {
-                            setSelectedMessageId(msg.id);
-                            // Update read status using parent handler
-                            const updatedMessages = messages.map(m => m.id === msg.id ? { ...m, read: true } : m);
-                            onUpdateMessages(updatedMessages);
-                        }} 
-                        className={`bg-white dark:bg-slate-800 p-4 rounded-xl border cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition flex items-center gap-4 shadow-sm ${msg.read ? 'border-slate-200 dark:border-slate-700' : 'border-l-4 border-l-green-500 border-slate-200 dark:border-slate-700'}`}
-                    >
-                         <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ${msg.avatarColor}`}>
-                             {msg.sender.charAt(0)}
-                         </div>
-                         <div className="flex-1">
-                             <div className="flex justify-between items-center mb-1">
-                                 <span className={`font-bold ${msg.read ? 'text-slate-500 dark:text-slate-300' : 'text-slate-900 dark:text-white'}`}>{msg.sender}</span>
-                                 <span className="text-xs text-slate-500">{msg.date}</span>
-                             </div>
-                             <div className="text-sm text-yellow-600 dark:text-yellow-500 font-bold mb-1">{msg.subject}</div>
-                             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{msg.preview}</p>
-                         </div>
+                {tab === 'MESSAGES' && (
+                    <div className="space-y-3 w-full">
+                        {messages.length > 0 ? (
+                             <div className="flex justify-end">
+                                <button
+                                    onClick={() => {
+                                        const updatedMessages = messages.map(m => ({ ...m, read: true }));
+                                        onUpdateMessages(updatedMessages);
+                                    }}
+                                    className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 px-4 py-2 rounded-lg text-xs font-bold transition shadow-sm"
+                                >
+                                    <CheckCheck size={16} />
+                                    Tümünü Okundu İşaretle
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="text-center py-12 opacity-50 text-slate-500 dark:text-slate-400 flex flex-col items-center">
+                                <Mail size={48} className="mx-auto mb-2"/>
+                                <p className="text-base">Hiç mesajınız yok.</p>
+                            </div>
+                        )}
+                        {messages.map(msg => (
+                            <div 
+                                key={msg.id} 
+                                onClick={() => {
+                                    setSelectedMessageId(msg.id);
+                                    const updatedMessages = messages.map(m => m.id === msg.id ? { ...m, read: true } : m);
+                                    onUpdateMessages(updatedMessages);
+                                }} 
+                                className={`bg-white dark:bg-slate-800 p-3 rounded-2xl border cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition flex items-center gap-4 shadow-sm w-full ${msg.read ? 'border-slate-200 dark:border-slate-700' : 'border-l-4 border-l-green-500 border-slate-200 dark:border-slate-700'}`}
+                            >
+                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-base font-bold ${msg.avatarColor} shrink-0`}>
+                                     {msg.sender.charAt(0)}
+                                 </div>
+                                 <div className="flex-1 min-w-0">
+                                     <div className="flex justify-between items-center mb-0.5">
+                                         <span className={`font-bold text-base ${msg.read ? 'text-slate-600 dark:text-slate-300' : 'text-slate-900 dark:text-white'}`}>{msg.sender}</span>
+                                         <span className="text-xs text-slate-500">{msg.date}</span>
+                                     </div>
+                                     <div className="text-sm text-yellow-600 dark:text-yellow-500 font-bold mb-0.5 truncate">{msg.subject}</div>
+                                     <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{msg.preview}</p>
+                                 </div>
+                            </div>
+                        ))}
                     </div>
-                ))}
+                )}
 
                 {/* RUMORS */}
                 {tab === 'RUMORS' && rumors.map(r => (
-                    <div key={r.id} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 relative overflow-hidden group shadow-sm">
-                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition">
-                            <Hash size={64} className="text-slate-900 dark:text-white"/>
+                    <div key={r.id} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 relative overflow-hidden group shadow-sm hover:shadow-md transition w-full">
+                        <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition">
+                            <Hash size={50} className="text-slate-900 dark:text-white"/>
                         </div>
-                        <div className="flex justify-between items-start mb-2">
-                             <span className="text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-1 rounded">{r.source}</span>
-                             <div className="flex items-center gap-1 text-xs">
-                                 <span className="text-slate-500">Güvenilirlik:</span>
+                        <div className="flex justify-between items-start mb-3 relative z-10">
+                             <span className="text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg">{r.source}</span>
+                             <div className="flex items-center gap-1.5 text-xs bg-slate-50 dark:bg-slate-900/50 px-2 py-1 rounded-lg">
+                                 <span className="text-slate-500 font-bold">Güvenilirlik:</span>
                                  <div className="w-16 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                                      <div className={`h-full ${r.reliability > 70 ? 'bg-green-500' : r.reliability > 40 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{width: `${r.reliability}%`}}></div>
                                  </div>
+                                 <span className="font-mono font-bold text-slate-700 dark:text-slate-300">%{r.reliability}</span>
                              </div>
                         </div>
-                        <p className="text-slate-900 dark:text-white text-lg font-serif italic">"{r.text}"</p>
+                        <p className="text-slate-900 dark:text-white text-base font-serif italic leading-relaxed relative z-10 pl-2 border-l-2 border-yellow-500">"{r.text}"</p>
                     </div>
                 ))}
             </div>

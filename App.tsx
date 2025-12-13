@@ -237,7 +237,8 @@ const App: React.FC = () => {
         
         // 5. Player Complaints / Messages
         const updatedMyTeam = updatedTeams.find(t => t.id === gameState.myTeamId);
-        const playerMessages = (gameState.myTeamId && updatedMyTeam) ? generatePlayerMessages(nextWeek, updatedMyTeam) : [];
+        // PASS FIXTURES HERE
+        const playerMessages = (gameState.myTeamId && updatedMyTeam) ? generatePlayerMessages(nextWeek, updatedMyTeam, updatedFixtures) : [];
 
         // 6. Cleanup & Update State
         // Combine new tweets with existing news
@@ -538,7 +539,8 @@ const App: React.FC = () => {
                     myTeamId={myTeam.id} 
                     currentWeek={gameState.currentWeek} 
                     fixtures={gameState.fixtures}
-                    onTeamClick={handleShowTeamDetail} 
+                    onTeamClick={handleShowTeamDetail}
+                    onFixtureClick={(f) => setSelectedFixtureForDetail(f)}
                 />
             )}
             

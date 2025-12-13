@@ -5,7 +5,7 @@ import { simulateMatchStep, getEmptyMatchStats } from '../utils/gameEngine';
 import PitchVisual from '../components/shared/PitchVisual';
 import TacticsView from './TacticsView';
 import StandingsTable from '../components/shared/StandingsTable';
-import { MonitorPlay, Timer, AlertOctagon, Megaphone, Settings, PlayCircle, TrendingUp, Disc, Syringe, Activity, Lock } from 'lucide-react';
+import { MonitorPlay, Timer, AlertOctagon, Megaphone, Settings, PlayCircle, TrendingUp, Disc, Syringe, Activity, Lock, Target } from 'lucide-react';
 
 const MatchSimulation = ({ 
     homeTeam, awayTeam, userTeamId, onFinish, allTeams, fixtures
@@ -25,6 +25,10 @@ const MatchSimulation = ({
     const [isVarActive, setIsVarActive] = useState(false);
     const [varMessage, setVarMessage] = useState<string>('');
 
+    // PENALTY State
+    const [isPenaltyActive, setIsPenaltyActive] = useState(false);
+    const [penaltyMessage, setPenaltyMessage] = useState<string>('');
+
     // Manager Discipline State
     const [managerDiscipline, setManagerDiscipline] = useState<'NONE' | 'WARNED' | 'YELLOW' | 'RED'>('NONE');
 
@@ -42,7 +46,8 @@ const MatchSimulation = ({
     }, [events]);
 
     useEffect(() => {
-        if(isTacticsOpen || phase === 'HALFTIME' || phase === 'FULL_TIME' || isVarActive) return;
+        // Halt simulation loop if any overlay is active or phase is stopped
+        if(isTacticsOpen || phase === 'HALFTIME' || phase === 'FULL_TIME' || isVarActive || isPenaltyActive) return;
 
         const interval = setInterval(() => {
             setMinute(m => {
@@ -59,10 +64,84 @@ const MatchSimulation = ({
                 }
 
                 // SIMULATE STEP
-                const event = simulateMatchStep(nextM, homeTeam, awayTeam, {h: homeScore, a: awayScore});
+                const event = simulateMatchStep(nextM, homeTeam, awayTeam, {h: homeScore, a: awayScore}, events);
                 
                 if(event) {
                     setEvents(prev => [...prev, event]);
+
+                    // --- PENALTY CHECK LOGIC (Triggered by Yellow Card) ---
+                    if (event.type === 'CARD_YELLOW') {
+                        // 7% Chance for Penalty after Yellow Card
+                        if (Math.random() < 0.07) {
+                            setIsPenaltyActive(true);
+                            
+                            // Determine who gets the penalty (The opponent of the fouling team)
+                            const isHomeFoul = event.teamName === homeTeam.name;
+                            const penaltyTeam = isHomeFoul ? awayTeam : homeTeam;
+                            
+                            // Select Taker (Best Finisher in XI)
+                            // We approximate XI by taking first 11, or sorting all players if lineup isn't strict
+                            const xi = penaltyTeam.players.slice(0, 11);
+                            const taker = xi.reduce((prev, current) => (prev.stats.finishing > current.stats.finishing) ? prev : current);
+                            
+                            setPenaltyMessage(`${taker.name} penaltıyı kullanacak...`);
+
+                            // 2 Second Wait
+                            setTimeout(() => {
+                                setIsPenaltyActive(false);
+                                
+                                // 70% Goal Chance
+                                const isGoal = Math.random() < 0.70;
+
+                                if (isGoal) {
+                                    // Update Score
+                                    if(penaltyTeam.id === homeTeam.id) setHomeScore(s => s + 1);
+                                    else setAwayScore(s => s + 1);
+                                    
+                                    // Track real time for objection mechanic
+                                    lastGoalRealTime.current = Date.now();
+
+                                    const goalEvent: MatchEvent = {
+                                        minute: nextM,
+                                        type: 'GOAL',
+                                        description: `GOOOOL! ${taker.name} penaltıdan affetmedi!`,
+                                        teamName: penaltyTeam.name,
+                                        scorer: taker.name,
+                                        assist: 'Penaltı'
+                                    };
+                                    setEvents(prev => [...prev, goalEvent]);
+
+                                    // Update Stats
+                                    setStats(prev => {
+                                        const s = {...prev};
+                                        if(penaltyTeam.id === homeTeam.id) { s.homeShots++; s.homeShotsOnTarget++; }
+                                        else { s.awayShots++; s.awayShotsOnTarget++; }
+                                        return s;
+                                    });
+
+                                } else {
+                                    // Miss
+                                    const missEvent: MatchEvent = {
+                                        minute: nextM,
+                                        type: 'MISS',
+                                        description: `KAÇTI! ${taker.name} penaltıdan yararlanamadı!`,
+                                        teamName: penaltyTeam.name
+                                    };
+                                    setEvents(prev => [...prev, missEvent]);
+                                    
+                                    // Update Stats (Shot but not on target or saved count as shot)
+                                    setStats(prev => {
+                                        const s = {...prev};
+                                        if(penaltyTeam.id === homeTeam.id) { s.homeShots++; }
+                                        else { s.awayShots++; }
+                                        return s;
+                                    });
+                                }
+
+                            }, 2000);
+                        }
+                    }
+                    // ----------------------------------------------------
 
                     // Standard Goal Updating
                     if(event.type === 'GOAL') {
@@ -93,7 +172,30 @@ const MatchSimulation = ({
                                             type: 'INFO',
                                             teamName: event.teamName
                                         };
-                                        setEvents(prev => [...prev, cancelEvent]);
+                                        
+                                        // Update events: Add cancel info AND modify the original goal event
+                                        setEvents(prev => {
+                                            const updated = [...prev];
+                                            // Find the specific goal event to cancel (convert to OFFSIDE so it hides from timeline)
+                                            // We look from the end backwards to find the most recent matching goal
+                                            let foundIdx = -1;
+                                            for(let i=updated.length-1; i>=0; i--) {
+                                                const e = updated[i];
+                                                if(e.type === 'GOAL' && e.teamName === event.teamName && e.scorer === event.scorer && e.minute === event.minute) {
+                                                    foundIdx = i;
+                                                    break;
+                                                }
+                                            }
+                                            
+                                            if(foundIdx !== -1) {
+                                                updated[foundIdx] = { 
+                                                    ...updated[foundIdx], 
+                                                    type: 'OFFSIDE', // Change type so it's filtered out of timeline
+                                                    description: updated[foundIdx].description + ' (İPTAL)'
+                                                };
+                                            }
+                                            return [...updated, cancelEvent];
+                                        });
 
                                         // Revert Stats (Simplified - decrement shot/goal)
                                         setStats(prev => {
@@ -144,7 +246,7 @@ const MatchSimulation = ({
         }, 1000 / speed);
 
         return () => clearInterval(interval);
-    }, [minute, isTacticsOpen, phase, speed, isVarActive]);
+    }, [minute, isTacticsOpen, phase, speed, isVarActive, isPenaltyActive, events]);
 
     const liveScores = { homeId: homeTeam.id, awayId: awayTeam.id, homeScore, awayScore };
     
@@ -196,7 +298,28 @@ const MatchSimulation = ({
                              type: 'INFO',
                              teamName: myTeamCurrent.name
                          };
-                         setEvents(prev => [...prev, cancelEvent]);
+                         
+                         // Update events: Add cancel info AND modify the original goal event
+                         setEvents(prev => {
+                             const updated = [...prev];
+                             // Find last goal from the opponent team
+                             let foundIdx = -1;
+                             for(let i=updated.length-1; i>=0; i--) {
+                                 if(updated[i].type === 'GOAL' && updated[i].teamName === lastEvent.teamName) {
+                                     foundIdx = i;
+                                     break;
+                                 }
+                             }
+
+                             if(foundIdx !== -1) {
+                                updated[foundIdx] = {
+                                    ...updated[foundIdx],
+                                    type: 'OFFSIDE', // Change type so it's filtered out of timeline
+                                    description: updated[foundIdx].description + ' (İPTAL)'
+                                };
+                             }
+                             return [...updated, cancelEvent];
+                         });
                          
                          // Revert Score
                          if (lastEvent.teamName === homeTeam.name) setHomeScore(s => Math.max(0, s - 1));
@@ -341,6 +464,19 @@ const MatchSimulation = ({
                 </div>
             )}
 
+            {/* PENALTY OVERLAY */}
+            {isPenaltyActive && (
+                <div className="absolute inset-0 z-40 bg-black/70 flex items-center justify-center backdrop-blur-sm">
+                    <div className="bg-slate-900 p-10 rounded-xl border-4 border-green-600 text-center shadow-2xl shadow-green-900/50 animate-in zoom-in duration-300">
+                        <div className="flex justify-center mb-6">
+                            <Target size={100} className="text-green-500 animate-pulse"/>
+                        </div>
+                        <h2 className="text-5xl font-bold text-white mb-6 tracking-widest uppercase">PENALTI!</h2>
+                        <p className="text-green-400 text-2xl font-mono font-bold animate-bounce">{penaltyMessage}</p>
+                    </div>
+                </div>
+            )}
+
             {/* Scoreboard */}
             <div className="bg-black text-white p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-4 w-1/3">
@@ -469,7 +605,7 @@ const MatchSimulation = ({
                                                 </p>
                                             )}
                                             
-                                            {e.description.includes('GOL İPTAL') && <span className="bg-red-600 text-white px-2 py-1 rounded font-bold inline-block mt-1">GOL İPTAL EDİLDİ!</span>}
+                                            {e.description.includes('İPTAL') && <span className="bg-red-600 text-white px-2 py-1 rounded font-bold inline-block mt-1">GOL İPTAL EDİLDİ!</span>}
                                         </div>
                                     </div>
                                 </div>
