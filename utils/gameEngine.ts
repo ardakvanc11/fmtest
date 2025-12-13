@@ -15,6 +15,79 @@ const fillTemplate = (template: string, data: Record<string, string>) => {
 // Pick random item from array
 const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
+// --- RATINGS CALCULATOR ---
+export const calculateRating = (
+    goals: number,
+    assists: number,
+    yellowCards: number,
+    redCards: number,
+    isWinner: boolean,
+    isCleanSheetDefender: boolean
+): number => {
+    // Base rating
+    let rating = 6.0;
+
+    // Performance Bonuses
+    rating += (goals * 1.0);
+    rating += (assists * 0.5);
+    
+    // Penalties
+    rating -= (yellowCards * 1.0); // -1 for Yellow
+    rating -= (redCards * 3.0);    // -3 for Red
+
+    // Context Bonuses
+    if (isWinner) rating += 0.5;
+    if (isCleanSheetDefender) rating += 0.5; // Bonus for GK/DEF if no goals conceded
+
+    // Clamp rating
+    return Math.max(1.0, Math.min(10.0, Number(rating.toFixed(1))));
+};
+
+export const calculateRatingsFromEvents = (
+    homeTeam: Team, 
+    awayTeam: Team, 
+    events: MatchEvent[], 
+    homeScore: number, 
+    awayScore: number
+): { homeRatings: PlayerPerformance[], awayRatings: PlayerPerformance[] } => {
+    
+    const calculateForTeam = (team: Team, isHome: boolean): PlayerPerformance[] => {
+        const isWinner = isHome ? homeScore > awayScore : awayScore > homeScore;
+        const goalsConceded = isHome ? awayScore : homeScore;
+        
+        // Only First 11 gets ratings usually, but we check everyone who had an event
+        // For simplicity in this engine, we assume the first 11 played.
+        const lineup = team.players.slice(0, 11);
+
+        return lineup.map(player => {
+            const playerEvents = events.filter(e => e.teamName === team.name);
+            
+            const goals = playerEvents.filter(e => e.type === 'GOAL' && e.scorer === player.name).length;
+            const assists = playerEvents.filter(e => e.type === 'GOAL' && e.assist === player.name).length;
+            const yellowCards = playerEvents.filter(e => e.type === 'CARD_YELLOW' && e.playerId === player.id).length;
+            const redCards = playerEvents.filter(e => e.type === 'CARD_RED' && e.playerId === player.id).length;
+            
+            const isCleanSheetDefender = goalsConceded === 0 && (player.position === Position.GK || player.position === Position.DEF);
+
+            const rating = calculateRating(goals, assists, yellowCards, redCards, isWinner, isCleanSheetDefender);
+
+            return {
+                playerId: player.id,
+                name: player.name,
+                position: player.position,
+                rating,
+                goals,
+                assists
+            };
+        });
+    };
+
+    return {
+        homeRatings: calculateForTeam(homeTeam, true),
+        awayRatings: calculateForTeam(awayTeam, false)
+    };
+};
+
 // --- DATE & CALENDAR SYSTEM ---
 
 const START_DATE = new Date(2025, 6, 1); 
@@ -183,7 +256,8 @@ const createFixture = (week: number, homeId: string, awayId: string): Fixture =>
     awayScore: null
 });
 
-const generatePlayerRatings = (players: Player[], teamGoals: number, isWinner: boolean): PlayerPerformance[] => {
+// Used for instant simulation generation where we don't have events yet
+const generateRandomPlayerRatings = (players: Player[], teamGoals: number, isWinner: boolean): PlayerPerformance[] => {
     const lineup = [...players].slice(0, 11); 
     
     return lineup.map(p => {
@@ -205,8 +279,9 @@ const generatePlayerRatings = (players: Player[], teamGoals: number, isWinner: b
 };
 
 const generateMatchStats = (homePlayers: Player[], awayPlayers: Player[], hScore: number, aScore: number): MatchStats => {
-    const homeRatings = generatePlayerRatings(homePlayers, hScore, hScore > aScore);
-    const awayRatings = generatePlayerRatings(awayPlayers, aScore, aScore > hScore);
+    // Initial random ratings for instant sim (will be overwritten if events are generated later)
+    const homeRatings = generateRandomPlayerRatings(homePlayers, hScore, hScore > aScore);
+    const awayRatings = generateRandomPlayerRatings(awayPlayers, aScore, aScore > hScore);
 
     const hStr = calculateTeamStrength({ players: homePlayers, morale: 50 } as any);
     const aStr = calculateTeamStrength({ players: awayPlayers, morale: 50 } as any);
@@ -684,15 +759,28 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
     return teams.map(team => {
         const teamEvents = events.filter(e => e.teamName === team.name);
         
+        // Determine if team won based on goal events (simplified reconstruction of score)
+        // Note: For 100% accuracy we should pass scores, but deriving from events is consistent for this logic.
+        const myGoals = events.filter(e => e.type === 'GOAL' && e.teamName === team.name).length;
+        const oppGoals = events.filter(e => e.type === 'GOAL' && e.teamName !== team.name).length;
+        const isWinner = myGoals > oppGoals;
+        const goalsConceded = oppGoals;
+
         const updatedPlayers = team.players.map(p => {
             let player = { ...p };
 
-            // 1. Update Season Stats (Goals, Assists)
-            // Note: Ratings are usually calculated in `generateMatchStats` and stored in Fixture. 
-            // Here we mainly process raw events.
+            // 1. Calculate Stats
             const goals = teamEvents.filter(e => e.type === 'GOAL' && e.scorer === p.name).length;
             const assists = teamEvents.filter(e => e.type === 'GOAL' && e.assist === p.name).length;
+            const yellowCards = teamEvents.filter(e => e.type === 'CARD_YELLOW' && e.playerId === p.id).length;
+            const redCards = teamEvents.filter(e => e.type === 'CARD_RED' && e.playerId === p.id).length;
             
+            const isCleanSheetDefender = goalsConceded === 0 && (p.position === Position.GK || p.position === Position.DEF);
+
+            // 2. Calculate Rating (Deterministic)
+            const matchRating = calculateRating(goals, assists, yellowCards, redCards, isWinner, isCleanSheetDefender);
+            
+            // 3. Update Season Stats
             player.seasonStats = {
                 ...player.seasonStats,
                 goals: player.seasonStats.goals + goals,
@@ -700,16 +788,12 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
                 matchesPlayed: player.seasonStats.matchesPlayed + 1
             };
             
-            // Generate a random rating for this match if not present (simplified logic)
-            // In a full implementation, we'd grab the rating from the MatchStats object.
-            const matchRating = 6 + (Math.random() * 4) + (goals * 1) + (assists * 0.5);
-            const cappedRating = Math.min(10, Number(matchRating.toFixed(1)));
-            player.seasonStats.ratings.push(cappedRating);
+            player.seasonStats.ratings.push(matchRating);
             const sum = player.seasonStats.ratings.reduce((a, b) => a + b, 0);
             player.seasonStats.averageRating = Number((sum / player.seasonStats.ratings.length).toFixed(1));
 
 
-            // 2. Reset Injection flag
+            // 4. Reset Injection flag
             if (player.hasInjectionForNextMatch) {
                 player.hasInjectionForNextMatch = false;
                 if (Math.random() < 0.3 && player.injury) {
@@ -717,7 +801,7 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
                 }
             }
 
-            // 3. Decrement existing injury
+            // 5. Decrement existing injury
             if (player.injury) {
                 player.injury.weeksRemaining -= 1;
                 if (player.injury.weeksRemaining <= 0) {
@@ -725,7 +809,7 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
                 }
             }
 
-            // 4. Check new injuries from match
+            // 6. Check new injuries from match
             const injuryEvent = teamEvents.find(e => e.type === 'INJURY' && e.playerId === p.id);
             if (injuryEvent) {
                 const injuryType = INJURY_TYPES[Math.floor(Math.random() * INJURY_TYPES.length)];
@@ -737,7 +821,7 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
                 };
             }
 
-            // 5. Check Red Card
+            // 7. Check Red Card Suspension
             const hasRed = teamEvents.some(e => e.type === 'CARD_RED' && e.playerId === p.id);
             if (hasRed) {
                 player.suspendedUntilWeek = currentWeek + 2; 
