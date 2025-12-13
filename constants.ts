@@ -137,14 +137,15 @@ export const INJURY_TYPES = [
     { type: 'Ayak Parmağı Morarması', minWeeks: 1, maxWeeks: 2, desc: 'Rakip oyuncunun krampon darbesi sonrası.' }
 ];
 
-// User Defined Teams with provided Imgur Logos
+// User Defined Teams with provided Imgur Logos and Stadium Capacities
 export const TEAM_TEMPLATES = [
     { 
         name: 'Ayıboğanspor SK', 
         logo: 'https://i.imgur.com/eV74XlV.png', 
         colors: ['bg-purple-600', 'text-white'], 
         stars: 3, 
-        stadium: 'Mağara Arena', 
+        stadium: 'Mağara Arena',
+        capacity: 45000, 
         fans: 12000000, 
         budget: 15, 
         targetStrength: 84 
@@ -155,6 +156,7 @@ export const TEAM_TEMPLATES = [
         colors: ['bg-red-600', 'text-white'], 
         stars: 2, 
         stadium: 'Yumak Stadyumu', 
+        capacity: 43000,
         fans: 8000000, 
         budget: 20, 
         targetStrength: 82 
@@ -164,7 +166,8 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/T1RiW8H.png',
         colors: ['bg-blue-600', 'text-yellow-400'], 
         stars: 5, 
-        stadium: 'Anadolu Arena', 
+        stadium: 'Anadolu Arena',
+        capacity: 65000,
         fans: 15000000, 
         budget: 12, 
         targetStrength: 81 
@@ -174,8 +177,9 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/kvhASjK.png',
         colors: ['bg-purple-800', 'text-white'], 
         stars: 1, 
-        stadium: 'Muz Park', 
-        fans: 4000000, 
+        stadium: 'Muz Park',
+        capacity: 21000,
+        fans: 3000000, 
         budget: 9, 
         targetStrength: 78 
     },
@@ -184,8 +188,9 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/7vkiuxd.png',
         colors: ['bg-yellow-500', 'text-white'], 
         stars: 1, 
-        stadium: 'Kovan Stadyumu', 
-        fans: 5000000, 
+        stadium: 'Kovan Stadyumu',
+        capacity: 27000,
+        fans: 1500000, 
         budget: 22, 
         targetStrength: 84 
     },
@@ -194,8 +199,9 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/OoPWVvx.png',
         colors: ['bg-blue-500', 'text-white'], 
         stars: 1, 
-        stadium: 'Kemik Arena', 
-        fans: 2500000, 
+        stadium: 'Kemik Arena',
+        capacity: 41000,
+        fans: 6500000, 
         budget: 13, 
         targetStrength: 80 
     },
@@ -204,8 +210,9 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/RuCGNuc.png',
         colors: ['bg-green-600', 'text-black'], 
         stars: 0, 
-        stadium: 'Tuna Park', 
-        fans: 900000, 
+        stadium: 'Tuna Park',
+        capacity: 16500,
+        fans: 500000, 
         budget: 5, 
         targetStrength: 75 
     },
@@ -214,7 +221,8 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/pPchTUI.png',
         colors: ['bg-purple-900', 'text-white'], 
         stars: 0, 
-        stadium: 'Bedir Stadı', 
+        stadium: 'Bedir Stadı',
+        capacity: 25000,
         fans: 850000, 
         budget: 6, 
         targetStrength: 73 
@@ -224,7 +232,8 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/vcN5VhI.png',
         colors: ['bg-orange-500', 'text-black'], 
         stars: 0, 
-        stadium: 'Çöl Fırtınası', 
+        stadium: 'Çöl Fırtınası',
+        capacity: 19500,
         fans: 750000, 
         budget: 6, 
         targetStrength: 72 
@@ -234,7 +243,8 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/JhXtd58.png',
         colors: ['bg-orange-400', 'text-white'], 
         stars: 0, 
-        stadium: 'Liman Arena', 
+        stadium: 'Liman Arena',
+        capacity: 18000,
         fans: 1200000, 
         budget: 7, 
         targetStrength: 74 
@@ -244,8 +254,9 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/S4TVTee.png',
         colors: ['bg-black', 'text-white'], 
         stars: 0, 
-        stadium: 'Kule Stadı', 
-        fans: 500000, 
+        stadium: 'Kule Stadı',
+        capacity: 9500,
+        fans: 200000, 
         budget: 4, 
         targetStrength: 71 
     },
@@ -254,8 +265,9 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/LqtejWJ.png',
         colors: ['bg-red-900', 'text-blue-400'], 
         stars: 0, 
-        stadium: 'Deniz Kenarı', 
-        fans: 3000000, 
+        stadium: 'Deniz Kenarı',
+        capacity: 22000,
+        fans: 2000000, 
         budget: 5, 
         targetStrength: 70 
     },
@@ -264,7 +276,8 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/Iz505sK.png',
         colors: ['bg-green-500', 'text-white'], 
         stars: 0, 
-        stadium: 'Rüzgar Vadisi', 
+        stadium: 'Rüzgar Vadisi',
+        capacity: 14500,
         fans: 300000, 
         budget: 3, 
         targetStrength: 67 
@@ -274,8 +287,9 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/n17A3Cw.png',
         colors: ['bg-amber-800', 'text-black'], 
         stars: 0, 
-        stadium: 'Ova Arena', 
-        fans: 1100000, 
+        stadium: 'Ova Arena',
+        capacity: 34500,
+        fans: 2100000, 
         budget: 7, 
         targetStrength: 76 
     },
@@ -284,7 +298,8 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/eUpKqYk.png',
         colors: ['bg-yellow-400', 'text-blue-900'], 
         stars: 0, 
-        stadium: 'Kümes Park', 
+        stadium: 'Kümes Park',
+        capacity: 11700,
         fans: 400000, 
         budget: 2, 
         targetStrength: 68 
@@ -294,8 +309,9 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/sw63G9H.png',
         colors: ['bg-indigo-900', 'text-blue-400'], 
         stars: 0, 
-        stadium: 'Şehir Stadı', 
-        fans: 600000, 
+        stadium: 'Şehir Stadı',
+        capacity: 29000,
+        fans: 1600000, 
         budget: 8, 
         targetStrength: 75 
     },
@@ -304,8 +320,9 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/WG9bJgB.png',
         colors: ['bg-red-600', 'text-white'], 
         stars: 0, 
-        stadium: 'Hipodrom Arena', 
-        fans: 550000, 
+        stadium: 'Hipodrom Arena',
+        capacity: 30300,
+        fans: 450000, 
         budget: 4, 
         targetStrength: 72 
     },
@@ -314,8 +331,9 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/JROZfTX.png',
         colors: ['bg-green-500', 'text-green-900'], 
         stars: 0, 
-        stadium: 'Barış Parkı', 
-        fans: 950000, 
+        stadium: 'Barış Parkı',
+        capacity: 33100,
+        fans: 1950000, 
         budget: 8, 
         targetStrength: 74 
     }
@@ -458,6 +476,7 @@ export const initializeTeams = (): Team[] => {
             stars: tmpl.stars,
             fanBase: tmpl.fans,
             stadiumName: tmpl.stadium,
+            stadiumCapacity: tmpl.capacity, // Initialize capacity
             budget: tmpl.budget,
             players,
             // DEFAULT TACTICS

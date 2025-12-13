@@ -1,4 +1,5 @@
 
+
 export enum Position {
     GK = 'GK',
     DEF = 'DEF',
@@ -151,6 +152,7 @@ export interface Team {
     stars: number;
     fanBase: number; 
     stadiumName: string;
+    stadiumCapacity: number; // NEW: Added stadium capacity
     budget: number; 
     players: Player[]; 
     
@@ -330,6 +332,25 @@ export interface ManagerProfile {
     history: string[]; 
 }
 
+export interface MessageHistory {
+    id: number;
+    text: string;
+    time: string;
+    isMe: boolean;
+}
+
+export interface Message {
+    id: number;
+    sender: string;
+    subject: string;
+    preview: string;
+    date: string;
+    read: boolean;
+    avatarColor: string;
+    history: MessageHistory[];
+    options: string[];
+}
+
 export interface GameState {
     managerName: string | null;
     manager: ManagerProfile | null; 
@@ -337,7 +358,7 @@ export interface GameState {
     currentWeek: number; 
     teams: Team[];
     fixtures: Fixture[];
-    messages: string[];
+    messages: Message[]; // Updated to Message[]
     isGameStarted: boolean;
     transferList: Player[]; 
     trainingPerformed: boolean;

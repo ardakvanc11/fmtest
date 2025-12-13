@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { Team, Player, TacticStyle, InterviewQuestion, InterviewOption, HalftimeTalkOption, MatchEvent, MatchStats } from '../types';
+import { INTERVIEW_TEMPLATES } from '../data/questionsPool';
 
 let ai: GoogleGenAI | null = null;
 let apiBackoffUntil = 0; // Timestamp until which API calls are suspended
@@ -177,15 +178,7 @@ export const getPressQuestion = async (
     const redCards = myEvents.filter(e => e.type === 'CARD_RED');
     
     // Find standout players (Good/Bad)
-    // We assume ctx.stats.homeRatings or awayRatings matches myTeam based on name matching logic handled outside or simple check
-    // Here we will try to find ratings from stats.
-    const myRatings = ctx.stats.homeRatings.length > 0 && ctx.events.some(e => e.teamName === ctx.myTeamName) // Simplified check
-        ? ctx.stats.homeRatings // This assumes home is us, but logic should be safer. 
-        : ctx.stats.awayRatings; // Ideally, caller passes correct rating array. 
-        
-    // Let's refine rating finding if possible, but fallback to general logic
     const scorerNames = goals.map(g => g.scorer).filter(Boolean) as string[];
-    const redCardPlayerNames = redCards.map(c => c.playerId).filter(Boolean); // This gives ID, we need name from event description usually or look up.
     
     // Create specific scenario buckets
     const scenarios = [];
@@ -197,111 +190,28 @@ export const getPressQuestion = async (
     scenarios.push('GENERAL');
 
     // Pick a scenario
-    // Bias towards specific events (Scorer/Red Card) over generic win/loss
     let selectedScenario = scenarios[0];
     if (scenarios.includes('RED_CARD')) selectedScenario = 'RED_CARD';
     else if (scenarios.includes('SCORER') && Math.random() > 0.4) selectedScenario = 'SCORER';
     else if (scenarios.includes('HEAVY_LOSS')) selectedScenario = 'HEAVY_LOSS';
     else if (ctx.result !== 'DRAW') selectedScenario = ctx.result;
 
-    // --- TEMPLATES ---
-    
-    const templates: Record<string, {q: string, opts: InterviewOption[]}[]> = {
-        'SCORER': [
-            {
-                q: `Bugün ${scorerNames[0]} harika bir performans gösterdi ve golünü attı. Onun hakkında ne düşünüyorsunuz?`,
-                opts: [
-                    { id: '1', text: "Tam da ondan beklediğim performanstı, harikaydı.", effect: { playerMorale: 10, description: "Oyuncunun güveni arttı." } },
-                    { id: '2', text: "Takım arkadaşları ona çok yardım etti, bu bir ekip işi.", effect: { teamMorale: 5, description: "Takım bütünlüğü vurgulandı." } },
-                    { id: '3', text: "İyiydi ama daha iyisini yapabilir, potansiyeli yüksek.", effect: { playerMorale: -5, description: "Oyuncu daha çok çalışacak." } }
-                ]
-            },
-            {
-                q: `${scorerNames[0]} bugün takımın kurtarıcısı oldu diyebilir miyiz?`,
-                opts: [
-                    { id: '1', text: "Kesinlikle, bugün maçı o aldı.", effect: { playerMorale: 15, teamMorale: -5, description: "Diğer oyuncular kıskanabilir." } },
-                    { id: '2', text: "Önemli katkı verdi ama herkes savaştı.", effect: { teamMorale: 5, description: "Dengeli yaklaşım." } },
-                    { id: '3', text: "Gol atması onun işi zaten, abartmayalım.", effect: { description: "Profesyonel yaklaşım." } }
-                ]
-            }
-        ],
-        'RED_CARD': [
-            {
-                q: `Kırmızı kart oyun planınızı nasıl etkiledi? Hakem kararı doğru muydu?`,
-                opts: [
-                    { id: '1', text: "Hakem bizi resmen doğradı, karar skandaldı!", effect: { trustUpdate: { board: -5, fans: 10, referees: -20 }, description: "Federasyondan ceza riski!" } },
-                    { id: '2', text: "Oyuncumun yaptığı disiplinsizliği kabul edemem, ceza alacak.", effect: { teamMorale: -10, trustUpdate: { board: 5 }, description: "Otorite sağlandı." } },
-                    { id: '3', text: "Futbolda bunlar var, 10 kişiyle de iyi direndik.", effect: { teamMorale: 5, description: "Takıma sahip çıkıldı." } }
-                ]
-            }
-        ],
-        'HEAVY_LOSS': [
-            {
-                q: `Hocam bu skor tam bir hezimet. Taraftarlar istifa diye bağırıyor, ne diyeceksiniz?`,
-                opts: [
-                    { id: '1', text: "Sorumluluk tamamen bende. Özür dilerim.", effect: { trustUpdate: { fans: 5, board: -10 }, description: "Dürüstlük takdir edildi ama koltuk sallantıda." } },
-                    { id: '2', text: "Bu kadroyla ancak bu kadar oluyor, takviye şart.", effect: { teamMorale: -20, trustUpdate: { board: -10 }, description: "Yönetim ve oyuncularla kriz!" } },
-                    { id: '3', text: "Bunu bir yol kazası olarak görüyorum, haftaya telafi edeceğiz.", effect: { description: "Soğukkanlılık korundu." } }
-                ]
-            },
-            {
-                q: `Sahada ruhsuz bir takım vardı. Oyuncularınız maçı kafalarında bitirmiş mi?`,
-                opts: [
-                    { id: '1', text: "Bazı arkadaşlar bu formanın ağırlığını bilmiyor.", effect: { teamMorale: -15, description: "Oyuncular size cephe alabilir." } },
-                    { id: '2', text: "Fiziksel olarak düştük, taktiksel hatalar da yaptık.", effect: { description: "Analitik yaklaşım." } },
-                    { id: '3', text: "Bugün günümüzde değildik, hepsi bu.", effect: { description: "Geçiştirme." } }
-                ]
-            }
-        ],
-        'WIN': [
-            {
-                q: `Harika bir galibiyet! Takımın bu formunu neye borçlusunuz?`,
-                opts: [
-                    { id: '1', text: "Çok çalışıyoruz, antrenmanların karşılığını aldık.", effect: { teamMorale: 5, description: "Çalışma vurgusu." } },
-                    { id: '2', text: "Taktiksel zekam sayesinde kazandık.", effect: { trustUpdate: { fans: -5, players: -5 }, description: "Egoist algılandı." } },
-                    { id: '3', text: "Taraftarımızın desteğiyle kazandık, onlar harika.", effect: { trustUpdate: { fans: 15 }, description: "Taraftarla bağ güçlendi." } }
-                ]
-            }
-        ],
-        'LOSS': [
-            {
-                q: `Mağlubiyetin sebebi sizce neydi?`,
-                opts: [
-                    { id: '1', text: "Şans bizden yana değildi.", effect: { description: "Bahane." } },
-                    { id: '2', text: "Rakip bizden daha çok istedi.", effect: { teamMorale: -5, description: "Takım hırslandı." } },
-                    { id: '3', text: "Hakem maçı katletti.", effect: { trustUpdate: { referees: -10 }, description: "Riskli açıklama." } }
-                ]
-            }
-        ],
-        'DRAW': [
-            {
-                q: `1 puan kazanç mı kayıp mı?`,
-                opts: [
-                    { id: '1', text: "2 puan bıraktık, üzgünüz.", effect: { teamMorale: 5, description: "Hedef yüksek." } },
-                    { id: '2', text: "Yenilmemek önemliydi.", effect: { description: "Garantici yaklaşım." } },
-                    { id: '3', text: "Oyunun hakkı buydu.", effect: { description: "Objektif." } }
-                ]
-            }
-        ],
-        'GENERAL': [
-             {
-                q: `Ligin gidişatını nasıl değerlendiriyorsunuz?`,
-                opts: [
-                    { id: '1', text: "Şampiyon olacağız!", effect: { teamMorale: 10, description: "Beklenti yükseldi." } },
-                    { id: '2', text: "Maç maç bakıyoruz.", effect: { description: "Klasik cevap." } },
-                    { id: '3', text: "Lig uzun maraton.", effect: { description: "Sakin." } }
-                ]
-            }
-        ]
-    };
-
     // Fallback selection logic
     const getLocalQuestion = () => {
-        const pool = templates[selectedScenario] || templates['GENERAL'];
+        const pool = INTERVIEW_TEMPLATES[selectedScenario] || INTERVIEW_TEMPLATES['GENERAL'];
         const randomItem = pool[Math.floor(Math.random() * pool.length)];
+        
+        // Simple interpolation for {player} placeholder
+        let questionText = randomItem.q;
+        if(scorerNames.length > 0) {
+            questionText = questionText.replace('{player}', scorerNames[0]);
+        } else {
+            questionText = questionText.replace('{player}', 'Oyuncunuz');
+        }
+
         return {
             id: Math.random().toString(),
-            question: randomItem.q,
+            question: questionText,
             options: randomItem.opts
         };
     };
@@ -331,9 +241,6 @@ export const getPressQuestion = async (
         if (!aiQuestion) return getLocalQuestion();
 
         // If AI generates a question, we map it to Generic Options but try to flavor them slightly
-        // Since we can't dynamically generate Option Effects safely without complex parsing, 
-        // we use a generic set of options based on the RESULT logic.
-        
         let aiOptions: InterviewOption[] = [];
         if (ctx.result === 'WIN') {
             aiOptions = [
