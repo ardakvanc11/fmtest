@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, Position } from './types';
 import { initializeTeams } from './constants';
-import { simulateMatchInstant, generateFixtures, generateTransferMarket, generateWeeklyNews, isTransferWindowOpen, processMatchPostGame, applyTraining, generateMatchTweets, generatePlayerMessages, calculateRatingsFromEvents } from './utils/gameEngine';
+import { simulateMatchInstant, generateFixtures, generateTransferMarket, generateWeeklyNews, isTransferWindowOpen, processMatchPostGame, applyTraining, generateMatchTweets, generatePlayerMessages, calculateRatingsFromEvents, determineMVP } from './utils/gameEngine';
 import { INITIAL_MESSAGES } from './data/messagePool';
 
 // Views
@@ -297,10 +297,15 @@ const App: React.FC = () => {
         // Calculate Accurate Ratings based on Events
         const { homeRatings, awayRatings } = calculateRatingsFromEvents(homeTeam, awayTeam, events, hScore, aScore);
         
+        // DETERMINE MVP (Man of the Match)
+        const mvpInfo = determineMVP(homeRatings, awayRatings);
+
         const updatedStats: MatchStats = { 
             ...stats,
             homeRatings,
-            awayRatings
+            awayRatings,
+            mvpPlayerId: mvpInfo.id,
+            mvpPlayerName: mvpInfo.name
         };
 
         const updatedFixtures = [...gameState.fixtures];
@@ -633,6 +638,7 @@ const App: React.FC = () => {
                     <MatchSimulation 
                         homeTeam={gameState.teams.find(t => t.id === (gameState.fixtures.find(f => f.week === gameState.currentWeek && (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId))?.homeTeamId))!}
                         awayTeam={gameState.teams.find(t => t.id === (gameState.fixtures.find(f => f.week === gameState.currentWeek && (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId))?.awayTeamId))!}
+                        userTeamId={myTeam.id}
                         onFinish={handleMatchFinish}
                         allTeams={gameState.teams}
                         fixtures={gameState.fixtures}

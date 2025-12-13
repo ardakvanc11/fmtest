@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 
 const IntroScreen = ({ onStart }: { onStart: (name: string, year: string, country: string) => void }) => {
@@ -17,9 +16,9 @@ const IntroScreen = ({ onStart }: { onStart: (name: string, year: string, countr
                     />
                 </div>
                 <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-red-600 mb-2 tracking-tighter uppercase">
-                    HAYVAN LEAGUE
+                    SÜPER TOTO
                 </h1>
-                <h2 className="text-2xl font-light text-white mb-8 tracking-[0.5em]">MANAGER 26</h2>
+                <h2 className="text-2xl font-light text-white mb-8 tracking-[0.2em] uppercase">Hayvanlar Ligi</h2>
                 
                 <div className="space-y-4 text-left">
                     <div>
@@ -64,7 +63,7 @@ const IntroScreen = ({ onStart }: { onStart: (name: string, year: string, countr
                         KARİYERE BAŞLA
                     </button>
                 </div>
-                <p className="mt-6 text-slate-500 text-xs">v2.7.0 • 2025/2026 Sezonu</p>
+                <p className="mt-6 text-slate-500 text-xs">v2.9.0 • 2025/2026 Sezonu</p>
             </div>
         </div>
     );

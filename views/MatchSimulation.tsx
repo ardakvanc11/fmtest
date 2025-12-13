@@ -5,12 +5,12 @@ import { simulateMatchStep, getEmptyMatchStats } from '../utils/gameEngine';
 import PitchVisual from '../components/shared/PitchVisual';
 import TacticsView from './TacticsView';
 import StandingsTable from '../components/shared/StandingsTable';
-import { MonitorPlay, Timer, AlertOctagon, Megaphone, Settings, PlayCircle, TrendingUp, Disc, Syringe, Activity } from 'lucide-react';
+import { MonitorPlay, Timer, AlertOctagon, Megaphone, Settings, PlayCircle, TrendingUp, Disc, Syringe, Activity, Lock } from 'lucide-react';
 
 const MatchSimulation = ({ 
-    homeTeam, awayTeam, onFinish, allTeams, fixtures
+    homeTeam, awayTeam, userTeamId, onFinish, allTeams, fixtures
 }: { 
-    homeTeam: Team, awayTeam: Team, onFinish: (h: number, a: number, events: MatchEvent[], stats: MatchStats) => void, allTeams: Team[], fixtures: any[]
+    homeTeam: Team, awayTeam: Team, userTeamId: string, onFinish: (h: number, a: number, events: MatchEvent[], stats: MatchStats) => void, allTeams: Team[], fixtures: any[]
 }) => {
     const [minute, setMinute] = useState(0);
     const [homeScore, setHomeScore] = useState(0);
@@ -29,7 +29,11 @@ const MatchSimulation = ({
     const [managerDiscipline, setManagerDiscipline] = useState<'NONE' | 'WARNED' | 'YELLOW' | 'RED'>('NONE');
 
     // Local tactics state
-    const [myTeamCurrent, setMyTeamCurrent] = useState(homeTeam); 
+    // Determine the actual team being managed by the user to handle tactics and events correctly
+    const [myTeamCurrent, setMyTeamCurrent] = useState(homeTeam.id === userTeamId ? homeTeam : awayTeam); 
+
+    // Timing tracking for objection feature
+    const lastGoalRealTime = useRef<number>(0);
 
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -58,32 +62,59 @@ const MatchSimulation = ({
                 const event = simulateMatchStep(nextM, homeTeam, awayTeam, {h: homeScore, a: awayScore});
                 
                 if(event) {
-                    // Handle VAR Pause
-                    if (event.type === 'VAR') {
-                        setIsVarActive(true);
-                        setVarMessage(`${event.description}`);
-                        // Schedule resolution
-                        setTimeout(() => {
-                             setIsVarActive(false);
-                             const outcome = event.varOutcome === 'GOAL';
-                             const finalEvent: MatchEvent = {
-                                 ...event,
-                                 type: outcome ? 'GOAL' : 'INFO',
-                                 description: outcome ? `VAR İncelemesi Bitti: GOL GEÇERLİ! (${event.scorer})` : `VAR İncelemesi Bitti: GOL İPTAL! (${event.scorer} ofsayt)`,
-                             };
-                             
-                             setEvents(prev => [...prev, finalEvent]);
-                             if(outcome) {
-                                if(event.teamName === homeTeam.name) setHomeScore(s => s + 1);
-                                else setAwayScore(s => s + 1);
-                             }
+                    setEvents(prev => [...prev, event]);
 
-                        }, 3000); // 3 seconds VAR check
-                    } else {
-                        setEvents(prev => [...prev, event]);
-                        if(event.type === 'GOAL') {
-                            if(event.teamName === homeTeam.name) setHomeScore(s => s + 1);
-                            else setAwayScore(s => s + 1);
+                    // Standard Goal Updating
+                    if(event.type === 'GOAL') {
+                        lastGoalRealTime.current = Date.now(); // Track real time of goal for objection mechanic
+
+                        if(event.teamName === homeTeam.name) setHomeScore(s => s + 1);
+                        else setAwayScore(s => s + 1);
+
+                        // RANDOM GAME GENERATED VAR CHECK LOGIC (Not the user objection one)
+                        if(event.varOutcome) {
+                            // 1. Wait 1 second before showing VAR (Let the goal celebrate first)
+                            setTimeout(() => {
+                                setIsVarActive(true);
+                                setVarMessage("Hakem VAR ile görüşüyor...");
+
+                                // 2. Wait 3 seconds for decision
+                                setTimeout(() => {
+                                    setIsVarActive(false);
+                                    
+                                    if(event.varOutcome === 'NO_GOAL') {
+                                        // CANCEL GOAL
+                                        if(event.teamName === homeTeam.name) setHomeScore(s => Math.max(0, s - 1));
+                                        else setAwayScore(s => Math.max(0, s - 1));
+
+                                        const cancelEvent: MatchEvent = {
+                                            minute: nextM,
+                                            description: `VAR İncelemesi Bitti: GOL İPTAL! (${event.scorer} ofsayt)`,
+                                            type: 'INFO',
+                                            teamName: event.teamName
+                                        };
+                                        setEvents(prev => [...prev, cancelEvent]);
+
+                                        // Revert Stats (Simplified - decrement shot/goal)
+                                        setStats(prev => {
+                                            const s = {...prev};
+                                            if(event.teamName === homeTeam.name) { s.homeShotsOnTarget--; }
+                                            else { s.awayShotsOnTarget--; }
+                                            return s;
+                                        });
+
+                                    } else {
+                                        // CONFIRM GOAL
+                                        const confirmEvent: MatchEvent = {
+                                            minute: nextM,
+                                            description: `VAR İncelemesi Bitti: GOL GEÇERLİ! Santra yapılacak.`,
+                                            type: 'INFO',
+                                            teamName: event.teamName
+                                        };
+                                        setEvents(prev => [...prev, confirmEvent]);
+                                    }
+                                }, 3000);
+                            }, 1000);
                         }
                     }
 
@@ -119,40 +150,46 @@ const MatchSimulation = ({
     
     // --- DEEP OBJECTION & DISCIPLINE SYSTEM ---
     const handleObjection = () => {
-         if (managerDiscipline === 'RED') return; // Should not be reachable via UI but double check
+         if (managerDiscipline === 'RED') return; 
 
-         // 1. Check Context: Is there an Opponent Goal recently?
          const lastEvent = events[events.length - 1];
-         let isContestingOpponentGoal = false;
-         
-         if (lastEvent && lastEvent.type === 'GOAL' && lastEvent.teamName !== myTeamCurrent.name) {
-             isContestingOpponentGoal = true;
+
+         // Prevent objection if it's my own goal
+         if (lastEvent && lastEvent.type === 'GOAL' && lastEvent.teamName === myTeamCurrent.name) {
+             return;
          }
+         
+         const now = Date.now();
+         
+         // Logic: Is this an objection to a recent opponent goal?
+         const isOpponentGoal = lastEvent && lastEvent.type === 'GOAL' && lastEvent.teamName !== myTeamCurrent.name;
+         // "2 seconds" rule logic
+         const isWithinTime = (now - lastGoalRealTime.current) <= 2000;
 
          // Add base objection event
-         const objectionEvent: MatchEvent = {
+         setEvents(prev => [...prev, {
              minute,
-             description: "Teknik direktör karara şiddetli bir şekilde itiraz ediyor...",
+             description: "Teknik direktör karara itiraz ediyor...",
              type: 'INFO',
              teamName: myTeamCurrent.name
-         };
-         setEvents(prev => [...prev, objectionEvent]);
+         }]);
 
-         // 2. Scenario: Contesting Opponent Goal (Trigger VAR Check?)
-         if (isContestingOpponentGoal) {
-             // 25% Chance Referee actually listens and goes to VAR
-             const varCheckChance = Math.random();
+         if (isOpponentGoal && isWithinTime) {
+             // SCENARIO 1: TIMELY OBJECTION TO OPPONENT GOAL
              
-             if (varCheckChance < 0.25) {
+             // 70% Chance Referee goes to VAR, 30% Ignore
+             if (Math.random() <= 0.70) {
+                 // Referee listens -> Goes to VAR
                  setIsVarActive(true);
-                 setVarMessage("Hakem itirazlar üzerine pozisyonu izlemeye gidiyor...");
-                 
+                 setVarMessage("Hakem yoğun itirazlar üzerine pozisyonu izlemeye gidiyor...");
+
                  setTimeout(() => {
                      setIsVarActive(false);
-                     // 40% Chance goal is actually cancelled if checked
-                     const goalCancelled = Math.random() < 0.40; 
                      
-                     if (goalCancelled) {
+                     // VAR DECISION: 70% Goal Stands, 30% Cancel Goal
+                     // Note: If Math.random() < 0.30 -> Cancel.
+                     if (Math.random() < 0.30) {
+                         // --- GOL İPTAL (SUCCESSFUL OBJECTION) ---
                          const cancelEvent: MatchEvent = {
                              minute,
                              description: "VAR KARARI: GOL İPTAL! (Ofsayt/Faul tespit edildi)",
@@ -168,38 +205,64 @@ const MatchSimulation = ({
                          // Revert Stats (Simplified)
                          setStats(prev => {
                              const s = {...prev};
-                             if(lastEvent.teamName === homeTeam.name) s.homeShotsOnTarget = Math.max(0, s.homeShotsOnTarget - 1);
-                             else s.awayShotsOnTarget = Math.max(0, s.awayShotsOnTarget - 1);
+                             if(lastEvent.teamName === homeTeam.name) {
+                                 s.homeShotsOnTarget = Math.max(0, s.homeShotsOnTarget - 1);
+                                 s.homeShots = Math.max(0, s.homeShots - 1);
+                             } else {
+                                 s.awayShotsOnTarget = Math.max(0, s.awayShotsOnTarget - 1);
+                                 s.awayShots = Math.max(0, s.awayShots - 1);
+                             }
                              return s;
                          });
 
                      } else {
-                         // Goal Stands + Punishment for Manager
+                         // --- GOL GEÇERLİ (FAILED OBJECTION) -> PUNISHMENT ---
                          const standEvent: MatchEvent = {
                              minute,
-                             description: "VAR İncelemesi Tamamlandı: GOL GEÇERLİ. Hakem itirazları haksız buldu.",
+                             description: "VAR İncelemesi Tamamlandı: GOL GEÇERLİ. Karar değişmedi.",
                              type: 'INFO',
                              teamName: lastEvent.teamName
                          };
                          setEvents(prev => [...prev, standEvent]);
-                         escalateDiscipline("Hakem VAR kontrolü sonrası haksız itiraz nedeniyle karta başvurdu.");
+
+                         // Escalation: If already Yellow -> Red. Else -> Yellow.
+                         if (managerDiscipline === 'YELLOW') {
+                             setManagerDiscipline('RED');
+                             setStats(s => ({ ...s, managerCards: 'RED' }));
+                             setEvents(prev => [...prev, {
+                                 minute,
+                                 description: "Teknik direktör haksız itirazı tekrarladığı için İKİNCİ SARI'dan KIRMIZI KART gördü!",
+                                 type: 'CARD_RED',
+                                 teamName: myTeamCurrent.name
+                             }]);
+                             setIsTacticsOpen(false); // Force close tactics
+                         } else {
+                             // Even if WARNED or NONE, this specific failed VAR check results in Yellow
+                             setManagerDiscipline('YELLOW');
+                             setStats(s => ({ ...s, managerCards: 'YELLOW' }));
+                             setEvents(prev => [...prev, {
+                                 minute,
+                                 description: "Hakem VAR incelemesi sonrası haksız itiraz nedeniyle teknik direktöre SARI KART gösterdi.",
+                                 type: 'CARD_YELLOW',
+                                 teamName: myTeamCurrent.name
+                             }]);
+                         }
                      }
                  }, 3000);
-                 return; // Exit, handled async
              } else {
-                 // Referee ignores request
+                 // Referee Ignores (30%)
                  const ignoreEvent: MatchEvent = {
                     minute,
-                    description: "Hakem VAR işaretine gerek duymadı ve oyunu devam ettirdi.",
+                    description: "Hakem itirazları dinlemedi ve oyunu devam ettirdi.",
                     type: 'INFO'
                  };
                  setEvents(prev => [...prev, ignoreEvent]);
-                 // Fallthrough to standard discipline check
              }
-         } 
-
-         // 3. Standard Discipline Escalation (If not handling VAR success)
-         escalateDiscipline();
+         } else {
+             // SCENARIO 2: STANDARD / UNTIMELY OBJECTION
+             // Use existing random discipline logic
+             escalateDiscipline();
+         }
     };
 
     const escalateDiscipline = (reasonOverride?: string) => {
@@ -244,6 +307,11 @@ const MatchSimulation = ({
              setIsTacticsOpen(false); // Force close tactics
          }
     };
+
+    const isOwnGoal = events.length > 0 && events[events.length-1].type === 'GOAL' && events[events.length-1].teamName === myTeamCurrent.name;
+    
+    // Check if MANAGER is Sent Off (Red Card)
+    const isManagerSentOff = managerDiscipline === 'RED';
 
     return (
         <div className="h-full flex flex-col relative">
@@ -314,42 +382,52 @@ const MatchSimulation = ({
                             // Determine Color Logic
                             let activeColorClass = 'bg-slate-500'; // fallback
                             let activeTextClass = 'text-white';
+                            
+                            // Check if this is a high impact event that requires special styling (Team Gradient)
+                            const isHighImpactEvent = ['GOAL', 'INJURY', 'CARD_RED'].includes(e.type);
 
                             if (eventTeam) {
-                                // Conflict Resolution: If both teams are RED (e.g. Kedispor & Küheylanspor), 
-                                // make the Away team use their secondary color to distinguish.
-                                const isHome = eventTeam.id === homeTeam.id;
-                                const conflict = homeTeam.colors[0] === awayTeam.colors[0];
-
-                                if (!isHome && conflict) {
-                                    // Use secondary color (usually text-color) mapped to bg-color
-                                    const secColor = eventTeam.colors[1]; 
-                                    activeColorClass = secColor.replace('text-', 'bg-');
+                                if (isHighImpactEvent) {
+                                    // SPECIAL STYLING: GRADIENT BACKGROUND + BLACK TEXT
+                                    const fromColor = eventTeam.colors[0].replace('bg-', 'from-'); // e.g. from-red-600
+                                    const toColor = eventTeam.colors[1].replace('text-', 'to-');   // e.g. to-white or to-yellow-400
+                                    
+                                    bgClass = `bg-gradient-to-r ${fromColor} ${toColor}`;
+                                    borderClass = 'border-black'; 
+                                    activeTextClass = 'text-black font-bold'; // Force black text for high impact events
+                                    activeColorClass = ''; // Reset standard badge color since we are coloring the box
                                 } else {
-                                    activeColorClass = eventTeam.colors[0];
-                                }
+                                    // STANDARD STYLING
+                                    // Conflict Resolution: If both teams are RED, Away uses secondary color.
+                                    const isHome = eventTeam.id === homeTeam.id;
+                                    const conflict = homeTeam.colors[0] === awayTeam.colors[0];
 
-                                // Handle very dark colors (like black) that might disappear on dark theme
-                                if (activeColorClass.includes('black') || activeColorClass.includes('slate-900')) {
-                                    activeColorClass = 'bg-slate-200'; // Force to light grey/white for visibility
-                                }
-                                
-                                borderClass = activeColorClass.replace('bg-', 'border-');
+                                    if (!isHome && conflict) {
+                                        const secColor = eventTeam.colors[1]; 
+                                        activeColorClass = secColor.replace('text-', 'bg-');
+                                    } else {
+                                        activeColorClass = eventTeam.colors[0];
+                                    }
 
-                                // Calculate Background Tint
-                                if (activeColorClass.includes('white') || activeColorClass.includes('slate-100') || activeColorClass.includes('gray-100') || activeColorClass.includes('slate-200')) {
-                                     bgClass = 'bg-slate-200/10';
-                                } else {
-                                    // Try to make a dark version
-                                    let darkBg = activeColorClass.replace('400', '900').replace('500', '900').replace('600', '900').replace('700', '950').replace('800', '950');
-                                    if(darkBg === activeColorClass && !activeColorClass.includes('900')) darkBg = 'bg-slate-900';
-                                    bgClass = `${darkBg}/40`;
-                                }
+                                    // Handle very dark colors
+                                    if (activeColorClass.includes('black') || activeColorClass.includes('slate-900')) {
+                                        activeColorClass = 'bg-slate-200';
+                                    }
+                                    
+                                    borderClass = activeColorClass.replace('bg-', 'border-');
 
-                                // Calculate Text Contrast for Badge
-                                // If background is light, text should be black. If dark, text white.
-                                const isLightBg = activeColorClass.includes('white') || activeColorClass.includes('yellow') || activeColorClass.includes('cyan') || activeColorClass.includes('lime') || activeColorClass.includes('slate-200');
-                                activeTextClass = isLightBg ? 'text-black' : 'text-white';
+                                    // Calculate Background Tint
+                                    if (activeColorClass.includes('white') || activeColorClass.includes('slate-100') || activeColorClass.includes('gray-100') || activeColorClass.includes('slate-200')) {
+                                         bgClass = 'bg-slate-200/10';
+                                    } else {
+                                        let darkBg = activeColorClass.replace('400', '900').replace('500', '900').replace('600', '900').replace('700', '950').replace('800', '950');
+                                        if(darkBg === activeColorClass && !activeColorClass.includes('900')) darkBg = 'bg-slate-900';
+                                        bgClass = `${darkBg}/40`;
+                                    }
+
+                                    const isLightBg = activeColorClass.includes('white') || activeColorClass.includes('yellow') || activeColorClass.includes('cyan') || activeColorClass.includes('lime') || activeColorClass.includes('slate-200');
+                                    activeTextClass = isLightBg ? 'text-black' : 'text-white';
+                                }
                             } else {
                                 // Neutral Events
                                 if (e.type === 'VAR' || (e.type === 'INFO' && e.description.includes('VAR'))) {
@@ -364,20 +442,29 @@ const MatchSimulation = ({
                             return (
                                 <div key={i} className={`p-3 rounded border-l-4 animate-in fade-in slide-in-from-bottom-2 ${bgClass} ${borderClass}`}>
                                     <div className="flex items-start gap-3">
-                                        <span className="font-mono text-slate-400 font-bold min-w-[30px]">{e.minute}'</span>
-                                        <div>
+                                        <span className={`font-mono font-bold min-w-[30px] ${isHighImpactEvent ? 'text-black' : 'text-slate-400'}`}>{e.minute}'</span>
+                                        <div className="flex-1">
                                             {e.type === 'GOAL' ? (
                                                 <>
-                                                    <span className={`font-bold inline-block px-3 py-1 rounded mb-1 text-lg ${activeColorClass} ${activeTextClass}`}>
-                                                        GOOOOL!
-                                                    </span>
-                                                    <span className="text-slate-200 block mt-1">{e.description.replace('GOOOOL!', '').trim()}</span>
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        {eventTeam?.logo ? (
+                                                            <img src={eventTeam.logo} className="w-10 h-10 object-contain bg-white rounded-full p-1 shadow-sm" alt="" />
+                                                        ) : (
+                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm border-2 border-white ${eventTeam?.colors[0]}`}>
+                                                                {eventTeam?.name.charAt(0)}
+                                                            </div>
+                                                        )}
+                                                        <span className={`font-bold inline-block px-3 py-1 rounded text-xl tracking-widest ${isHighImpactEvent ? 'bg-black text-white' : `${activeColorClass} ${activeTextClass}`}`}>
+                                                            GOOOOL!
+                                                        </span>
+                                                    </div>
+                                                    <span className={`${activeTextClass} block mt-1 text-lg font-bold`}>{e.description.replace('GOOOOL!', '').trim()}</span>
                                                     {e.assist && (
-                                                        <span className="text-blue-300 text-xs block mt-1 font-bold">Asist: {e.assist}</span>
+                                                        <span className={`${isHighImpactEvent ? 'text-black opacity-75' : 'text-blue-300'} text-xs block mt-1 font-bold`}>Asist: {e.assist}</span>
                                                     )}
                                                 </>
                                             ) : (
-                                                <p className="text-sm text-slate-200">
+                                                <p className={`text-sm ${isHighImpactEvent ? 'text-black font-bold' : 'text-slate-200'}`}>
                                                     {e.description}
                                                 </p>
                                             )}
@@ -404,8 +491,20 @@ const MatchSimulation = ({
                                      MAÇI BİTİR
                                  </button>
                              ) : phase === 'HALFTIME' ? (
-                                 <div className="flex gap-4">
-                                    <button onClick={() => setIsTacticsOpen(true)} className="bg-blue-600 px-4 py-2 rounded text-white font-bold">SOYUNMA ODASI</button>
+                                 <div className="flex gap-4 items-center">
+                                    {isManagerSentOff && (
+                                        <div className="flex items-center gap-2 text-xs bg-red-900/50 border border-red-500 text-red-200 px-3 py-2 rounded">
+                                            <Lock size={14} />
+                                            <span className="font-bold">CEZALI:</span> Soyunma odasına giriş yasaklandı!
+                                        </div>
+                                    )}
+                                    <button 
+                                        disabled={isManagerSentOff}
+                                        onClick={() => setIsTacticsOpen(true)} 
+                                        className={`px-4 py-2 rounded text-white font-bold transition-all ${isManagerSentOff ? 'bg-slate-600 opacity-50 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'}`}
+                                    >
+                                        SOYUNMA ODASI
+                                    </button>
                                     <button onClick={() => setPhase('SECOND_HALF')} className="bg-green-600 px-4 py-2 rounded text-white font-bold">2. YARIYI BAŞLAT</button>
                                  </div>
                              ) : (
@@ -419,7 +518,8 @@ const MatchSimulation = ({
                                         <>
                                             <button 
                                                 onClick={handleObjection}
-                                                className={`text-white px-4 py-2 rounded font-bold flex items-center gap-2 text-sm border shadow-inner transition active:scale-95 ${managerDiscipline === 'YELLOW' ? 'bg-orange-700 hover:bg-orange-600 border-orange-500' : 'bg-slate-700 hover:bg-slate-600 border-slate-500'}`}
+                                                disabled={isOwnGoal}
+                                                className={`text-white px-4 py-2 rounded font-bold flex items-center gap-2 text-sm border shadow-inner transition active:scale-95 ${managerDiscipline === 'YELLOW' ? 'bg-orange-700 hover:bg-orange-600 border-orange-500' : 'bg-slate-700 hover:bg-slate-600 border-slate-500'} ${isOwnGoal ? 'opacity-50 cursor-not-allowed' : ''}`}
                                             >
                                                 <Megaphone size={16}/> {managerDiscipline === 'YELLOW' ? 'İTİRAZ (SON UYARI!)' : 'İTİRAZ ET'}
                                             </button>

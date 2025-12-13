@@ -17,29 +17,68 @@ const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 // --- RATINGS CALCULATOR ---
 export const calculateRating = (
+    position: Position,
     goals: number,
     assists: number,
     yellowCards: number,
     redCards: number,
-    isWinner: boolean,
-    isCleanSheetDefender: boolean
+    goalsConceded: number,
+    matchResult: 'WIN' | 'DRAW' | 'LOSS'
 ): number => {
     // Base rating
     let rating = 6.0;
 
-    // Performance Bonuses
-    rating += (goals * 1.0);
-    rating += (assists * 0.5);
-    
-    // Penalties
-    rating -= (yellowCards * 1.0); // -1 for Yellow
-    rating -= (redCards * 3.0);    // -3 for Red
+    // 1. Position Weights for Goals & Assists
+    let goalWeight = 0;
+    let assistWeight = 0;
 
-    // Context Bonuses
-    if (isWinner) rating += 0.5;
-    if (isCleanSheetDefender) rating += 0.5; // Bonus for GK/DEF if no goals conceded
+    switch (position) {
+        case Position.FWD:
+            goalWeight = 1.0;
+            assistWeight = 0.6;
+            break;
+        case Position.MID:
+            goalWeight = 0.9;
+            assistWeight = 0.7;
+            break;
+        case Position.DEF:
+        case Position.GK:
+            goalWeight = 0.8;
+            assistWeight = 0.5;
+            break;
+    }
 
-    // Clamp rating
+    rating += (goals * goalWeight);
+    rating += (assists * assistWeight);
+
+    // 2. Match Result Impact
+    if (matchResult === 'WIN') rating += 0.3;
+    else if (matchResult === 'LOSS') rating -= 0.3;
+    // Draw is +0.0
+
+    // 3. Defensive Bonuses & Penalties (GK & DEF Only)
+    if (position === Position.GK || position === Position.DEF) {
+        if (goalsConceded === 0) {
+            // Clean Sheet Bonus
+            if (position === Position.GK) rating += 1.5;
+            else rating += 0.5;
+        } else {
+            // Penalty per goal conceded
+            const penaltyPerGoal = position === Position.GK ? 0.2 : 0.1;
+            rating -= (goalsConceded * penaltyPerGoal);
+        }
+    }
+
+    // 4. Discipline Penalties
+    rating -= (yellowCards * 0.3);
+    rating -= (redCards * 1.2);
+
+    // 5. Random Fluctuation (Simulate "contribution without stats")
+    // Adds a random value between -0.2 and +0.4
+    const randomFluctuation = (Math.random() * 0.6) - 0.2;
+    rating += randomFluctuation;
+
+    // Clamp rating between 1.0 and 10.0
     return Math.max(1.0, Math.min(10.0, Number(rating.toFixed(1))));
 };
 
@@ -52,9 +91,13 @@ export const calculateRatingsFromEvents = (
 ): { homeRatings: PlayerPerformance[], awayRatings: PlayerPerformance[] } => {
     
     const calculateForTeam = (team: Team, isHome: boolean): PlayerPerformance[] => {
-        const isWinner = isHome ? homeScore > awayScore : awayScore > homeScore;
-        const goalsConceded = isHome ? awayScore : homeScore;
+        const myScore = isHome ? homeScore : awayScore;
+        const oppScore = isHome ? awayScore : homeScore;
         
+        let result: 'WIN' | 'DRAW' | 'LOSS' = 'DRAW';
+        if (myScore > oppScore) result = 'WIN';
+        else if (myScore < oppScore) result = 'LOSS';
+
         // Only First 11 gets ratings usually, but we check everyone who had an event
         // For simplicity in this engine, we assume the first 11 played.
         const lineup = team.players.slice(0, 11);
@@ -67,9 +110,15 @@ export const calculateRatingsFromEvents = (
             const yellowCards = playerEvents.filter(e => e.type === 'CARD_YELLOW' && e.playerId === player.id).length;
             const redCards = playerEvents.filter(e => e.type === 'CARD_RED' && e.playerId === player.id).length;
             
-            const isCleanSheetDefender = goalsConceded === 0 && (player.position === Position.GK || player.position === Position.DEF);
-
-            const rating = calculateRating(goals, assists, yellowCards, redCards, isWinner, isCleanSheetDefender);
+            const rating = calculateRating(
+                player.position,
+                goals,
+                assists,
+                yellowCards,
+                redCards,
+                oppScore, // Goals Conceded
+                result
+            );
 
             return {
                 playerId: player.id,
@@ -85,6 +134,23 @@ export const calculateRatingsFromEvents = (
     return {
         homeRatings: calculateForTeam(homeTeam, true),
         awayRatings: calculateForTeam(awayTeam, false)
+    };
+};
+
+export const determineMVP = (homeRatings: PlayerPerformance[], awayRatings: PlayerPerformance[]): { id: string, name: string } => {
+    const allPlayers = [...homeRatings, ...awayRatings];
+    
+    // Sort logic: Rating > Goals > Assists
+    allPlayers.sort((a, b) => {
+        if (b.rating !== a.rating) return b.rating - a.rating;
+        if (b.goals !== a.goals) return b.goals - a.goals;
+        return b.assists - a.assists;
+    });
+
+    const best = allPlayers[0];
+    return {
+        id: best?.playerId || '',
+        name: best?.name || 'Bilinmiyor'
     };
 };
 
@@ -301,11 +367,8 @@ const generateMatchStats = (homePlayers: Player[], awayPlayers: Player[], hScore
     const hFouls = Math.floor(Math.random() * 15);
     const aFouls = Math.floor(Math.random() * 15);
 
-    let potentialMvps = hScore >= aScore ? homeRatings : awayRatings;
-    if (hScore === aScore && Math.random() > 0.5) potentialMvps = awayRatings;
-    potentialMvps.sort((a,b) => b.rating - a.rating);
-    const mvp = potentialMvps[0];
-    if(mvp) mvp.rating = Math.min(10, mvp.rating + 0.5);
+    // DETERMINISTIC MVP SELECTION
+    const mvpInfo = determineMVP(homeRatings, awayRatings);
 
     return {
         homePossession: Math.round(homePossession),
@@ -324,8 +387,8 @@ const generateMatchStats = (homePlayers: Player[], awayPlayers: Player[], hScore
         awayYellowCards: Math.floor(Math.random() * 3),
         homeRedCards: 0,
         awayRedCards: 0,
-        mvpPlayerId: mvp?.playerId || '',
-        mvpPlayerName: mvp?.name || 'Unknown',
+        mvpPlayerId: mvpInfo.id,
+        mvpPlayerName: mvpInfo.name,
         homeRatings,
         awayRatings
     };
@@ -419,19 +482,21 @@ export const simulateMatchStep = (minute: number, home: Team, away: Team, curren
         const text = fillTemplate(pick(GOAL_TEXTS), { scorer: d.scorer.name, assist: d.assist.name, team: activeTeam.name });
 
         // VAR CHECK Logic
+        // Modified: Return GOAL type always, attach varOutcome for UI to handle the delay/reveal
+        let varOutcome: 'GOAL' | 'NO_GOAL' | undefined = undefined;
         if (Math.random() < 0.25) { 
-            const isGoalValid = Math.random() > 0.3; 
-            return { 
-                minute, 
-                description: `${text} Ancak hakem VAR incelemesi başlattı...`, 
-                type: 'VAR', 
-                teamName: activeTeam.name, 
-                scorer: d.scorer.name, 
-                assist: d.assist.name,
-                varOutcome: isGoalValid ? 'GOAL' : 'NO_GOAL'
-            };
+            varOutcome = Math.random() > 0.3 ? 'GOAL' : 'NO_GOAL'; 
         }
-        return { minute, description: text, type: 'GOAL', teamName: activeTeam.name, scorer: d.scorer.name, assist: d.assist.name };
+
+        return { 
+            minute, 
+            description: text, 
+            type: 'GOAL', 
+            teamName: activeTeam.name, 
+            scorer: d.scorer.name, 
+            assist: d.assist.name,
+            varOutcome: varOutcome
+        };
     } 
     // 2. INJURY (1%)
     else if (eventRoll < 0.06) {
@@ -760,11 +825,11 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
         const teamEvents = events.filter(e => e.teamName === team.name);
         
         // Determine if team won based on goal events (simplified reconstruction of score)
-        // Note: For 100% accuracy we should pass scores, but deriving from events is consistent for this logic.
         const myGoals = events.filter(e => e.type === 'GOAL' && e.teamName === team.name).length;
         const oppGoals = events.filter(e => e.type === 'GOAL' && e.teamName !== team.name).length;
-        const isWinner = myGoals > oppGoals;
-        const goalsConceded = oppGoals;
+        let result: 'WIN' | 'DRAW' | 'LOSS' = 'DRAW';
+        if (myGoals > oppGoals) result = 'WIN';
+        else if (myGoals < oppGoals) result = 'LOSS';
 
         const updatedPlayers = team.players.map(p => {
             let player = { ...p };
@@ -775,10 +840,16 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
             const yellowCards = teamEvents.filter(e => e.type === 'CARD_YELLOW' && e.playerId === p.id).length;
             const redCards = teamEvents.filter(e => e.type === 'CARD_RED' && e.playerId === p.id).length;
             
-            const isCleanSheetDefender = goalsConceded === 0 && (p.position === Position.GK || p.position === Position.DEF);
-
             // 2. Calculate Rating (Deterministic)
-            const matchRating = calculateRating(goals, assists, yellowCards, redCards, isWinner, isCleanSheetDefender);
+            const matchRating = calculateRating(
+                p.position,
+                goals,
+                assists,
+                yellowCards,
+                redCards,
+                oppGoals, // Goals Conceded
+                result
+            );
             
             // 3. Update Season Stats
             player.seasonStats = {

@@ -34,7 +34,7 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
             const player = homeTeam.players.find(p => p.id === event.playerId) || awayTeam.players.find(p => p.id === event.playerId);
             if (player) return player.name;
         }
-        return 'Olay';
+        return null;
     };
 
     const renderPlayerRatings = (ratings: any[], teamName: string) => (
@@ -112,7 +112,7 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
                                              {isHome && (
                                                  <div className="flex flex-col items-end">
                                                      <div className="flex items-center gap-2 justify-end">
-                                                        <span className={`text-sm font-bold ${isGoal ? 'text-green-400' : 'text-white'}`}>{playerName}</span>
+                                                        {playerName && <span className={`text-sm font-bold ${isGoal ? 'text-green-400' : 'text-white'}`}>{playerName}</span>}
                                                         {getEventIcon(e.type)}
                                                      </div>
                                                      {isGoal && e.assist && (
@@ -133,7 +133,7 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
                                                  <div className="flex flex-col items-start">
                                                      <div className="flex items-center gap-2">
                                                         {getEventIcon(e.type)}
-                                                        <span className={`text-sm font-bold ${isGoal ? 'text-green-400' : 'text-white'}`}>{playerName}</span>
+                                                        {playerName && <span className={`text-sm font-bold ${isGoal ? 'text-green-400' : 'text-white'}`}>{playerName}</span>}
                                                      </div>
                                                      {isGoal && e.assist && (
                                                          <span className="text-[10px] text-slate-400 mt-0.5">Asist: {e.assist}</span>
@@ -222,13 +222,6 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
                                             <div className="w-3 h-4 bg-yellow-500 rounded-sm"></div>
                                             <span className="font-bold text-white">{stats.awayRedCards}</span>
                                             <div className="w-3 h-4 bg-red-600 rounded-sm"></div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="mt-4 pt-4 border-t border-slate-700 text-center">
-                                        <span className="text-slate-500 uppercase text-xs">Maçın Adamı</span>
-                                        <div className="font-bold text-yellow-400 text-lg flex justify-center items-center gap-2 mt-1">
-                                            <Star size={16} className="fill-yellow-400"/> {stats.mvpPlayerName}
                                         </div>
                                     </div>
                                 </div>
