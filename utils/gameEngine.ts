@@ -449,6 +449,7 @@ export const simulateMatchStep = (
     // Check Aggression Settings
     const isHomeAggressive = home.tackling === Tackling.AGGRESSIVE;
     const isAwayAggressive = away.tackling === Tackling.AGGRESSIVE;
+    const isAggressiveMatch = isHomeAggressive || isAwayAggressive;
 
     // Filter players who are already sent off to avoid events for them
     const sentOffPlayers = new Set(existingEvents.filter(e => e.type === 'CARD_RED').map(e => e.playerId));
@@ -478,19 +479,32 @@ export const simulateMatchStep = (
     };
 
     /* 
-       DISTRIBUTION PLAN (Cumulative):
-       GOAL:    0.00 - 0.05 (5%)
-       INJURY:  0.05 - 0.06 (1%)
-       CARDS:   0.06 - 0.10 (4%)
-       SAVE:    0.10 - 0.17 (7%)
-       OFFSIDE: 0.17 - 0.28 (11%)
-       CORNER:  0.28 - 0.41 (13%)
-       MISS:    0.41 - 0.59 (18%)
-       INFO:    0.59 - 1.00 (41%)
+       DISTRIBUTION PLAN (Cumulative) - ADJUSTED FOR FOUL/CARD REQUESTS
+       GOAL:    0.05
+       INJURY:  0.01 (0.06)
+       FOUL:    0.18 (Base) or 0.26 (Aggressive)
+       
+       Thresholds depend on aggression.
     */
+    const PROB_GOAL = 0.05;
+    const PROB_INJURY = 0.01;
+    const PROB_FOUL = isAggressiveMatch ? 0.26 : 0.18; // 18% Base, 26% Aggressive
+    const PROB_SAVE = 0.07;
+    const PROB_OFFSIDE = 0.10;
+    const PROB_CORNER = 0.13;
+    const PROB_MISS = 0.15;
+    
+    const T_GOAL = PROB_GOAL;
+    const T_INJURY = T_GOAL + PROB_INJURY;
+    const T_FOUL = T_INJURY + PROB_FOUL;
+    const T_SAVE = T_FOUL + PROB_SAVE;
+    const T_OFFSIDE = T_SAVE + PROB_OFFSIDE;
+    const T_CORNER = T_OFFSIDE + PROB_CORNER;
+    const T_MISS = T_CORNER + PROB_MISS;
+    // Remainder is INFO
 
     // 1. GOAL (5%)
-    if (eventRoll < 0.05) { 
+    if (eventRoll < T_GOAL) { 
         const isHome = Math.random() < homeDominance;
         const activeTeam = isHome ? home : away;
         const d = getScorer(activeTeam);
@@ -498,7 +512,6 @@ export const simulateMatchStep = (
         const text = fillTemplate(pick(GOAL_TEXTS), { scorer: d.scorer.name, assist: d.assist.name, team: activeTeam.name });
 
         // VAR CHECK Logic
-        // Modified: Return GOAL type always, attach varOutcome for UI to handle the delay/reveal
         let varOutcome: 'GOAL' | 'NO_GOAL' | undefined = undefined;
         if (Math.random() < 0.25) { 
             varOutcome = Math.random() > 0.3 ? 'GOAL' : 'NO_GOAL'; 
@@ -515,7 +528,7 @@ export const simulateMatchStep = (
         };
     } 
     // 2. INJURY (1%)
-    else if (eventRoll < 0.06) {
+    else if (eventRoll < T_INJURY) {
         const isHomeInj = Math.random() > 0.5;
         const opponentIsAggressive = isHomeInj ? isAwayAggressive : isHomeAggressive;
         const activeTeam = isHomeInj ? home : away;
@@ -530,21 +543,30 @@ export const simulateMatchStep = (
             playerId: player.id
         };
     }
-    // 3. FOULS & CARDS (4%)
-    else if (eventRoll < 0.10) {
+    // 3. FOULS & CARDS (18% - 26%)
+    else if (eventRoll < T_FOUL) {
         const isHomeFoul = Math.random() > homeDominance;
         const foulingTeam = isHomeFoul ? home : away;
         const fouledTeam = isHomeFoul ? away : home;
-        const isAggressive = isHomeFoul ? isHomeAggressive : isAwayAggressive;
+        const isFoulingAggressive = foulingTeam.tackling === Tackling.AGGRESSIVE;
         const player = getPlayer(foulingTeam);
         const victim = getPlayer(fouledTeam);
 
         const cardRoll = Math.random();
-        const yellowThreshold = isAggressive ? 0.45 : 0.25;
-        const redThreshold = isAggressive ? 0.10 : 0.05;
+        
+        // Card Probabilities
+        // Base Yellow: 9% (0.09)
+        // Base Red: 1% (0.01)
+        // Aggressive increases these.
+        
+        const probRed = isFoulingAggressive ? 0.03 : 0.01;
+        const probYellow = isFoulingAggressive ? 0.14 : 0.09;
+        
+        const redThreshold = probRed;
+        const yellowThreshold = probRed + probYellow;
 
         if (cardRoll < redThreshold) { 
-             return { minute, description: `${player.name} ${isAggressive ? 'topla alakası olmayan gaddarca' : 'yaptığı'} hareket sonrası direkt KIRMIZI KART gördü!`, type: 'CARD_RED', teamName: foulingTeam.name, playerId: player.id };
+             return { minute, description: `${player.name} ${isFoulingAggressive ? 'topla alakası olmayan gaddarca' : 'yaptığı'} hareket sonrası direkt KIRMIZI KART gördü!`, type: 'CARD_RED', teamName: foulingTeam.name, playerId: player.id };
         } else if (cardRoll < yellowThreshold) {
              // CHECK FOR SECOND YELLOW
              const hasYellow = existingEvents.some(e => e.type === 'CARD_YELLOW' && e.playerId === player.id);
@@ -558,7 +580,7 @@ export const simulateMatchStep = (
                      playerId: player.id 
                  };
              } else {
-                 const pool = isAggressive ? YELLOW_CARD_AGGRESSIVE_TEXTS : YELLOW_CARD_TEXTS;
+                 const pool = isFoulingAggressive ? YELLOW_CARD_AGGRESSIVE_TEXTS : YELLOW_CARD_TEXTS;
                  const text = fillTemplate(pick(pool), { player: player.name });
                  return { minute, description: text, type: 'CARD_YELLOW', teamName: foulingTeam.name, playerId: player.id };
              }
@@ -568,14 +590,13 @@ export const simulateMatchStep = (
         }
     }
     // 4. SAVE (7%)
-    else if (eventRoll < 0.17) {
+    else if (eventRoll < T_SAVE) {
          const isHomeSave = Math.random() > homeDominance; 
          const savingTeam = isHomeSave ? away : home; // Defender
          const attackingTeam = isHomeSave ? home : away;
-         // Ensure GK is not sent off (though highly unlikely with filtering above unless red happened previously)
          const keeper = savingTeam.players.find(p => p.position === Position.GK && !sentOffPlayers.has(p.id)) || savingTeam.players.find(p => !sentOffPlayers.has(p.id));
          
-         if (!keeper) return null; // Can't make save if no players?
+         if (!keeper) return null; 
 
          const defender = getPlayer(savingTeam);
          const attacker = getPlayer(attackingTeam);
@@ -583,22 +604,22 @@ export const simulateMatchStep = (
          const text = fillTemplate(pick(SAVE_TEXTS), { keeper: keeper.name, defender: defender.name, attacker: attacker.name });
          return { minute, description: text, type: 'SAVE', teamName: savingTeam.name };
     }
-    // 5. OFFSIDE (11%)
-    else if (eventRoll < 0.28) {
+    // 5. OFFSIDE (10%)
+    else if (eventRoll < T_OFFSIDE) {
          const activeTeam = Math.random() < homeDominance ? home : away;
          const player = getPlayer(activeTeam);
          const text = fillTemplate(pick(OFFSIDE_TEXTS), { player: player.name });
          return { minute, description: text, type: 'OFFSIDE', teamName: activeTeam.name };
     }
-    // 6. CORNERS (13%)
-    else if (eventRoll < 0.41) {
+    // 6. CORNER (13%)
+    else if (eventRoll < T_CORNER) {
         const activeTeam = Math.random() < homeDominance ? home : away;
         const player = getPlayer(activeTeam);
         const text = fillTemplate(pick(CORNER_TEXTS), { player: player.name, team: activeTeam.name });
         return { minute, description: text, type: 'CORNER', teamName: activeTeam.name };
     }
-    // 7. MISS (18%)
-    else if (eventRoll < 0.59) {
+    // 7. MISS (15%)
+    else if (eventRoll < T_MISS) {
         const activeTeam = Math.random() < homeDominance ? home : away;
         const defenderTeam = activeTeam.id === home.id ? away : home;
         const player = getPlayer(activeTeam);
@@ -607,7 +628,7 @@ export const simulateMatchStep = (
         const text = fillTemplate(pick(MISS_TEXTS), { player: player.name, defender: defender.name });
         return { minute, description: text, type: 'MISS', teamName: activeTeam.name };
     }
-    // 8. INFO (~41%)
+    // 8. INFO (Remainder)
     else {
         const activeTeam = Math.random() < homeDominance ? home : away;
         const opponentTeam = activeTeam.id === home.id ? away : home;

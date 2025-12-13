@@ -72,7 +72,7 @@ const MatchSimulation = ({
                     // --- PENALTY CHECK LOGIC (Triggered by Yellow Card) ---
                     if (event.type === 'CARD_YELLOW') {
                         // 7% Chance for Penalty after Yellow Card
-                        if (Math.random() < 0.07) {
+                        if (Math.random() < 1.00) {
                             setIsPenaltyActive(true);
                             
                             // Determine who gets the penalty (The opponent of the fouling team)
