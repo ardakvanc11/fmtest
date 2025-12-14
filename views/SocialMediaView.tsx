@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { NewsItem, Team, Message } from '../types';
 import { Smartphone, Mail, Hash, ChevronLeft, Send, MessageSquare, RotateCcw, Heart, User, CheckCheck } from 'lucide-react';
 
-const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: NewsItem[], teams: Team[], messages: Message[], onUpdateMessages: (msgs: Message[]) => void }) => {
+const SocialMediaView = ({ news, teams, messages, onUpdateMessages, onReply }: { news: NewsItem[], teams: Team[], messages: Message[], onUpdateMessages: (msgs: Message[]) => void, onReply?: (msgId: number, optIndex: number) => void }) => {
     const [tab, setTab] = useState<'SOCIAL' | 'MESSAGES' | 'RUMORS'>('SOCIAL');
     const [interactions, setInteractions] = useState<Record<string, {
         likes: number;
@@ -26,9 +26,14 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: Ne
         if(selectedMessageId) scrollToBottom();
     }, [selectedMessageId, messages]);
 
-    const handleSendChatMessage = (selectedText: string) => {
+    const handleSendChatMessage = (selectedText: string, optionIndex: number) => {
         if(!selectedMessageId) return;
         
+        // Trigger side effects (like morale change) in parent
+        if (onReply) {
+            onReply(selectedMessageId, optionIndex);
+        }
+
         const now = new Date();
         const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
         
@@ -181,7 +186,7 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages }: { news: Ne
                                 {activeConversation.options.map((opt, idx) => (
                                     <button 
                                         key={idx}
-                                        onClick={() => handleSendChatMessage(opt)}
+                                        onClick={() => handleSendChatMessage(opt, idx)}
                                         className="bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 hover:text-black dark:hover:text-white border border-slate-300 dark:border-slate-600 hover:border-yellow-500 dark:hover:border-yellow-500 p-3 rounded-xl text-sm text-left transition-all font-medium flex gap-3 items-center group shadow-sm"
                                     >
                                         <span className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 group-hover:bg-yellow-500 group-hover:text-black flex items-center justify-center text-xs font-bold shrink-0">{idx + 1}</span>

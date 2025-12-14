@@ -1,4 +1,5 @@
 
+
 import { Team, Player, Position, TacticStyle, PlayerStats, AttackStyle, PressingStyle, Mentality, PassingStyle, Tempo, Width, CreativeFreedom, FinalThird, Crossing, DefensiveLine, Tackling, PressingFocus, TimeWasting } from './types';
 
 // Random Turkish First Names
@@ -337,6 +338,15 @@ export const TEAM_TEMPLATES = [
         budget: 8, 
         targetStrength: 74 
     }
+];
+
+// Rivalry Definitions
+export const RIVALRIES = [
+    ['Ayıboğanspor SK', 'Kedispor'],
+    ['Kedispor', 'Eşşekboğanspor FK'],
+    ['Eşşekboğanspor FK', 'Ayıboğanspor SK'],
+    ['Kedispor', 'Köpekspor'],
+    ['Bedirspor', 'Yakhubspor']
 ];
 
 export const generateId = () => Math.random().toString(36).substr(2, 9);

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, Position } from './types';
 import { initializeTeams } from './constants';
@@ -320,7 +319,8 @@ const App: React.FC = () => {
         };
         updatedFixtures[fixtureIdx] = completedFixture;
         
-        const processedTeams = processMatchPostGame(gameState.teams, events, gameState.currentWeek);
+        // Pass all fixtures to processMatchPostGame for historical data access (last 3 matches logic)
+        const processedTeams = processMatchPostGame(gameState.teams, events, gameState.currentWeek, updatedFixtures);
 
         const updatedManager = { ...gameState.manager! };
         updatedManager.stats.matchesManaged++;
@@ -511,6 +511,94 @@ const App: React.FC = () => {
         alert(`${player.name} satıldı!`);
     };
 
+    const handleMessageReply = (msgId: number, optIndex: number) => {
+        // If the 3rd option (index 2) is chosen, it's considered negative/dismissive
+        if (optIndex === 2) {
+            setGameState(prev => {
+                const myTeam = prev.teams.find(t => t.id === prev.myTeamId);
+                if (!myTeam) return prev;
+
+                const msg = prev.messages.find(m => m.id === msgId);
+                if (!msg) return prev;
+
+                // Find the player who sent the message
+                const playerIndex = myTeam.players.findIndex(p => p.name === msg.sender);
+                
+                if (playerIndex !== -1) {
+                    const updatedPlayers = [...myTeam.players];
+                    const updatedPlayer = { ...updatedPlayers[playerIndex] };
+                    
+                    // Decrease Morale by 20
+                    updatedPlayer.morale = Math.max(0, updatedPlayer.morale - 20);
+                    updatedPlayers[playerIndex] = updatedPlayer;
+
+                    const updatedTeam = { ...myTeam, players: updatedPlayers };
+                    
+                    return {
+                        ...prev,
+                        teams: prev.teams.map(t => t.id === prev.myTeamId ? updatedTeam : t)
+                    };
+                }
+                return prev;
+            });
+        }
+    };
+
+    const handleInterviewComplete = (effect: any, relatedPlayerId?: string) => {
+        if (!gameState.myTeamId) {
+            setMatchResultData(null);
+            setViewHistory(['home']);
+            setHistoryIndex(0);
+            return;
+        }
+
+        setGameState(prev => {
+            const myTeam = prev.teams.find(t => t.id === prev.myTeamId);
+            if (!myTeam) return prev;
+
+            const updatedPlayers = myTeam.players.map(p => {
+                let newMorale = p.morale;
+
+                // Apply Team Wide Morale Effect
+                if (effect.teamMorale) {
+                    newMorale += effect.teamMorale;
+                }
+
+                // Apply Player Specific Morale Effect
+                if (relatedPlayerId && p.id === relatedPlayerId && effect.playerMorale) {
+                    newMorale += effect.playerMorale;
+                }
+                
+                // Also apply playerMorale if no ID is passed but the question was generic about "Oyuncunuz" 
+                // (though in strict logic we prefer ID, sometimes templates use it loosely)
+                // We'll stick to ID check for safety.
+
+                return { ...p, morale: Math.max(0, Math.min(100, newMorale)) };
+            });
+
+            // Update trust stats if present
+            let newTrust = { ...prev.manager?.trust! };
+            if (prev.manager && effect.trustUpdate) {
+                if (effect.trustUpdate.board) newTrust.board = Math.max(0, Math.min(100, newTrust.board + effect.trustUpdate.board));
+                if (effect.trustUpdate.fans) newTrust.fans = Math.max(0, Math.min(100, newTrust.fans + effect.trustUpdate.fans));
+                if (effect.trustUpdate.players) newTrust.players = Math.max(0, Math.min(100, newTrust.players + effect.trustUpdate.players));
+                if (effect.trustUpdate.referees) newTrust.referees = Math.max(0, Math.min(100, newTrust.referees + effect.trustUpdate.referees));
+            }
+
+            const updatedTeam = { ...myTeam, players: updatedPlayers };
+            
+            return {
+                ...prev,
+                teams: prev.teams.map(t => t.id === updatedTeam.id ? updatedTeam : t),
+                manager: prev.manager ? { ...prev.manager, trust: newTrust } : null
+            };
+        });
+
+        setMatchResultData(null);
+        setViewHistory(['home']);
+        setHistoryIndex(0);
+    };
+
     const myTeam = gameState.teams.find(t => t.id === gameState.myTeamId);
 
     if (currentView === 'intro') return <IntroScreen onStart={handleStart} />;
@@ -589,6 +677,7 @@ const App: React.FC = () => {
                     teams={gameState.teams}
                     messages={gameState.messages}
                     onUpdateMessages={(msgs) => setGameState(prev => ({ ...prev, messages: msgs }))}
+                    onReply={handleMessageReply}
                 />
             )}
 
@@ -690,12 +779,17 @@ const App: React.FC = () => {
                 <div className="fixed inset-0 bg-slate-50 dark:bg-slate-900 z-50 p-4 transition-colors duration-300">
                     <PostMatchInterview 
                         result={matchResultData.result}
+                        events={matchResultData.events}
+                        homeTeam={matchResultData.homeTeam}
+                        awayTeam={matchResultData.awayTeam}
+                        myTeamId={gameState.myTeamId!}
                         onClose={() => {
                             setMatchResultData(null);
                             // Reset history to ensure user cannot go back to interview or match
                             setViewHistory(['home']);
                             setHistoryIndex(0);
                         }}
+                        onComplete={handleInterviewComplete}
                     />
                 </div>
             )}

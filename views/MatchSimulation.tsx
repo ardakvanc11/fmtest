@@ -5,7 +5,7 @@ import { simulateMatchStep, getEmptyMatchStats } from '../utils/gameEngine';
 import PitchVisual from '../components/shared/PitchVisual';
 import TacticsView from './TacticsView';
 import StandingsTable from '../components/shared/StandingsTable';
-import { MonitorPlay, Timer, AlertOctagon, Megaphone, Settings, PlayCircle, TrendingUp, Disc, Syringe, Activity, Lock, Target } from 'lucide-react';
+import { MonitorPlay, Timer, AlertOctagon, Megaphone, Settings, PlayCircle, TrendingUp, Disc, Syringe, Activity, Lock, Target, AlertCircle } from 'lucide-react';
 
 const MatchSimulation = ({ 
     homeTeam, awayTeam, userTeamId, onFinish, allTeams, fixtures
@@ -28,6 +28,7 @@ const MatchSimulation = ({
     // PENALTY State
     const [isPenaltyActive, setIsPenaltyActive] = useState(false);
     const [penaltyMessage, setPenaltyMessage] = useState<string>('');
+    const [penaltyTeamId, setPenaltyTeamId] = useState<string | null>(null);
 
     // Manager Discipline State
     const [managerDiscipline, setManagerDiscipline] = useState<'NONE' | 'WARNED' | 'YELLOW' | 'RED'>('NONE');
@@ -40,6 +41,16 @@ const MatchSimulation = ({
     const lastGoalRealTime = useRef<number>(0);
 
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Calculate Red Cards for UI
+    const homeRedCards = events.filter(e => e.type === 'CARD_RED' && e.teamName === homeTeam.name).length;
+    const awayRedCards = events.filter(e => e.type === 'CARD_RED' && e.teamName === awayTeam.name).length;
+
+    // Keep a ref of stats to access current possession inside the interval closure
+    const statsRef = useRef(stats);
+    useEffect(() => {
+        statsRef.current = stats;
+    }, [stats]);
 
     useEffect(() => {
         if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -71,24 +82,42 @@ const MatchSimulation = ({
 
                     // --- PENALTY CHECK LOGIC (Triggered by Yellow Card) ---
                     if (event.type === 'CARD_YELLOW') {
-                        // 7% Chance for Penalty after Yellow Card
-                        if (Math.random() < 1.00) {
+                        // Determine fouling team and attacking team
+                        const isHomeFoul = event.teamName === homeTeam.name;
+                        
+                        // If Home fouled, Away is the one who might get a penalty.
+                        // We check the ATTACKING team's possession.
+                        const attackingPossession = isHomeFoul ? statsRef.current.awayPossession : statsRef.current.homePossession;
+                        
+                        // Default base chance
+                        let penaltyChance = 0.08; 
+
+                        // Süper Toto Hayvanlar Ligi Rules:
+                        // High possession increases penalty chance significantly
+                        if (attackingPossession >= 70) {
+                            penaltyChance = 0.14; // 18% Chance
+                        } else if (attackingPossession >= 60) {
+                            penaltyChance = 0.10; // 14% Chance
+                        }
+
+                        if (Math.random() < penaltyChance) {
                             setIsPenaltyActive(true);
                             
                             // Determine who gets the penalty (The opponent of the fouling team)
-                            const isHomeFoul = event.teamName === homeTeam.name;
                             const penaltyTeam = isHomeFoul ? awayTeam : homeTeam;
                             
+                            setPenaltyTeamId(penaltyTeam.id);
+
                             // Select Taker (Best Finisher in XI)
-                            // We approximate XI by taking first 11, or sorting all players if lineup isn't strict
                             const xi = penaltyTeam.players.slice(0, 11);
                             const taker = xi.reduce((prev, current) => (prev.stats.finishing > current.stats.finishing) ? prev : current);
                             
-                            setPenaltyMessage(`${taker.name} penaltıyı kullanacak...`);
+                            setPenaltyMessage(`${taker.name} topun başında...`);
 
                             // 2 Second Wait
                             setTimeout(() => {
                                 setIsPenaltyActive(false);
+                                setPenaltyTeamId(null);
                                 
                                 // 70% Goal Chance
                                 const isGoal = Math.random() < 0.70;
@@ -98,7 +127,7 @@ const MatchSimulation = ({
                                     if(penaltyTeam.id === homeTeam.id) setHomeScore(s => s + 1);
                                     else setAwayScore(s => s + 1);
                                     
-                                    // Track real time for objection mechanic
+                                    // Track real time of goal for objection mechanic
                                     lastGoalRealTime.current = Date.now();
 
                                     const goalEvent: MatchEvent = {
@@ -138,7 +167,7 @@ const MatchSimulation = ({
                                     });
                                 }
 
-                            }, 2000);
+                            }, 2500);
                         }
                     }
                     // ----------------------------------------------------
@@ -436,6 +465,9 @@ const MatchSimulation = ({
     // Check if MANAGER is Sent Off (Red Card)
     const isManagerSentOff = managerDiscipline === 'RED';
 
+    // Helper to find active penalty team
+    const activePenaltyTeam = penaltyTeamId ? allTeams.find(t => t.id === penaltyTeamId) : null;
+
     return (
         <div className="h-full flex flex-col relative">
             {/* TACTICS OVERLAY */}
@@ -467,12 +499,24 @@ const MatchSimulation = ({
             {/* PENALTY OVERLAY */}
             {isPenaltyActive && (
                 <div className="absolute inset-0 z-40 bg-black/70 flex items-center justify-center backdrop-blur-sm">
-                    <div className="bg-slate-900 p-10 rounded-xl border-4 border-green-600 text-center shadow-2xl shadow-green-900/50 animate-in zoom-in duration-300">
+                    <div className="bg-slate-900 p-10 rounded-xl border-4 border-green-600 text-center shadow-2xl shadow-green-900/50 animate-in zoom-in duration-300 flex flex-col items-center">
                         <div className="flex justify-center mb-6">
                             <Target size={100} className="text-green-500 animate-pulse"/>
                         </div>
                         <h2 className="text-5xl font-bold text-white mb-6 tracking-widest uppercase">PENALTI!</h2>
-                        <p className="text-green-400 text-2xl font-mono font-bold animate-bounce">{penaltyMessage}</p>
+                        
+                        {activePenaltyTeam && (
+                            <div className="bg-white text-black px-6 py-3 rounded-full font-bold mb-6 flex items-center gap-3 animate-bounce shadow-lg">
+                                {activePenaltyTeam.logo ? (
+                                    <img src={activePenaltyTeam.logo} alt="" className="w-8 h-8 object-contain"/>
+                                ) : (
+                                    <div className={`w-8 h-8 rounded-full ${activePenaltyTeam.colors[0]}`} />
+                                )}
+                                <span className="uppercase tracking-wide">{activePenaltyTeam.name} Kullanıyor</span>
+                            </div>
+                        )}
+
+                        <p className="text-green-400 text-2xl font-mono font-bold">{penaltyMessage}</p>
                     </div>
                 </div>
             )}
@@ -481,7 +525,16 @@ const MatchSimulation = ({
             <div className="bg-black text-white p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-4 w-1/3">
                     <img src={homeTeam.logo} className="w-16 h-16 object-contain" />
-                    <span className="text-3xl font-bold truncate hidden md:block">{homeTeam.name}</span>
+                    <div className="flex flex-col">
+                        <span className="text-3xl font-bold truncate hidden md:block">{homeTeam.name}</span>
+                        {homeRedCards > 0 && (
+                            <div className="flex gap-1 mt-1">
+                                {[...Array(homeRedCards)].map((_, i) => (
+                                    <div key={i} className="w-3 h-4 bg-red-600 rounded-[1px] border border-white/50 shadow-md" title="Kırmızı Kart" />
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <div className="flex flex-col items-center w-1/3">
                     <div className="text-5xl font-mono font-bold bg-slate-900 px-8 py-2 rounded border border-slate-700 tracking-widest shadow-lg shadow-black">
@@ -492,7 +545,16 @@ const MatchSimulation = ({
                     </div>
                 </div>
                 <div className="flex items-center gap-4 w-1/3 justify-end">
-                    <span className="text-3xl font-bold truncate hidden md:block">{awayTeam.name}</span>
+                    <div className="flex flex-col items-end">
+                        <span className="text-3xl font-bold truncate hidden md:block">{awayTeam.name}</span>
+                        {awayRedCards > 0 && (
+                            <div className="flex gap-1 mt-1">
+                                {[...Array(awayRedCards)].map((_, i) => (
+                                    <div key={i} className="w-3 h-4 bg-red-600 rounded-[1px] border border-white/50 shadow-md" title="Kırmızı Kart" />
+                                ))}
+                            </div>
+                        )}
+                    </div>
                     <img src={awayTeam.logo} className="w-16 h-16 object-contain" />
                 </div>
             </div>
@@ -601,11 +663,17 @@ const MatchSimulation = ({
                                                 </>
                                             ) : (
                                                 <p className={`text-sm ${isHighImpactEvent ? 'text-black font-bold' : 'text-slate-200'}`}>
-                                                    {e.description}
+                                                    {e.type === 'CARD_YELLOW' && (
+                                                        <span className="inline-block w-2.5 h-3.5 bg-yellow-500 border border-yellow-600 rounded-[1px] mr-2 align-middle shadow-sm"></span>
+                                                    )}
+                                                    {e.type === 'INJURY' && (
+                                                        <AlertCircle size={16} className="inline-block text-red-700 mr-2 align-middle" />
+                                                    )}
+                                                    <span className="align-middle">{e.description}</span>
                                                 </p>
                                             )}
                                             
-                                            {e.description.includes('İPTAL') && <span className="bg-red-600 text-white px-2 py-1 rounded font-bold inline-block mt-1">GOL İPTAL EDİLDİ!</span>}
+                                            {e.description.includes('(İPTAL)') && <span className="bg-red-600 text-white px-2 py-1 rounded font-bold inline-block mt-1">GOL İPTAL EDİLDİ!</span>}
                                         </div>
                                     </div>
                                 </div>

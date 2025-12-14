@@ -116,12 +116,12 @@ const MatchDetailModal = ({ fixture, teams, onClose }: { fixture: Fixture, teams
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left h-[600px]">
                      
                      {/* LEFT COLUMN: MATCH FLOW TIMELINE */}
-                     <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 flex flex-col h-full shadow-lg">
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-700 pb-2 text-center flex items-center justify-center gap-2">
+                     <div className="bg-slate-800 p-0 rounded-xl border border-slate-700 flex flex-col h-full shadow-lg overflow-hidden">
+                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest p-4 border-b border-slate-700 text-center bg-slate-800/50 backdrop-blur-sm z-10">
                             Maç Akışı
                         </h3>
-                        <div className="flex-1 overflow-y-auto relative px-2 custom-scrollbar">
-                             <div className="absolute left-1/2 top-2 bottom-2 w-px bg-slate-700 -translate-x-1/2"></div>
+                        <div className="flex-1 overflow-y-auto relative px-4 py-4 custom-scrollbar">
+                             <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-700 -translate-x-1/2"></div>
                              
                              {timelineEvents.length === 0 && (
                                  <div className="text-center text-slate-500 text-sm mt-10 italic">Önemli bir olay yaşanmadı.</div>
@@ -133,10 +133,10 @@ const MatchDetailModal = ({ fixture, teams, onClose }: { fixture: Fixture, teams
                                  const playerName = getPlayerName(e);
                                  
                                  return (
-                                     <div key={i} className={`flex items-center justify-between mb-4 relative w-full`}>
-                                         <div className={`flex-1 flex items-center gap-2 ${isHome ? 'justify-end pr-4' : 'opacity-0'}`}>
-                                             {isHome && (
-                                                 <div className="flex flex-col items-end">
+                                     <div key={i} className="flex items-center justify-between mb-2 relative w-full group hover:bg-white/5 rounded-lg transition-colors py-1">
+                                         <div className="flex-1 pr-6 flex justify-end">
+                                             {isHome ? (
+                                                 <div className="flex flex-col items-end text-right">
                                                      <div className="flex items-center gap-2 justify-end">
                                                         {playerName && <span className={`text-sm font-bold ${isGoal ? 'text-green-400' : 'text-white'}`}>{playerName}</span>}
                                                         {getEventIcon(e.type)}
@@ -145,16 +145,16 @@ const MatchDetailModal = ({ fixture, teams, onClose }: { fixture: Fixture, teams
                                                          <span className="text-[10px] text-slate-400 mt-0.5">Asist: {e.assist}</span>
                                                      )}
                                                  </div>
-                                             )}
+                                             ) : <div className="w-full h-1"></div>}
                                          </div>
 
-                                         <div className="w-8 h-8 rounded-full bg-slate-900 border border-slate-600 flex items-center justify-center text-xs font-bold text-slate-300 z-10 shrink-0 shadow-lg">
+                                         <div className="w-8 h-8 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center text-xs font-bold text-slate-300 z-10 shrink-0 shadow-lg group-hover:border-slate-400 group-hover:text-white transition-colors">
                                              {e.minute}'
                                          </div>
 
-                                         <div className={`flex-1 flex items-center gap-2 ${!isHome ? 'justify-start pl-4' : 'opacity-0'}`}>
-                                             {!isHome && (
-                                                 <div className="flex flex-col items-start">
+                                         <div className="flex-1 pl-6 flex justify-start">
+                                             {!isHome ? (
+                                                 <div className="flex flex-col items-start text-left">
                                                      <div className="flex items-center gap-2">
                                                         {getEventIcon(e.type)}
                                                         {playerName && <span className={`text-sm font-bold ${isGoal ? 'text-green-400' : 'text-white'}`}>{playerName}</span>}
@@ -163,7 +163,7 @@ const MatchDetailModal = ({ fixture, teams, onClose }: { fixture: Fixture, teams
                                                          <span className="text-[10px] text-slate-400 mt-0.5">Asist: {e.assist}</span>
                                                      )}
                                                  </div>
-                                             )}
+                                             ) : <div className="w-full h-1"></div>}
                                          </div>
                                      </div>
                                  );

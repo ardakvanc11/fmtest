@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ManagerProfile, Team, Fixture } from '../types';
 import { calculateForm } from '../utils/gameEngine';
@@ -31,6 +30,11 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
 
     // Calculate Form
     const form = calculateForm(team.id, fixtures);
+
+    // Calculate Average Morale
+    const averageMorale = team.players.length > 0 
+        ? Math.round(team.players.reduce((acc, p) => acc + p.morale, 0) / team.players.length) 
+        : 0;
 
     const getMatchResult = (f: Fixture) => {
         const isHome = f.homeTeamId === myTeamId;
@@ -92,7 +96,7 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                                 </div>
                                 <div className="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg text-center">
                                     <div className="text-slate-500 dark:text-slate-400 text-xs uppercase font-bold">Moral</div>
-                                    <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mt-2">%{team.morale}</div>
+                                    <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mt-2">%{averageMorale}</div>
                                 </div>
                             </div>
                             <div className="grid grid-cols-3 gap-4 mb-6">
