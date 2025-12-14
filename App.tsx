@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, Position } from './types';
-import { initializeTeams } from './constants';
-import { simulateMatchInstant, generateFixtures, generateTransferMarket, generateWeeklyNews, isTransferWindowOpen, processMatchPostGame, applyTraining, generateMatchTweets, generatePlayerMessages, calculateRatingsFromEvents, determineMVP } from './utils/gameEngine';
+import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, Position, Mentality } from './types';
+import { initializeTeams, RIVALRIES } from './constants';
+import { simulateMatchInstant, generateFixtures, generateTransferMarket, generateWeeklyNews, isTransferWindowOpen, processMatchPostGame, applyTraining, generateMatchTweets, generatePlayerMessages, calculateRatingsFromEvents, determineMVP, calculateTeamStrength } from './utils/gameEngine';
 import { INITIAL_MESSAGES } from './data/messagePool';
 
 // Views
@@ -226,6 +226,76 @@ const App: React.FC = () => {
              return { ...team, stats: newStats };
         });
 
+        // --- BOARD TRUST LOGIC (SEASON END) ---
+        // Week 42 is the last week in our fixture generator logic
+        const LAST_WEEK = 42; 
+        
+        let updatedManager = gameState.manager ? { ...gameState.manager } : null;
+
+        if (updatedManager && gameState.currentWeek === LAST_WEEK && gameState.myTeamId) {
+            const sortedTeams = [...updatedTeams].sort((a, b) => {
+                if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points;
+                return (b.stats.gf - b.stats.ga) - (a.stats.gf - a.stats.ga);
+            });
+            
+            const myRank = sortedTeams.findIndex(t => t.id === gameState.myTeamId) + 1;
+            const myTeam = updatedTeams.find(t => t.id === gameState.myTeamId);
+            
+            if (myTeam) {
+                const strength = calculateTeamStrength(myTeam);
+                const isHighTier = strength >= 80;
+                let boardChange = 0;
+                let reason = "";
+
+                if (isHighTier) {
+                    // High Power Rules (80+)
+                    if (myRank === 1) {
+                        boardChange += 25; // Şampiyon
+                        reason += "Şampiyonluk (+25). ";
+                    } else {
+                        boardChange -= 30; // Şampiyon Olamama
+                        reason += "Şampiyonluk Kaçtı (-30). ";
+                    }
+
+                    if (myRank >= 2 && myRank <= 4) {
+                        boardChange += 10; // İlk 4 içi (ama şampiyon değilse net -20 olur)
+                        reason += "İlk 4 Sıra (+10). ";
+                    } else if (myRank > 4) {
+                        boardChange -= 15; // İlk 4 dışı
+                        reason += "İlk 4 Dışı (-15). ";
+                    }
+                } else {
+                    // Low Power Rules (<80)
+                    if (myRank === 1) {
+                        boardChange += 35; // Şampiyon
+                        reason += "Şampiyonluk Mucizesi (+35). ";
+                    } else {
+                        boardChange -= 5; // Şampiyon Olamama
+                        // Low tier için şampiyon olamamak çok büyük eksi değil
+                    }
+
+                    if (myRank >= 2 && myRank <= 4) {
+                        boardChange += 15;
+                        reason += "Avrupa Kupaları Potası (+15). ";
+                    }
+
+                    if (myRank > 8) {
+                        boardChange -= 10; // İlk 8 dışı
+                        reason += "İlk 8 Dışı (-10). ";
+                    }
+
+                    // Küme düşmeden bitirirsek (İlk 15 varsayımı - 18 takımlı ligde son 3 düşer)
+                    if (myRank <= 15) {
+                        boardChange += 10;
+                        reason += "Ligde Kalındı (+10). ";
+                    }
+                }
+
+                updatedManager.trust.board = Math.max(0, Math.min(100, updatedManager.trust.board + boardChange));
+                alert(`Sezon Sonu Yönetim Raporu:\nSıralama: ${myRank}.\n${reason}\nYönetim Güveni Değişimi: ${boardChange > 0 ? '+' : ''}${boardChange}`);
+            }
+        }
+
         // 3. Generate news for the COMPLETED week (simulated results)
         // We pass myTeamId to skip generating duplicate tweets for the user match
         const matchNews = generateWeeklyNews(gameState.currentWeek, updatedFixtures, updatedTeams, gameState.myTeamId);
@@ -244,8 +314,6 @@ const App: React.FC = () => {
         const allNews = [...matchNews, ...gameState.news];
         
         // Filter to keep only the last 2 weeks (current finished week and the one before it)
-        // nextWeek is the week we are entering.
-        // retentionThreshold ensures we delete anything older than 2 weeks back.
         const retentionThreshold = nextWeek - 2;
         const filteredNews = allNews.filter(n => n.week > retentionThreshold);
 
@@ -257,7 +325,8 @@ const App: React.FC = () => {
             news: filteredNews,
             transferList: isTransferWindowOpen(nextWeek) ? newTransferList : [],
             trainingPerformed: false,
-            messages: [...playerMessages, ...prev.messages] // Prepend new messages
+            messages: [...playerMessages, ...prev.messages], // Prepend new messages
+            manager: updatedManager ? updatedManager : prev.manager
         }));
         
         navigateTo('home');
@@ -286,6 +355,7 @@ const App: React.FC = () => {
         const opponent = gameState.teams.find(t => t.id === opponentId)!;
         const homeTeam = isHome ? gameState.teams.find(t => t.id === myTeamId)! : opponent;
         const awayTeam = isHome ? opponent : gameState.teams.find(t => t.id === myTeamId)!;
+        const myTeam = isHome ? homeTeam : awayTeam;
 
         // Get Match Result
         const myScore = isHome ? hScore : aScore;
@@ -297,7 +367,7 @@ const App: React.FC = () => {
         // Calculate Accurate Ratings based on Events
         const { homeRatings, awayRatings } = calculateRatingsFromEvents(homeTeam, awayTeam, events, hScore, aScore);
         
-        // DETERMINE MVP (Man of the Match)
+        // DETERMINE MVP
         const mvpInfo = determineMVP(homeRatings, awayRatings);
 
         const updatedStats: MatchStats = { 
@@ -319,16 +389,168 @@ const App: React.FC = () => {
         };
         updatedFixtures[fixtureIdx] = completedFixture;
         
-        // Pass all fixtures to processMatchPostGame for historical data access (last 3 matches logic)
+        // Process Post Game (Injuries, Morale, Suspensions)
         const processedTeams = processMatchPostGame(gameState.teams, events, gameState.currentWeek, updatedFixtures);
 
         const updatedManager = { ...gameState.manager! };
         updatedManager.stats.matchesManaged++;
         updatedManager.stats.goalsFor += myScore;
         updatedManager.stats.goalsAgainst += oppScore;
-        if(res === 'WIN') updatedManager.stats.wins++;
-        if(res === 'DRAW') updatedManager.stats.draws++;
-        if(res === 'LOSS') updatedManager.stats.losses++;
+        
+        // --- COMPLEX FAN & BOARD TRUST LOGIC ---
+        // 1. Determine Team Strength Tier
+        const currentStrength = calculateTeamStrength(myTeam);
+        const isHighTier = currentStrength >= 80;
+        
+        // 2. Determine Derby Status
+        const isDerby = RIVALRIES.some(pair => pair.includes(myTeam.name) && pair.includes(opponent.name));
+        
+        // 3. Analyze Scores
+        const goalDiff = myScore - oppScore;
+        
+        let fanTrustChange = 0;
+
+        // A. Match Result Logic (Fans & Board)
+        
+        // --- BOARD TRUST LOGIC (DERBY) ---
+        if (isDerby) {
+            // High Tier: Win +5, Loss -5
+            // Low Tier: Win +3, Loss -3
+            if (res === 'WIN') {
+                updatedManager.trust.board = Math.min(100, updatedManager.trust.board + (isHighTier ? 5 : 3));
+            } else if (res === 'LOSS') {
+                updatedManager.trust.board = Math.max(0, updatedManager.trust.board + (isHighTier ? -5 : -3));
+            }
+        }
+
+        // --- FAN TRUST LOGIC ---
+        if (isDerby) {
+            if (res === 'WIN') {
+                if (goalDiff >= 4) fanTrustChange += isHighTier ? 10 : 15; // Different derby win (Big Margin)
+                else fanTrustChange += isHighTier ? 5 : 7; // Derby Win
+            } else if (res === 'DRAW') {
+                // NEW: Derby Draw Penalty
+                fanTrustChange += -3;
+            } else if (res === 'LOSS') {
+                if (Math.abs(goalDiff) >= 4) fanTrustChange += isHighTier ? -15 : -10; // Different derby loss
+                else fanTrustChange += isHighTier ? -6 : -7; // Derby Loss
+            }
+        } else {
+            // Normal Match
+            if (res === 'WIN') {
+                if (goalDiff >= 4) fanTrustChange += isHighTier ? 3 : 5; // Big Win
+                else fanTrustChange += isHighTier ? 1 : 2; // Normal Win
+            } else if (res === 'LOSS') {
+                // NEW: Fixed Normal Loss Penalty to assure decrease
+                fanTrustChange += -4;
+            }
+        }
+
+        // B. Streak Logic (5 Matches)
+        // Get past 4 matches + current match = 5 matches
+        const pastMatchesForStreak = updatedFixtures
+            .filter(f => f.played && f.week <= gameState.currentWeek && (f.homeTeamId === myTeamId || f.awayTeamId === myTeamId))
+            .sort((a, b) => b.week - a.week) // Descending
+            .slice(0, 5);
+
+        if (pastMatchesForStreak.length === 5) {
+            let winCount = 0;
+            let lossCount = 0;
+            
+            pastMatchesForStreak.forEach(f => {
+                const isH = f.homeTeamId === myTeamId;
+                const mS = isH ? f.homeScore! : f.awayScore!;
+                const oS = isH ? f.awayScore! : f.homeScore!;
+                if (mS > oS) winCount++;
+                else if (mS < oS) lossCount++;
+            });
+
+            if (winCount === 5) {
+                fanTrustChange += isHighTier ? 5 : 11;
+            } else if (lossCount === 5) {
+                fanTrustChange += isHighTier ? -15 : -7;
+            }
+        }
+
+        // C. League Standing (Leader Logic)
+        // Temporarily calculate standings to check if #1
+        const tempTeams = processedTeams.map(t => {
+             const playedF = updatedFixtures.filter(f => f.played && (f.homeTeamId === t.id || f.awayTeamId === t.id));
+             let pts = 0, gf = 0, ga = 0;
+             playedF.forEach(f => {
+                 const isH = f.homeTeamId === t.id;
+                 const s1 = isH ? f.homeScore! : f.awayScore!;
+                 const s2 = isH ? f.awayScore! : f.homeScore!;
+                 gf += s1; ga += s2;
+                 if(s1 > s2) pts+=3; else if(s1===s2) pts+=1;
+             });
+             return { id: t.id, pts, diff: gf - ga, gf };
+        });
+        tempTeams.sort((a,b) => {
+            if (b.pts !== a.pts) return b.pts - a.pts;
+            return b.diff - a.diff;
+        });
+        if (tempTeams[0].id === myTeamId) {
+            fanTrustChange += isHighTier ? 3 : 5;
+        }
+
+        // D. Youth Usage (<20 years old in Starting XI)
+        // Assuming the first 11 in the players array are the starters (based on Game Engine logic)
+        const startingXI = myTeam.players.slice(0, 11);
+        const youthPlayers = startingXI.filter(p => p.age < 20).length;
+        // Condition: "Daha çok süre alması" -> Let's assume 2 or more starters under 20 is significant
+        if (youthPlayers >= 2) {
+            fanTrustChange += isHighTier ? 3 : 6;
+        }
+
+        // E. Tactics Logic
+        const attackingMentalities = [Mentality.ATTACKING, Mentality.ALL_OUT, Mentality.POSITIVE];
+        // Checking based on string values or Enum reference
+        if (attackingMentalities.includes(myTeam.mentality)) {
+            fanTrustChange += isHighTier ? 2 : 3;
+        } else if (myTeam.mentality === Mentality.DEFENSIVE || myTeam.mentality.includes('Defansif') || myTeam.mentality.includes('Otobüs')) {
+            fanTrustChange += -3; // Same for both tiers
+        }
+
+        // Apply Fan Trust Change
+        updatedManager.trust.fans = Math.max(0, Math.min(100, updatedManager.trust.fans + fanTrustChange));
+
+        // --- EXISTING MANAGER STATS LOGIC ---
+        if (res === 'WIN') {
+            updatedManager.stats.wins++;
+            updatedManager.trust.players = Math.min(100, updatedManager.trust.players + 1);
+        } else if (res === 'DRAW') {
+            updatedManager.stats.draws++;
+        } else if (res === 'LOSS') {
+            updatedManager.stats.losses++;
+            updatedManager.trust.players = Math.max(0, updatedManager.trust.players - 1);
+            
+            // Check for 3 consecutive losses streak (Player Trust Penalty)
+            let consecutiveLossCount = 0; 
+            for(let i=0; i<3; i++) {
+                const f = pastMatchesForStreak[i]; // Newest first
+                if (!f) break;
+                const isH = f.homeTeamId === myTeamId;
+                if ((isH ? f.homeScore! : f.awayScore!) < (isH ? f.awayScore! : f.homeScore!)) consecutiveLossCount++;
+                else break;
+            }
+            if (consecutiveLossCount === 3) {
+                updatedManager.trust.players = Math.max(0, updatedManager.trust.players - 5);
+            }
+        }
+
+        // 5 Match Win Streak Player Trust Bonus (+5)
+        let consecutiveWinCount = 0;
+        for(let i=0; i<5; i++) {
+             const f = pastMatchesForStreak[i];
+             if (!f) break;
+             const isH = f.homeTeamId === myTeamId;
+             if ((isH ? f.homeScore! : f.awayScore!) > (isH ? f.awayScore! : f.homeScore!)) consecutiveWinCount++;
+             else break;
+        }
+        if (consecutiveWinCount === 5) {
+            updatedManager.trust.players = Math.min(100, updatedManager.trust.players + 5);
+        }
 
         // Generate Instant Social Media Reaction for User Match
         const matchTweets = generateMatchTweets(completedFixture, processedTeams, true);
@@ -466,12 +688,24 @@ const App: React.FC = () => {
         // Remove from transfer list
         const newTransferList = gameState.transferList.filter(p => p.id !== player.id);
 
+        let trustUpdateFans = 0;
+        // RULE: Star Transfer (90+ Power) logic
+        if (player.skill >= 90) {
+            const currentStrength = calculateTeamStrength(myTeam);
+            const isHighTier = currentStrength >= 80;
+            trustUpdateFans = isHighTier ? 4 : 5;
+        }
+
         setGameState(prev => ({
             ...prev,
             teams: prev.teams.map(t => t.id === updatedTeam.id ? updatedTeam : t),
             transferList: newTransferList,
             manager: prev.manager ? {
                 ...prev.manager,
+                trust: {
+                    ...prev.manager.trust,
+                    fans: Math.min(100, prev.manager.trust.fans + trustUpdateFans)
+                },
                 stats: {
                     ...prev.manager.stats,
                     playersBought: prev.manager.stats.playersBought + 1,
@@ -480,7 +714,12 @@ const App: React.FC = () => {
                 }
             } : null
         }));
-        alert(`${player.name} takıma katıldı!`);
+        
+        if (player.skill >= 90) {
+            alert(`${player.name} takıma katıldı! Taraftarlar yıldız transferi nedeniyle çok mutlu.`);
+        } else {
+            alert(`${player.name} takıma katıldı!`);
+        }
     };
 
     const handleSellPlayer = (player: Player) => {
@@ -512,15 +751,24 @@ const App: React.FC = () => {
     };
 
     const handleMessageReply = (msgId: number, optIndex: number) => {
-        // If the 3rd option (index 2) is chosen, it's considered negative/dismissive
-        if (optIndex === 2) {
-            setGameState(prev => {
-                const myTeam = prev.teams.find(t => t.id === prev.myTeamId);
-                if (!myTeam) return prev;
+        setGameState(prev => {
+            const myTeam = prev.teams.find(t => t.id === prev.myTeamId);
+            if (!myTeam) return prev;
 
-                const msg = prev.messages.find(m => m.id === msgId);
-                if (!msg) return prev;
+            const msg = prev.messages.find(m => m.id === msgId);
+            if (!msg) return prev;
 
+            let updatedTeam = myTeam;
+            let updatedManager = prev.manager ? { ...prev.manager } : null;
+
+            // Option 0: Positive (+2 Trust)
+            if (optIndex === 0) {
+                if (updatedManager) {
+                    updatedManager.trust.players = Math.min(100, updatedManager.trust.players + 2);
+                }
+            }
+            // Option 2: Negative/Dismissive (Morale penalty)
+            else if (optIndex === 2) {
                 // Find the player who sent the message
                 const playerIndex = myTeam.players.findIndex(p => p.name === msg.sender);
                 
@@ -532,16 +780,16 @@ const App: React.FC = () => {
                     updatedPlayer.morale = Math.max(0, updatedPlayer.morale - 20);
                     updatedPlayers[playerIndex] = updatedPlayer;
 
-                    const updatedTeam = { ...myTeam, players: updatedPlayers };
-                    
-                    return {
-                        ...prev,
-                        teams: prev.teams.map(t => t.id === prev.myTeamId ? updatedTeam : t)
-                    };
+                    updatedTeam = { ...myTeam, players: updatedPlayers };
                 }
-                return prev;
-            });
-        }
+            }
+
+            return {
+                ...prev,
+                teams: prev.teams.map(t => t.id === prev.myTeamId ? updatedTeam : t),
+                manager: updatedManager
+            };
+        });
     };
 
     const handleInterviewComplete = (effect: any, relatedPlayerId?: string) => {

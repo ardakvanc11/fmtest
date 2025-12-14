@@ -376,18 +376,22 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
         if (myGoals > oppGoals) result = 'WIN';
         else if (myGoals < oppGoals) result = 'LOSS';
 
-        // Find Opponent Name for Derby Check
-        const matchEventsOpponentName = events.find(e => e.teamName !== team.name)?.teamName || '';
-
-        // 2. CHECK TEAM-LEVEL MORALE FACTORS
-        let teamMoralePenalty = 0;
-
-        // A. Loss Penalties (Normal & Consecutive)
+        // 2. FETCH HISTORICAL CONTEXT (Past Matches)
         const teamPastFixtures = allFixtures
             .filter(f => f.played && f.week < currentWeek && (f.homeTeamId === team.id || f.awayTeamId === team.id))
-            .sort((a, b) => b.week - a.week) 
-            .slice(0, 4); 
+            .sort((a, b) => b.week - a.week); // Descending (Newest first)
 
+        // Find Current Match Fixture (to get MVP info)
+        const currentFixture = allFixtures.find(f => f.week === currentWeek && (f.homeTeamId === team.id || f.awayTeamId === team.id));
+        const mvpId = currentFixture?.stats?.mvpPlayerId;
+
+        // 3. CHECK TEAM-LEVEL STREAKS & FACTORS
+        
+        // REMOVED: 3 Consecutive Wins Bonus Logic (User Request)
+        let teamMoraleBonus = 0; 
+
+        // B. Loss Penalties (Normal & Consecutive)
+        let teamMoralePenalty = 0;
         let consecutiveLosses = result === 'LOSS' ? 1 : 0;
         if (consecutiveLosses > 0) {
             for (let i = 0; i < 2; i++) { 
@@ -408,18 +412,14 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
             }
         }
 
-        // B. Derby Loss
+        // Find Opponent Name for Derby Check
+        const matchEventsOpponentName = events.find(e => e.teamName !== team.name)?.teamName || '';
         const isDerbyLoss = result === 'LOSS' && RIVALRIES.some(pair => pair.includes(team.name) && pair.includes(matchEventsOpponentName));
-        if (isDerbyLoss) {
-            teamMoralePenalty += 4;
-        }
+        if (isDerbyLoss) teamMoralePenalty += 4;
 
-        // C. Heavy Loss (4+ Goal Diff)
-        if (result === 'LOSS' && (oppGoals - myGoals) >= 4) {
-            teamMoralePenalty += 4; 
-        }
+        if (result === 'LOSS' && (oppGoals - myGoals) >= 4) teamMoralePenalty += 4; 
 
-        // 3. PROCESS PLAYERS
+        // 4. PROCESS PLAYERS
         const updatedPlayers = team.players.map((p, index) => {
             let player = { ...p };
 
@@ -452,9 +452,7 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
             const sum = player.seasonStats.ratings.reduce((a, b) => a + b, 0);
             player.seasonStats.averageRating = Number((sum / player.seasonStats.ratings.length).toFixed(1));
 
-            // --- HEALTH & INJURY CHECK (UPDATED: Happens BEFORE Morale) ---
-
-            // Reset Injection flag
+            // --- HEALTH & INJURY CHECK ---
             if (player.hasInjectionForNextMatch) {
                 player.hasInjectionForNextMatch = false;
                 if (Math.random() < 0.3 && player.injury) {
@@ -462,7 +460,6 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
                 }
             }
 
-            // Check new injuries from match
             const injuryEvent = teamEvents.find(e => e.type === 'INJURY' && e.playerId === p.id);
             let justGotInjured = false;
             let newInjuryWeeks = 0;
@@ -479,7 +476,6 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
                 newInjuryWeeks = duration;
             }
 
-            // Decrement existing injury (only if not newly injured)
             if (!justGotInjured && player.injury) {
                 player.injury.weeksRemaining -= 1;
                 if (player.injury.weeksRemaining <= 0) {
@@ -490,85 +486,105 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
             // --- MORALE CALCULATIONS ---
             
             let moraleChange = 0;
-            const currentlyInjured = !!player.injury; // Is player injured NOW (new or old)?
+            const currentlyInjured = !!player.injury; 
 
-            // 1. New Injury Penalty (Overrides everything)
             if (justGotInjured) {
-                // Apply specific morale penalty based on injury duration
                 if (newInjuryWeeks < 3) moraleChange -= 5;
                 else if (newInjuryWeeks < 6) moraleChange -= 7;
                 else if (newInjuryWeeks < 12) moraleChange -= 12;
                 else moraleChange -= 18;
             }
 
-            // 2. Standard Penalties
-            // CRITICAL CHANGE: Injured players (current or new) DO NOT take morale hits from match results or benching.
             if (!currentlyInjured) {
                 
-                // Apply Team Level Penalties
+                // General Team Effects
                 moraleChange -= teamMoralePenalty;
+                moraleChange += teamMoraleBonus; 
 
                 if (index < 11) {
-                    // PLAYER PLAYED THIS MATCH
+                    // --- PLAYER PLAYED ---
 
-                    // Rating Based Morale
-                    if (matchRating < 5.5) {
-                        moraleChange -= 3; 
-                    } else if (matchRating < 6.0) {
-                        moraleChange -= 1; 
+                    // 1. Win Bonus (+2)
+                    if (result === 'WIN') moraleChange += 2;
+
+                    // 2. Goal Bonus (+1 per goal)
+                    if (goals > 0) moraleChange += goals;
+
+                    // 3. REMOVED: Assist Bonus (User Request)
+                    // if (assists > 0) moraleChange += assists;
+
+                    // 4. Penalty Bonus (+1 per penalty scored)
+                    // Note: This stacks with goal bonus. So a Penalty Goal gives +1 (Goal) +1 (Penalty) = +2.
+                    const penaltyGoals = teamEvents.filter(e => e.type === 'GOAL' && e.scorer === p.name && (e.assist === 'Penaltı' || e.description.toLowerCase().includes('penaltı'))).length;
+                    if (penaltyGoals > 0) moraleChange += penaltyGoals;
+
+                    // 5. Clean Sheet (+3 for GK)
+                    if (p.position === Position.GK && oppGoals === 0) {
+                        moraleChange += 3;
                     }
 
-                    // Penalty Miss
+                    // 6. Consecutive Appearances (5 matches = +3) (Changed from +4)
+                    // Needs to have played in previous 4 matches + current match (which is true here)
+                    let consecutiveApps = 1;
+                    for(let i=0; i<4; i++) {
+                        const f = teamPastFixtures[i];
+                        if (!f || !f.stats) break;
+                        const isHomeF = f.homeTeamId === team.id;
+                        const ratingsList = isHomeF ? f.stats.homeRatings : f.stats.awayRatings;
+                        const playedInPrev = ratingsList.some(r => r.playerId === p.id);
+                        if (playedInPrev) consecutiveApps++;
+                        else break;
+                    }
+                    if (consecutiveApps >= 5) moraleChange += 3; // UPDATED
+
+                    // 7. High Rating (+1 for > 8.0)
+                    if (matchRating > 8.0) moraleChange += 1;
+
+                    // 8. MVP (+2) (Changed from +3)
+                    if (mvpId && p.id === mvpId) moraleChange += 2; // UPDATED
+
+                    // --- NEGATIVE FACTORS ---
+                    if (matchRating < 5.5) moraleChange -= 3; 
+                    else if (matchRating < 6.0) moraleChange -= 1; 
+
                     const missedPen = teamEvents.some(e => e.type === 'MISS' && e.playerId === p.id && e.description.toLowerCase().includes('penaltı'));
                     if (missedPen) moraleChange -= 4; 
 
-                    // Out of Position
                     const isGkSlot = index === 0;
-                    if ((p.position === 'GK' && !isGkSlot) || (p.position !== 'GK' && isGkSlot)) {
-                        moraleChange -= 1; 
-                    }
+                    if ((p.position === 'GK' && !isGkSlot) || (p.position !== 'GK' && isGkSlot)) moraleChange -= 1; 
 
-                    // Red Cards
                     const redCardEvent = teamEvents.find(e => e.type === 'CARD_RED' && e.playerId === p.id);
                     if (redCardEvent) {
-                        if (redCardEvent.description.toLowerCase().includes('ikinci sarı') || redCardEvent.description.toLowerCase().includes('çift sarı')) {
-                            moraleChange -= 2; 
-                        } else {
-                            moraleChange -= 4; 
-                        }
+                        if (redCardEvent.description.toLowerCase().includes('ikinci sarı')) moraleChange -= 2; 
+                        else moraleChange -= 4; 
                     }
 
                 } else {
-                    // PLAYER DID NOT PLAY
-                    
+                    // --- PLAYER DID NOT PLAY ---
                     let matchesMissed = 1; 
                     for (let i = 0; i < 4; i++) {
                         const f = teamPastFixtures[i];
                         if (!f || !f.stats) break;
-                        const isHome = f.homeTeamId === team.id;
-                        const ratings = isHome ? f.stats.homeRatings : f.stats.awayRatings;
-                        const playedThatMatch = ratings.some(r => r.playerId === p.id);
+                        const isHomeF = f.homeTeamId === team.id;
+                        const ratingsList = isHomeF ? f.stats.homeRatings : f.stats.awayRatings;
+                        const playedThatMatch = ratingsList.some(r => r.playerId === p.id);
                         if (!playedThatMatch) matchesMissed++;
                         else break; 
                     }
 
-                    if (matchesMissed >= 4) {
-                        if (player.morale > 20) {
-                            moraleChange -= 3;
-                        }
+                    if (matchesMissed >= 4 && player.morale > 20) {
+                        moraleChange -= 3;
                     }
                 }
             }
 
-            // Cap the Morale Drop (-8 Max) - Note: Injury penalty can exceed this if it was applied directly
             if (!justGotInjured && moraleChange < -8) {
                 moraleChange = -8;
             }
 
-            // Apply Morale Change
+            // Cap at 100
             player.morale = Math.max(0, Math.min(100, player.morale + moraleChange));
 
-            // Check Red Card Suspension (Last step)
             const hasRed = teamEvents.some(e => e.type === 'CARD_RED' && e.playerId === p.id);
             if (hasRed) {
                 player.suspendedUntilWeek = currentWeek + 2; 

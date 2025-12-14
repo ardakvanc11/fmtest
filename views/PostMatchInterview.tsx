@@ -242,7 +242,7 @@ const PostMatchInterview = ({
                 {
                     question: "Bugünkü oyununuz taraftarlar tarafından 'utanç verici' olarak yorumlandı. Bu eleştirilere hak veriyor musunuz?",
                     options: [
-                        { text: "Evet, bu performans kabul edilemez. Taraftarı anlıyorum.", effect: { teamMorale: -3, trustUpdate: { fans: 0 } } },
+                        { text: "Evet, bu performans kabul edilemez. Taraftarı anlıyorum.", effect: { teamMorale: -3, trustUpdate: { fans: 0, players: -3 } } },
                         { text: "Eleştiriler normal ama bu takım küllerinden doğacak.", effect: { teamMorale: 1 } },
                         { text: "Taraftarın duygusal tepkisi, oyunun gerçeklerinden uzak.", effect: { trustUpdate: { fans: -10 } } }
                     ]
@@ -251,7 +251,7 @@ const PostMatchInterview = ({
                     question: "Taraftarlar 'ruhsuz takım' eleştirileri yapıyor. Oyuncularınızın mücadele etmediği yönünde ağır ithamlar var. Buna ne diyorsunuz?",
                     options: [
                         { text: "Bu görüntü bize yakışmadı, sorumluluk tamamen bende.", effect: { teamMorale: -2, trustUpdate: { fans: 0 } } },
-                        { text: "Oyuncular savaştı ama kalite yetmedi, bunu kabul etmeliyiz.", effect: { teamMorale: -3 } },
+                        { text: "Oyuncular savaştı ama kalite yetmedi, bunu kabul etmeliyiz.", effect: { teamMorale: -3, trustUpdate: { players: -3 } } },
                         { text: "Maçı duygularla değil, mantıkla değerlendirmek lazım.", effect: { teamMorale: -1, trustUpdate: { fans: -5 } } }
                     ]
                 },
@@ -275,7 +275,7 @@ const PostMatchInterview = ({
                     question: "Rakibinizin size 'futbol dersi verdiği' söyleniyor. Taktik olarak hazırlıksız mıydınız?",
                     options: [
                         { text: "Bugün birçok şeyde sınıfta kaldık, ders çıkaracağız.", effect: { teamMorale: -2 } },
-                        { text: "Hazırlıksız değildik, oyuncular uygulanması gerekeni yapamadı.", effect: { teamMorale: -1 } },
+                        { text: "Hazırlıksız değildik, oyuncular uygulanması gerekeni yapamadı.", effect: { teamMorale: -1, trustUpdate: { players: -3 } } },
                         { text: "Futbol dersi gibi abartılı yorumlara gülüp geçiyorum.", effect: { trustUpdate: { fans: -6 } } }
                     ]
                 },
@@ -291,7 +291,7 @@ const PostMatchInterview = ({
                     question: "Taraftarın büyük kısmı 'hoca takımı derbiye hazırlayamıyor' diyor. Bu suçlamayı kabul ediyor musunuz?",
                     options: [
                         { text: "Evet, sorumluluk benim. Bu maçı doğru yönetemedim.", effect: { teamMorale: -1, trustUpdate: { fans: 0 } } },
-                        { text: "Hazırlıklarımız tamdı ama sahada karşılık alamadık.", effect: { teamMorale: 0 } },
+                        { text: "Hazırlıklarımız tamdı ama sahada karşılık alamadık.", effect: { teamMorale: 0, trustUpdate: { players: -3 } } },
                         { text: "Bu eleştiriler haksız, takımın emeğine saygısızlık.", effect: { trustUpdate: { fans: -8 } } }
                     ]
                 },
@@ -332,7 +332,7 @@ const PostMatchInterview = ({
                     options: [
                         { text: "Utanç verici bir gece. Tüm sorumluluğu alıyorum.", effect: { teamMorale: 5, trustUpdate: { board: -5 } } }, // Taking blame protects players (+5 morale) but hurts board trust
                         { text: "Her gelen şut gol oldu, futbolda bazen böyle kara geceler olur.", effect: { teamMorale: -2 } },
-                        { text: "Bazı oyuncularımın bu takımda oynamayı hak edip etmediğini düşüneceğim.", effect: { teamMorale: -10 } } // Heavy morale hit
+                        { text: "Bazı oyuncularımın bu takımda oynamayı hak edip etmediğini düşüneceğim.", effect: { teamMorale: -10, trustUpdate: { players: -3 } } } // Heavy morale hit + Trust Penalty
                     ]
                 }
             ]
@@ -347,7 +347,7 @@ const PostMatchInterview = ({
                 {
                     question: "Kırmızı kart oyun planlarınızı alt üst etti. {player} kırmızı kart gördü. Bu hareketi nasıl değerlendiriyorsunuz?",
                     options: [
-                        { text: "Profesyonelliğe yakışmayan bir hareketti, cezasını kulüp olarak vereceğiz.", effect: { playerMorale: -10, teamMorale: -2 } },
+                        { text: "Profesyonelliğe yakışmayan bir hareketti, cezasını kulüp olarak vereceğiz.", effect: { playerMorale: -10, teamMorale: -2, trustUpdate: { players: -3 } } },
                         { text: "Hakem çok ağırdı, bence sarı kart yeterliydi.", effect: { playerMorale: 5, teamMorale: 2, trustUpdate: { referees: -5 } } }, // Support player, blame ref
                         { text: "Futbolun içinde bunlar var, kalanlar iyi mücadele etti.", effect: { playerMorale: -5, teamMorale: 3 } }
                     ]
@@ -355,7 +355,7 @@ const PostMatchInterview = ({
                 {
                     question: "{player} kırmızı kart sonrası soyunma odasına giderken taraftarların tepkisini aldı. Bu durum oyuncu üzerinde baskı yaratır mı?",
                     options: [
-                        { text: "O baskıyı hak etti, taraftarın hissi doğru.", effect: { playerMorale: -10, trustUpdate: { fans: 5 } } },
+                        { text: "O baskıyı hak etti, taraftarın hissi doğru.", effect: { playerMorale: -10, trustUpdate: { fans: 5, players: -3 } } },
                         { text: "Taraftarın tepkisi doğal ama {player} güçlü bir karakterdir.", effect: { playerMorale: 3 } },
                         { text: "Baskıya değil, çözüme odaklanıyoruz. Durumu içeride konuşacağız.", effect: { playerMorale: -3, teamMorale: 2 } }
                     ]
@@ -363,7 +363,7 @@ const PostMatchInterview = ({
                 {
                     question: "{player} kırmızı kartı sonrası rakip oyunu tamamen kontrol etti. Bu hatanın maçın kaderini değiştirdiğini düşünüyor musunuz?",
                     options: [
-                        { text: "Evet, kırmızı kart maçın kırılma anıydı.", effect: { playerMorale: -10 } },
+                        { text: "Evet, kırmızı kart maçın kırılma anıydı.", effect: { playerMorale: -10, trustUpdate: { players: -3 } } },
                         { text: "Hayır, takım eksik kalınca daha da kenetlendi.", effect: { teamMorale: 3 } },
                         { text: "Böyle şeylere takılırsak ilerleyemeyiz, genel oyunumuz yetersizdi.", effect: { teamMorale: -2 } }
                     ]
@@ -371,7 +371,7 @@ const PostMatchInterview = ({
                 {
                     question: "Kırmızı kart sonrası teknik ekibiniz oldukça öfkeliydi. {player} için disiplin süreci başlatılacak mı?",
                     options: [
-                        { text: "Evet, kulüp içi disiplin hemen işleyecek.", effect: { playerMorale: -10, trustUpdate: { fans: 5 } } },
+                        { text: "Evet, kulüp içi disiplin hemen işleyecek.", effect: { playerMorale: -10, trustUpdate: { fans: 5, players: -3 } } },
                         { text: "Hayır, oyuncumuza sahip çıkıyoruz.", effect: { playerMorale: 5, trustUpdate: { fans: -5 } } },
                         { text: "Durumu analiz edeceğiz, acele karar vermeyeceğiz.", effect: { playerMorale: -3 } }
                     ]
@@ -389,14 +389,14 @@ const PostMatchInterview = ({
                     options: [
                         { text: "Futbolda bunlar var, en büyük yıldızlar bile kaçırıyor.", effect: { playerMorale: 3 } },
                         { text: "Çok üzgün, ona destek olmalıyız.", effect: { playerMorale: 5 } },
-                        { text: "Penaltı çalışması yapacağız, daha dikkatli olmalıydı.", effect: { playerMorale: -3 } }
+                        { text: "Penaltı çalışması yapacağız, daha dikkatli olmalıydı.", effect: { playerMorale: -3, trustUpdate: { players: -3 } } }
                     ]
                 },
                 {
                     question: "{player} kritik bir anda penaltıyı kaçırdı ve maçın gidişatı değişti. Sorumluluğu ona mı yüklüyorsunuz?",
                     options: [
                         { text: "Tek bir oyuncuyu suçlamak adil değil.", effect: { playerMorale: 3, teamMorale: 2 } },
-                        { text: "Evet, bu seviyede bu hatalar pahalıya patlar.", effect: { playerMorale: -5 } },
+                        { text: "Evet, bu seviyede bu hatalar pahalıya patlar.", effect: { playerMorale: -5, trustUpdate: { players: -3 } } },
                         { text: "Sorumluluk hepimizin, maçı tek bir pozisyona indirgemek yanlış.", effect: { teamMorale: 1 } }
                     ]
                 },
@@ -421,7 +421,7 @@ const PostMatchInterview = ({
                     options: [
                         { text: "Form durumuna göre karar vereceğiz, kim hazırsa o atar.", effect: { playerMorale: -2 } },
                         { text: "Hayır, ona güvenim tam. Bir dahaki sefer atacak.", effect: { playerMorale: 5, trustUpdate: { fans: 3 } } },
-                        { text: "Evet, penaltı sorumluluğunu değiştirmeyi düşünüyoruz.", effect: { playerMorale: -8 } }
+                        { text: "Evet, penaltı sorumluluğunu değiştirmeyi düşünüyoruz.", effect: { playerMorale: -8, trustUpdate: { players: -3 } } }
                     ]
                 },
                 {
@@ -469,7 +469,7 @@ const PostMatchInterview = ({
                     options: [
                         { text: "Hayır, tamamen talihsiz bir pozisyondu.", effect: { playerMorale: 4 } },
                         { text: "Fiziksel yüklenmeleri gözden geçirmemiz lazım.", effect: { teamMorale: -1 } },
-                        { text: "{player} daha dikkatli olmalıydı.", effect: { playerMorale: -6 } }
+                        { text: "{player} daha dikkatli olmalıydı.", effect: { playerMorale: -6, trustUpdate: { players: -3 } } }
                     ]
                 },
                 {
@@ -638,7 +638,7 @@ const PostMatchInterview = ({
                 options: [
                     { text: "Sorumluluk tamamen bende.", effect: { teamMorale: 5, trustUpdate: { board: -2 } } }, // Taking blame helps team
                     { text: "Hakem kararları oyunun önüne geçti.", effect: { teamMorale: 2, trustUpdate: { referees: -5 } } },
-                    { text: "Bu performans bizim seviyemiz değil.", effect: { teamMorale: -5 } } // Criticism
+                    { text: "Bu performans bizim seviyemiz değil.", effect: { teamMorale: -5, trustUpdate: { players: -3 } } } // Criticism
                 ]
             },
             {
@@ -660,8 +660,8 @@ const PostMatchInterview = ({
             {
                 question: "Rakip çok rahat pozisyon buldu. Savunmadaki zaaflar sizi endişelendiriyor mu?",
                 options: [
-                    { text: "Evet, acil çözüm üretmeliyiz.", effect: { teamMorale: -5 } },
-                    { text: "Bireysel hatalar vardı.", effect: { teamMorale: -3 } },
+                    { text: "Evet, acil çözüm üretmeliyiz.", effect: { teamMorale: -5, trustUpdate: { players: -3 } } },
+                    { text: "Bireysel hatalar vardı.", effect: { teamMorale: -3, trustUpdate: { players: -3 } } },
                     { text: "Bugün kötü günümüzdü.", effect: { teamMorale: -1 } }
                 ]
             },
@@ -692,9 +692,9 @@ const PostMatchInterview = ({
             {
                 question: "Orta sahada tamamen ezildiniz. Kadro kaliteniz yeterli değil mi?",
                 options: [
-                    { text: "Kadroda eksikler var, kabul ediyorum.", effect: { teamMorale: -3 } },
+                    { text: "Kadroda eksikler var, kabul ediyorum.", effect: { teamMorale: -3, trustUpdate: { players: -3 } } },
                     { text: "Bugün kötüydük ama genel olarak iyiyiz.", effect: { teamMorale: -1 } },
-                    { text: "Orta saha görevini yapamadı.", effect: { teamMorale: -4 } }
+                    { text: "Orta saha görevini yapamadı.", effect: { teamMorale: -4, trustUpdate: { players: -3 } } }
                 ]
             },
             {
@@ -710,7 +710,7 @@ const PostMatchInterview = ({
                 options: [
                     { text: "Hazırlıksızlıktı.", effect: { teamMorale: -3 } },
                     { text: "Şanssızlık da vardı.", effect: { teamMorale: -1 } },
-                    { text: "Her yönüyle kötüydük.", effect: { teamMorale: -4 } }
+                    { text: "Her yönüyle kötüydük.", effect: { teamMorale: -4, trustUpdate: { players: -3 } } }
                 ]
             },
             {
@@ -726,13 +726,13 @@ const PostMatchInterview = ({
                 options: [
                     { text: "Hayır, şaşkınım.", effect: { teamMorale: -2 } },
                     { text: "Bazı işaretler vardı.", effect: { teamMorale: -1 } },
-                    { text: "Kötü performansı kabul ediyorum.", effect: { teamMorale: -3 } }
+                    { text: "Kötü performansı kabul ediyorum.", effect: { teamMorale: -3, trustUpdate: { players: -3 } } }
                 ]
             },
             {
                 question: "Maç boyunca kenardan çok sinirliydiniz. Oyuncular sizi hayal kırıklığına mı uğrattı?",
                 options: [
-                    { text: "Evet, daha iyisini bekliyordum.", effect: { teamMorale: -4 } },
+                    { text: "Evet, daha iyisini bekliyordum.", effect: { teamMorale: -4, trustUpdate: { players: -3 } } },
                     { text: "Hayal kırıklığı değil, konsantrasyon.", effect: { teamMorale: -1 } },
                     { text: "Hepimiz kötüydük.", effect: { teamMorale: -2 } }
                 ]
@@ -742,7 +742,7 @@ const PostMatchInterview = ({
                 options: [
                     { text: "Çok etkiledi.", effect: { teamMorale: -2 } },
                     { text: "Bahane değil.", effect: { teamMorale: 1 } },
-                    { text: "Alternatifler yeterli değildi.", effect: { teamMorale: -3 } }
+                    { text: "Alternatifler yeterli değildi.", effect: { teamMorale: -3, trustUpdate: { players: -3 } } }
                 ]
             },
             {
@@ -765,8 +765,8 @@ const PostMatchInterview = ({
                 question: "Savunmada yapılan hatalar pahalıya patladı. Bu oyunculara güveniniz sarsıldı mı?",
                 options: [
                     { text: "Hatalar olur, arkasında duracağım.", effect: { teamMorale: 5 } },
-                    { text: "Bazı oyuncular sorumluluk almakta zorlandı.", effect: { teamMorale: -3 } },
-                    { text: "Bu seviyede bu hatalar kabul edilemez.", effect: { teamMorale: -5 } }
+                    { text: "Bazı oyuncular sorumluluk almakta zorlandı.", effect: { teamMorale: -3, trustUpdate: { players: -3 } } },
+                    { text: "Bu seviyede bu hatalar kabul edilemez.", effect: { teamMorale: -5, trustUpdate: { players: -3 } } }
                 ]
             }
         ],
