@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, Position, Mentality } from './types';
 import { initializeTeams, RIVALRIES } from './constants';
@@ -254,7 +255,7 @@ const App: React.FC = () => {
                         reason += "Şampiyonluk (+25). ";
                     } else {
                         boardChange -= 30; // Şampiyon Olamama
-                        reason += "Şampiyonluk Kaçtı (-30). ";
+                        reason += "Şampiyonluk Kaçtı (-50). ";
                     }
 
                     if (myRank >= 2 && myRank <= 4) {
@@ -412,15 +413,12 @@ const App: React.FC = () => {
 
         // A. Match Result Logic (Fans & Board)
         
-        // --- BOARD TRUST LOGIC (DERBY) ---
-        if (isDerby) {
-            // High Tier: Win +5, Loss -5
-            // Low Tier: Win +3, Loss -3
-            if (res === 'WIN') {
-                updatedManager.trust.board = Math.min(100, updatedManager.trust.board + (isHighTier ? 5 : 3));
-            } else if (res === 'LOSS') {
-                updatedManager.trust.board = Math.max(0, updatedManager.trust.board + (isHighTier ? -5 : -3));
-            }
+        // --- BOARD TRUST LOGIC (NEW SIMPLE LOGIC) ---
+        // Yönetim güveni galibiyetten sonra +2 artar eğer mağlubiyetse -2 güven azalır
+        if (res === 'WIN') {
+            updatedManager.trust.board = Math.min(100, updatedManager.trust.board + 2);
+        } else if (res === 'LOSS') {
+            updatedManager.trust.board = Math.max(0, updatedManager.trust.board - 2);
         }
 
         // --- FAN TRUST LOGIC ---
@@ -429,8 +427,8 @@ const App: React.FC = () => {
                 if (goalDiff >= 4) fanTrustChange += isHighTier ? 10 : 15; // Different derby win (Big Margin)
                 else fanTrustChange += isHighTier ? 5 : 7; // Derby Win
             } else if (res === 'DRAW') {
-                // NEW: Derby Draw Penalty
-                fanTrustChange += -3;
+                // RULE: Derby Draw Penalty (-4)
+                fanTrustChange += -4; 
             } else if (res === 'LOSS') {
                 if (Math.abs(goalDiff) >= 4) fanTrustChange += isHighTier ? -15 : -10; // Different derby loss
                 else fanTrustChange += isHighTier ? -6 : -7; // Derby Loss
@@ -440,40 +438,80 @@ const App: React.FC = () => {
             if (res === 'WIN') {
                 if (goalDiff >= 4) fanTrustChange += isHighTier ? 3 : 5; // Big Win
                 else fanTrustChange += isHighTier ? 1 : 2; // Normal Win
+            } else if (res === 'DRAW') {
+                // RULE: High Tier Normal Draw Penalty (-3)
+                if (isHighTier) fanTrustChange += -3;
             } else if (res === 'LOSS') {
-                // NEW: Fixed Normal Loss Penalty to assure decrease
+                // Fixed Normal Loss Penalty to assure decrease
                 fanTrustChange += -4;
             }
         }
 
-        // B. Streak Logic (5 Matches)
-        // Get past 4 matches + current match = 5 matches
+        // B. Streak Logic (5 Matches for standard streaks, 3 Matches for specific loss/draw streaks)
+        // Get past matches including current one implicitly by using `updatedFixtures`
         const pastMatchesForStreak = updatedFixtures
             .filter(f => f.played && f.week <= gameState.currentWeek && (f.homeTeamId === myTeamId || f.awayTeamId === myTeamId))
-            .sort((a, b) => b.week - a.week) // Descending
-            .slice(0, 5);
+            .sort((a, b) => b.week - a.week); // Descending (Newest first)
 
-        if (pastMatchesForStreak.length === 5) {
-            let winCount = 0;
+        // Rule: 3 Consecutive Losses (-7) and 3 Consecutive Draws (-5)
+        let streakLossCount = 0;
+        let streakDrawCount = 0;
+
+        // Check the last 3 matches (including current one which is at index 0)
+        for(let i=0; i<3; i++) {
+            const f = pastMatchesForStreak[i]; 
+            if (!f) break;
+            const isH = f.homeTeamId === myTeamId;
+            const mS = isH ? f.homeScore! : f.awayScore!;
+            const oS = isH ? f.awayScore! : f.homeScore!;
+            
+            if (mS < oS) {
+                streakLossCount++;
+                // Draw streak broken if loss
+            } else if (mS === oS) {
+                streakDrawCount++;
+                // Loss streak broken if draw
+            } else {
+                // Win breaks both streaks
+                break;
+            }
+        }
+
+        if (streakLossCount === 3) {
+            fanTrustChange += -7;
+        }
+        if (streakDrawCount === 3) {
+            fanTrustChange += -5;
+        }
+
+        // Existing 5-Win Streak Logic Check (BONUS REMOVED BY REQUEST)
+        if (pastMatchesForStreak.length >= 5) {
+            // let winCount = 0; // Removed win bonus calculation
             let lossCount = 0;
             
-            pastMatchesForStreak.forEach(f => {
+            for(let i=0; i<5; i++) {
+                const f = pastMatchesForStreak[i];
                 const isH = f.homeTeamId === myTeamId;
                 const mS = isH ? f.homeScore! : f.awayScore!;
                 const oS = isH ? f.awayScore! : f.homeScore!;
-                if (mS > oS) winCount++;
-                else if (mS < oS) lossCount++;
-            });
+                // if (mS > oS) winCount++;
+                if (mS < oS) lossCount++;
+            }
 
+            // 5-Win Streak Bonus REMOVED
+            /*
             if (winCount === 5) {
                 fanTrustChange += isHighTier ? 5 : 11;
-            } else if (lossCount === 5) {
+            } 
+            */
+            
+            // 5-Loss Streak Penalty kept
+            if (lossCount === 5) {
                 fanTrustChange += isHighTier ? -15 : -7;
             }
         }
 
         // C. League Standing (Leader Logic)
-        // Temporarily calculate standings to check if #1
         const tempTeams = processedTeams.map(t => {
              const playedF = updatedFixtures.filter(f => f.played && (f.homeTeamId === t.id || f.awayTeamId === t.id));
              let pts = 0, gf = 0, ga = 0;
@@ -495,21 +533,18 @@ const App: React.FC = () => {
         }
 
         // D. Youth Usage (<20 years old in Starting XI)
-        // Assuming the first 11 in the players array are the starters (based on Game Engine logic)
         const startingXI = myTeam.players.slice(0, 11);
         const youthPlayers = startingXI.filter(p => p.age < 20).length;
-        // Condition: "Daha çok süre alması" -> Let's assume 2 or more starters under 20 is significant
         if (youthPlayers >= 2) {
             fanTrustChange += isHighTier ? 3 : 6;
         }
 
         // E. Tactics Logic
         const attackingMentalities = [Mentality.ATTACKING, Mentality.ALL_OUT, Mentality.POSITIVE];
-        // Checking based on string values or Enum reference
         if (attackingMentalities.includes(myTeam.mentality)) {
             fanTrustChange += isHighTier ? 2 : 3;
         } else if (myTeam.mentality === Mentality.DEFENSIVE || myTeam.mentality.includes('Defansif') || myTeam.mentality.includes('Otobüs')) {
-            fanTrustChange += -3; // Same for both tiers
+            fanTrustChange += -3; 
         }
 
         // Apply Fan Trust Change
@@ -525,16 +560,8 @@ const App: React.FC = () => {
             updatedManager.stats.losses++;
             updatedManager.trust.players = Math.max(0, updatedManager.trust.players - 1);
             
-            // Check for 3 consecutive losses streak (Player Trust Penalty)
-            let consecutiveLossCount = 0; 
-            for(let i=0; i<3; i++) {
-                const f = pastMatchesForStreak[i]; // Newest first
-                if (!f) break;
-                const isH = f.homeTeamId === myTeamId;
-                if ((isH ? f.homeScore! : f.awayScore!) < (isH ? f.awayScore! : f.homeScore!)) consecutiveLossCount++;
-                else break;
-            }
-            if (consecutiveLossCount === 3) {
+            // Check for 3 consecutive losses streak (Player Trust Penalty) - Reusing logic
+            if (streakLossCount === 3) {
                 updatedManager.trust.players = Math.max(0, updatedManager.trust.players - 5);
             }
         }

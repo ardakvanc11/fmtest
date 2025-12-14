@@ -24,7 +24,7 @@ export const INTERVIEW_TEMPLATES: Record<string, {q: string, opts: InterviewOpti
         {
             q: `Kırmızı kart oyun planınızı nasıl etkiledi? Hakem kararı doğru muydu?`,
             opts: [
-                { id: '1', text: "Hakem bizi resmen doğradı, karar skandaldı!", effect: { trustUpdate: { board: -5, fans: 10, referees: -20, players: 3 }, description: "Federasyondan ceza riski!" } },
+                { id: '1', text: "Hakem bizi resmen doğradı, karar skandaldı!", effect: { trustUpdate: { board: -5, referees: -20, players: 3 }, description: "Federasyondan ceza riski!" } },
                 { id: '2', text: "Oyuncumun yaptığı disiplinsizliği kabul edemem, ceza alacak.", effect: { teamMorale: -10, trustUpdate: { board: 5 }, description: "Otorite sağlandı." } },
                 { id: '3', text: "Futbolda bunlar var, 10 kişiyle de iyi direndik.", effect: { teamMorale: 5, trustUpdate: { players: 3 }, description: "Takıma sahip çıkıldı." } }
             ]
@@ -34,7 +34,7 @@ export const INTERVIEW_TEMPLATES: Record<string, {q: string, opts: InterviewOpti
         {
             q: `Hocam bu skor tam bir hezimet. Taraftarlar istifa diye bağırıyor, ne diyeceksiniz?`,
             opts: [
-                { id: '1', text: "Sorumluluk tamamen bende. Özür dilerim.", effect: { trustUpdate: { fans: 5, board: -10, players: 3 }, description: "Dürüstlük takdir edildi ama koltuk sallantıda." } },
+                { id: '1', text: "Sorumluluk tamamen bende. Özür dilerim.", effect: { trustUpdate: { board: -10, players: 3 }, description: "Dürüstlük takdir edildi ama koltuk sallantıda." } },
                 { id: '2', text: "Bu kadroyla ancak bu kadar oluyor, takviye şart.", effect: { teamMorale: -20, trustUpdate: { board: -10 }, description: "Yönetim ve oyuncularla kriz!" } },
                 { id: '3', text: "Bunu bir yol kazası olarak görüyorum, haftaya telafi edeceğiz.", effect: { description: "Soğukkanlılık korundu." } }
             ]
@@ -53,8 +53,8 @@ export const INTERVIEW_TEMPLATES: Record<string, {q: string, opts: InterviewOpti
             q: `Harika bir galibiyet! Takımın bu formunu neye borçlusunuz?`,
             opts: [
                 { id: '1', text: "Çok çalışıyoruz, antrenmanların karşılığını aldık.", effect: { teamMorale: 5, trustUpdate: { players: 3 }, description: "Çalışma vurgusu." } },
-                { id: '2', text: "Taktiksel zekam sayesinde kazandık.", effect: { trustUpdate: { fans: -5, players: -5 }, description: "Egoist algılandı." } },
-                { id: '3', text: "Taraftarımızın desteğiyle kazandık, onlar harika.", effect: { trustUpdate: { fans: 15 }, description: "Taraftarla bağ güçlendi." } }
+                { id: '2', text: "Taktiksel zekam sayesinde kazandık.", effect: { trustUpdate: { players: -5 }, description: "Egoist algılandı." } },
+                { id: '3', text: "Taraftarımızın desteğiyle kazandık, onlar harika.", effect: { description: "Taraftarla bağ güçlendi." } }
             ]
         }
     ],

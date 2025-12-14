@@ -246,11 +246,11 @@ export const getPressQuestion = async (
             aiOptions = [
                 { id: '1', text: "Oyuncularımla gurur duyuyorum, hepsi harikaydı.", effect: { teamMorale: 5, description: "Takıma güven." } },
                 { id: '2', text: "Daha yolun başındayız, şımarmamak lazım.", effect: { description: "Disiplin." } },
-                { id: '3', text: "Bu galibiyet taraftarımıza armağan olsun.", effect: { trustUpdate: { fans: 10 }, description: "Taraftar mutlu." } }
+                { id: '3', text: "Bu galibiyet taraftarımıza armağan olsun.", effect: { description: "Taraftar mutlu." } }
             ];
         } else if (ctx.result === 'LOSS') {
              aiOptions = [
-                { id: '1', text: "Sorumluluğu alıyorum, düzelteceğiz.", effect: { trustUpdate: { board: -5, fans: 5 }, description: "Liderlik." } },
+                { id: '1', text: "Sorumluluğu alıyorum, düzelteceğiz.", effect: { trustUpdate: { board: -5 }, description: "Liderlik." } },
                 { id: '2', text: "Bazı şeyler istediğimiz gibi gitmedi, hakem de yardımcı olmadı.", effect: { trustUpdate: { referees: -5 }, description: "Bahane/Hakem." } },
                 { id: '3', text: "Bu maçı unutup önümüze bakacağız.", effect: { description: "Profesyonel." } }
             ];
