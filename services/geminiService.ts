@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { Team, Player, TacticStyle, InterviewQuestion, InterviewOption, HalftimeTalkOption, MatchEvent, MatchStats } from '../types';
 import { INTERVIEW_TEMPLATES } from '../data/questionsPool';
@@ -250,7 +251,7 @@ export const getPressQuestion = async (
             ];
         } else if (ctx.result === 'LOSS') {
              aiOptions = [
-                { id: '1', text: "Sorumluluğu alıyorum, düzelteceğiz.", effect: { trustUpdate: { board: -5 }, description: "Liderlik." } },
+                { id: '1', text: "Sorumluluğu alıyorum, düzelteceğiz.", effect: { trustUpdate: { board: 0 }, description: "Liderlik." } },
                 { id: '2', text: "Bazı şeyler istediğimiz gibi gitmedi, hakem de yardımcı olmadı.", effect: { trustUpdate: { referees: -5 }, description: "Bahane/Hakem." } },
                 { id: '3', text: "Bu maçı unutup önümüze bakacağız.", effect: { description: "Profesyonel." } }
             ];

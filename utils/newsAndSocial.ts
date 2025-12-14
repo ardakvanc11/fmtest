@@ -1,8 +1,7 @@
 
-
 import { Fixture, Team, NewsItem, Message, Player } from '../types';
 import { generateId, RIVALRIES } from '../constants';
-import { FAN_NAMES, DERBY_TWEETS_WIN, DERBY_TWEETS_LOSS, FAN_TWEETS_WIN, FAN_TWEETS_LOSS, FAN_TWEETS_DRAW } from '../data/tweetPool';
+import { FAN_NAMES, DERBY_TWEETS_WIN, DERBY_TWEETS_LOSS, FAN_TWEETS_WIN, FAN_TWEETS_LOSS, FAN_TWEETS_DRAW, RESIGNATION_TWEETS } from '../data/tweetPool';
 import { getGameDate, isTransferWindowOpen } from './calendarAndFixtures';
 
 // --- FAN TWEETS LOGIC ---
@@ -68,6 +67,25 @@ export const generateMatchTweets = (fixture: Fixture, teams: Team[], isUserTeam:
         });
     }
 
+    return tweets;
+};
+
+export const generateResignationTweets = (week: number, myTeam: Team): NewsItem[] => {
+    const tweets: NewsItem[] = [];
+    const count = 3; // Generate 3 angry tweets
+
+    for(let i=0; i<count; i++) {
+        const fan = FAN_NAMES[Math.floor(Math.random() * FAN_NAMES.length)];
+        const content = RESIGNATION_TWEETS[Math.floor(Math.random() * RESIGNATION_TWEETS.length)];
+        
+        tweets.push({
+            id: generateId(),
+            week,
+            type: 'MATCH', // Use MATCH type for tweets
+            title: `${fan.name}|${fan.handle}|${myTeam.name}`,
+            content: content
+        });
+    }
     return tweets;
 };
 

@@ -240,3 +240,21 @@ export const FAN_TWEETS_DRAW = [
     "Rakibi ezdik ama gol yok...",
     "Kalecileri günündeydi, yapacak bir şey yok.",
 ];
+
+export const RESIGNATION_TWEETS = [
+    "YETER ARTIK HOCA İSTİFA!",
+    "Bu takım senin staj yerin değil, defol git!",
+    "Yönetim uyuma hocayı gönder!",
+    "Takımın başında hoca yok, turist var sanki!",
+    "Sabrımız taştı, tazminatını verin gönderin şunu.",
+    "Hoca istifa! Hoca istifa! Hoca istifa!",
+    "Bu futbolu izlemek zorunda mıyız? İstifa et kurtulalım.",
+    "Takımın içine ettin, git artık!",
+    "Böyle rezalet görülmedi, utanman varsa istifa edersin.",
+    "Seni takımın başında görmek istemiyoruz!",
+    "Yazıklar olsun oynattığın futbola, İSTİFA!",
+    "Yönetim istifa seslerini duymuyor mu?",
+    "Hoca bavulunu topla, bu şehri terk et.",
+    "Bir daha kulübede görmek istemiyoruz seni.",
+    "#Hocaİstifa tagine destek verin renktaşlar!"
+];

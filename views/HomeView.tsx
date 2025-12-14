@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { ManagerProfile, Team, Fixture } from '../types';
 import { calculateForm } from '../utils/gameEngine';
-import { Home, User, FileText, Heart, History, Calendar, Star, Feather } from 'lucide-react';
+import { Home, User, FileText, Heart, History, Calendar, Star, Feather, AlertTriangle } from 'lucide-react';
 import StandingsTable from '../components/shared/StandingsTable';
 
 const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTeamClick, onFixtureClick }: { manager: ManagerProfile, team: Team, teams: Team[], myTeamId: string, currentWeek: number, fixtures: Fixture[], onTeamClick: (id: string) => void, onFixtureClick?: (f: Fixture) => void }) => {
@@ -90,9 +91,15 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                                     <div className="text-slate-500 dark:text-slate-400 text-xs uppercase font-bold">Takım Gücü</div>
                                     <div className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">{Math.round(team.strength)}</div>
                                 </div>
-                                <div className="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg text-center">
+                                <div className="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg text-center relative">
                                     <div className="text-slate-500 dark:text-slate-400 text-xs uppercase font-bold">Taraftar</div>
                                     <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">{(team.fanBase/1000000).toFixed(1)}M</div>
+                                    {/* Fan Trust Warning on Home */}
+                                    {manager.trust.fans < 40 && (
+                                        <div className="absolute top-2 right-2" title="Güven Düşük!">
+                                            <AlertTriangle size={16} className="text-red-500 animate-pulse"/>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg text-center">
                                     <div className="text-slate-500 dark:text-slate-400 text-xs uppercase font-bold">Moral</div>
@@ -361,12 +368,22 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                         <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Genel Güven</h2>
                         <div className="space-y-6">
                             <div>
-                                <div className="flex justify-between mb-1"><span className="text-slate-500 dark:text-slate-400">Yönetim</span><span className="font-bold">{manager.trust.board}%</span></div>
-                                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{width: `${manager.trust.board}%`}}/></div>
+                                <div className="flex justify-between mb-1">
+                                    <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                                        Yönetim {manager.trust.board < 35 && <AlertTriangle size={14} className="text-red-500 animate-pulse"/>}
+                                    </span>
+                                    <span className={`font-bold ${manager.trust.board < 35 ? 'text-red-500' : ''}`}>{manager.trust.board}%</span>
+                                </div>
+                                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className={`h-full ${manager.trust.board < 35 ? 'bg-red-500' : 'bg-blue-500'}`} style={{width: `${manager.trust.board}%`}}/></div>
                             </div>
                             <div>
-                                <div className="flex justify-between mb-1"><span className="text-slate-500 dark:text-slate-400">Taraftar</span><span className="font-bold">{manager.trust.fans}%</span></div>
-                                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className="h-full bg-green-500" style={{width: `${manager.trust.fans}%`}}/></div>
+                                <div className="flex justify-between mb-1">
+                                    <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                                        Taraftar {manager.trust.fans < 40 && <AlertTriangle size={14} className="text-red-500 animate-pulse"/>}
+                                    </span>
+                                    <span className={`font-bold ${manager.trust.fans < 40 ? 'text-red-500' : ''}`}>{manager.trust.fans}%</span>
+                                </div>
+                                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className={`h-full ${manager.trust.fans < 40 ? 'bg-red-500' : 'bg-green-500'}`} style={{width: `${manager.trust.fans}%`}}/></div>
                             </div>
                             <div>
                                 <div className="flex justify-between mb-1"><span className="text-slate-500 dark:text-slate-400">Oyuncular</span><span className="font-bold">{manager.trust.players}%</span></div>
@@ -378,63 +395,6 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                             </div>
                         </div>
                     </div>
-                 </div>
-            )}
-            
-            {tab === 'HISTORY' && (
-                 <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                     <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Detaylı Kariyer Geçmişi</h2>
-                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 text-center">
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-3xl font-bold text-slate-900 dark:text-white">1</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Kulüp</div>
-                        </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{manager.stats.trophies}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Kupa</div>
-                        </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-3xl font-bold text-green-600 dark:text-green-400">{manager.stats.wins}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Galibiyet</div>
-                        </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-3xl font-bold text-slate-600 dark:text-slate-300">{manager.stats.draws}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Beraberlik</div>
-                        </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-3xl font-bold text-red-600 dark:text-red-400">{manager.stats.losses}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Mağlubiyet</div>
-                        </div>
-                        
-                         <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-2xl font-bold text-slate-900 dark:text-white">{manager.stats.goalsFor}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Atılan Gol</div>
-                        </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-2xl font-bold text-slate-900 dark:text-white">{manager.stats.goalsAgainst}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Yenilen Gol</div>
-                        </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{manager.stats.playersBought}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Transfer (Alınan)</div>
-                        </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{manager.stats.playersSold}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Transfer (Satılan)</div>
-                        </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-xl font-bold text-slate-900 dark:text-white">{manager.stats.recordTransferFee} M€</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Rekor Transfer</div>
-                        </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg col-span-2">
-                            <div className="text-3xl font-bold text-red-600 dark:text-red-400">{manager.stats.moneySpent.toFixed(1)} M€</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Toplam Harcanan</div>
-                        </div>
-                         <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg col-span-3">
-                            <div className="text-3xl font-bold text-green-600 dark:text-green-400">{manager.stats.moneyEarned.toFixed(1)} M€</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Toplam Gelir</div>
-                        </div>
-                     </div>
                  </div>
             )}
         </div>
