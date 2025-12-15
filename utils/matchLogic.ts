@@ -1,5 +1,4 @@
 
-
 import { Team, Player, MatchEvent, MatchStats, Position, Tackling, PlayerPerformance, Fixture } from '../types';
 import { INJURY_TYPES, RIVALRIES } from '../constants';
 import { MATCH_INFO_MESSAGES } from '../data/infoPool';
@@ -566,8 +565,9 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
             }
         }
 
+        // SLOWER GENERAL DECAY ADJUSTMENTS
         if (result === 'LOSS') {
-            teamMoralePenalty += 2; 
+            teamMoralePenalty += 1; // Was 2 (Reduced)
             if (consecutiveLosses > 1) {
                 teamMoralePenalty += 1;
             }
@@ -576,9 +576,9 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
         // Find Opponent Name for Derby Check
         const matchEventsOpponentName = events.find(e => e.teamName !== team.name)?.teamName || '';
         const isDerbyLoss = result === 'LOSS' && RIVALRIES.some(pair => pair.includes(team.name) && pair.includes(matchEventsOpponentName));
-        if (isDerbyLoss) teamMoralePenalty += 4;
+        if (isDerbyLoss) teamMoralePenalty += 3; // Was 4 (Reduced)
 
-        if (result === 'LOSS' && (oppGoals - myGoals) >= 4) teamMoralePenalty += 4; 
+        if (result === 'LOSS' && (oppGoals - myGoals) >= 4) teamMoralePenalty += 2; // Was 4 (Reduced significantly)
 
         // 4. PROCESS PLAYERS
         const updatedPlayers = team.players.map((p, index) => {
@@ -614,8 +614,7 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
                 player.seasonStats.ratings.push(matchRating);
                 
                 // DECREASE STAMINA FOR PLAYING A MATCH
-                // Base drop + Random
-                const staminaDrop = Math.floor(Math.random() * 5) + 3; // 3-7 points drop per match
+                const staminaDrop = 5; 
                 player.stats.stamina = Math.max(0, player.stats.stamina - staminaDrop);
             } else {
                 // RECOVER STAMINA FOR BENCH/RESERVE (If not injured)
@@ -723,20 +722,20 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
                         if (playedInPrev) consecutiveApps++;
                         else break;
                     }
-                    if (consecutiveApps >= 5) moraleChange += 3; // UPDATED
+                    if (consecutiveApps >= 5) moraleChange += 3; 
 
                     // 7. High Rating (+1 for > 8.0)
                     if (matchRating > 8.0) moraleChange += 1;
 
-                    // 8. MVP (+2) (Changed from +3)
-                    if (mvpId && p.id === mvpId) moraleChange += 2; // UPDATED
+                    // 8. MVP (+2)
+                    if (mvpId && p.id === mvpId) moraleChange += 2; 
 
-                    // --- NEGATIVE FACTORS ---
-                    if (matchRating < 5.5) moraleChange -= 3; 
+                    // --- NEGATIVE FACTORS (SLOWER DECAY) ---
+                    if (matchRating < 5.5) moraleChange -= 2; // Was 3 (Reduced)
                     else if (matchRating < 6.0) moraleChange -= 1; 
 
                     const missedPen = teamEvents.some(e => e.type === 'MISS' && e.playerId === p.id && e.description.toLowerCase().includes('penaltı'));
-                    if (missedPen) moraleChange -= 4; 
+                    if (missedPen) moraleChange -= 3; // Was 4 (Reduced)
 
                     const isGkSlot = index === 0;
                     if ((p.position === 'GK' && !isGkSlot) || (p.position !== 'GK' && isGkSlot)) moraleChange -= 1; 
@@ -748,21 +747,21 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
                     }
 
                 } else {
-                    // --- PLAYER DID NOT PLAY ---
-                    let matchesMissed = 1; 
-                    for (let i = 0; i < 4; i++) {
-                        const f = teamPastFixtures[i];
-                        if (!f || !f.stats) break;
-                        const isHomeF = f.homeTeamId === team.id;
-                        const ratingsList = isHomeF ? f.stats.homeRatings : f.stats.awayRatings;
-                        const playedThatMatch = ratingsList.some(r => r.playerId === p.id);
-                        if (!playedThatMatch) matchesMissed++;
-                        else break; 
+                    // --- PLAYER DID NOT PLAY (KADRO DIŞI / YEDEK) ---
+                    // Rule: Morale drops because they didn't play, but with caps.
+                    // < 60 Morale -> Max 1 drop
+                    // < 75 Morale -> Max 2 drop
+                    // >= 75 Morale -> Standard drop (e.g., 3)
+                    
+                    let notPlayingPenalty = 3; // Default penalty for high morale players
+
+                    if (player.morale < 60) {
+                        notPlayingPenalty = 1;
+                    } else if (player.morale < 75) {
+                        notPlayingPenalty = 2;
                     }
 
-                    if (matchesMissed >= 4 && player.morale > 20) {
-                        moraleChange -= 3;
-                    }
+                    moraleChange -= notPlayingPenalty;
                 }
             }
 
