@@ -1,12 +1,15 @@
-
 import React, { useState } from 'react';
 import { ManagerProfile, Team, Fixture } from '../types';
-import { calculateForm } from '../utils/gameEngine';
-import { Home, User, FileText, Heart, Calendar, Star, Feather, AlertTriangle, Clock } from 'lucide-react';
+import { calculateForm, calculateManagerPower } from '../utils/gameEngine';
+import { Home, User, FileText, Heart, Calendar, Star, Feather, AlertTriangle, Clock, Trophy, Wallet, BarChart3, Building2, ArrowRightLeft, TrendingUp, TrendingDown, Power, Check, X, Crown, LogOut } from 'lucide-react';
 import StandingsTable from '../components/shared/StandingsTable';
+import HallOfFameModal from '../modals/HallOfFameModal';
 
-const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTeamClick, onFixtureClick, playTime }: { manager: ManagerProfile, team: Team, teams: Team[], myTeamId: string, currentWeek: number, fixtures: Fixture[], onTeamClick: (id: string) => void, onFixtureClick?: (f: Fixture) => void, playTime: number }) => {
+const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTeamClick, onFixtureClick, playTime, onRetire, onTerminateContract }: { manager: ManagerProfile, team: Team, teams: Team[], myTeamId: string, currentWeek: number, fixtures: Fixture[], onTeamClick: (id: string) => void, onFixtureClick?: (f: Fixture) => void, playTime: number, onRetire?: () => void, onTerminateContract?: () => void }) => {
     const [tab, setTab] = useState('GENERAL');
+    const [retireConfirm, setRetireConfirm] = useState(false);
+    const [terminateConfirm, setTerminateConfirm] = useState(false);
+    const [showHallOfFame, setShowHallOfFame] = useState(false);
     
     // Calculate stats
     const nextMatch = fixtures.find(f => f.week === currentWeek && (f.homeTeamId === myTeamId || f.awayTeamId === myTeamId));
@@ -15,7 +18,7 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
     // Match Calendar Logic
     const myFixtures = fixtures
         .filter(f => f.homeTeamId === myTeamId || f.awayTeamId === myTeamId)
-        .sort((a, b) => a.week - b.week);
+        .sort((a, b) => a.week - a.week);
     
     // Past 2 matches (played, reverse order for most recent first)
     const pastMatches = myFixtures.filter(f => f.played).slice(-2).reverse();
@@ -50,7 +53,7 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
         const h = Math.floor(seconds / 3600);
         const m = Math.floor((seconds % 3600) / 60);
         
-        if (h > 0) return `${h} Saat ${m} Dk`;
+        if (h > 0) return `${h} Sa ${m} Dk`;
         return `${m} Dk`;
     };
 
@@ -64,8 +67,18 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
     // Check for critical trust issues to display alert on tab
     const hasTrustIssue = manager.trust.board < 35 || manager.trust.fans < 40;
 
+    // --- MANAGER POWER CALCULATION ---
+    const currentManagerPower = calculateManagerPower(manager.stats);
+
+    // --- WIN PERCENTAGE CALCULATION ---
+    const winPercentage = manager.stats.matchesManaged > 0 
+        ? ((manager.stats.wins / manager.stats.matchesManaged) * 100).toFixed(1) 
+        : '0.0';
+
     return (
         <div className="space-y-6 pb-10">
+            {showHallOfFame && <HallOfFameModal manager={manager} onClose={() => setShowHallOfFame(false)} />}
+
             {/* New Tabs Style - Scrollable on mobile */}
             <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-700/50 px-2 overflow-x-auto no-scrollbar">
                 {tabs.map((t) => {
@@ -236,83 +249,160 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
             )}
             
              {tab === 'PROFILE' && (
-                <div className="bg-white dark:bg-slate-800 p-8 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div className="bg-white dark:bg-slate-800 p-8 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative">
                      <div className="flex flex-col md:flex-row items-center gap-6 mb-8 text-center md:text-left">
-                        <div className="w-24 h-24 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center border-4 border-yellow-500 shrink-0">
+                        <div className="w-24 h-24 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center border-4 border-yellow-500 shrink-0 shadow-lg">
                             <User size={48} className="text-slate-400"/>
                         </div>
                         <div>
                             <h2 className="text-3xl font-bold text-slate-900 dark:text-white">{manager.name}</h2>
                             <p className="text-slate-500 dark:text-slate-400">{manager.nationality} • {manager.age} Yaşında</p>
                             <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
-                                <span className="text-yellow-600 dark:text-yellow-500 font-bold text-xl">Güç Seviyesi: {Math.round(manager.power)}</span>
+                                <span className="text-yellow-600 dark:text-yellow-500 font-bold text-xl">Güç Seviyesi: {currentManagerPower}</span>
                                 <Star className="fill-yellow-600 dark:fill-yellow-500 text-yellow-600 dark:text-yellow-500" size={20}/>
                             </div>
                         </div>
-                     </div>
-                     <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">Kariyer Özeti</h3>
-                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 text-center">
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-3xl font-bold text-slate-900 dark:text-white">1</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Kulüp</div>
-                        </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{manager.stats.trophies}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Kupa</div>
-                        </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-3xl font-bold text-green-600 dark:text-green-400">{manager.stats.wins}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Galibiyet</div>
-                        </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-3xl font-bold text-slate-600 dark:text-slate-300">{manager.stats.draws}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Beraberlik</div>
-                        </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-3xl font-bold text-red-600 dark:text-red-400">{manager.stats.losses}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Mağlubiyet</div>
-                        </div>
                         
-                         <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+                        {/* ACTION BUTTONS (RETIRE & HALL OF FAME) */}
+                        <div className="md:ml-auto mt-4 md:mt-0 flex flex-col gap-2 w-full md:w-auto">
+                            {!retireConfirm ? (
+                                <button 
+                                    onClick={() => setRetireConfirm(true)}
+                                    className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-2 text-sm transition-all w-full"
+                                >
+                                    <Power size={16}/> Emekli Ol
+                                </button>
+                            ) : (
+                                <div className="flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-700 p-2 rounded-lg animate-in fade-in slide-in-from-right-2 w-full">
+                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Emin misin?</span>
+                                    <button onClick={onRetire} className="bg-green-500 hover:bg-green-600 text-white p-1 rounded"><Check size={16}/></button>
+                                    <button onClick={() => setRetireConfirm(false)} className="bg-red-500 hover:bg-red-600 text-white p-1 rounded"><X size={16}/></button>
+                                </div>
+                            )}
+                            
+                            <button 
+                                onClick={() => setShowHallOfFame(true)}
+                                className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-2 text-sm transition-all shadow-lg shadow-yellow-900/20 w-full"
+                            >
+                                <Crown size={16}/> Onur Tablosu
+                            </button>
+                        </div>
+                     </div>
+                     
+                     <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">Kariyer Özeti</h3>
+                     
+                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+                        
+                        {/* ROW 1: Titles & Win Rate */}
+                        <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+                            <div className="text-2xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-1">
+                                1 <Building2 size={16} className="text-slate-400"/>
+                            </div>
+                            <div className="text-[9px] uppercase text-slate-500 dark:text-slate-400 mt-1 font-bold">Kulüp</div>
+                        </div>
+                        <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg border-2 border-yellow-500/20">
+                            <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 flex items-center justify-center gap-1">
+                                {manager.stats.leagueTitles} <Trophy size={16}/>
+                            </div>
+                            <div className="text-[9px] uppercase text-slate-500 dark:text-slate-400 mt-1 font-bold">Lig Şampiyonu</div>
+                        </div>
+                        <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg border-2 border-blue-500/20">
+                            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 flex items-center justify-center gap-1">
+                                {manager.stats.domesticCups} <Trophy size={16}/>
+                            </div>
+                            <div className="text-[9px] uppercase text-slate-500 dark:text-slate-400 mt-1 font-bold">Yerel Kupa</div>
+                        </div>
+                        <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg border-2 border-purple-500/20">
+                            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400 flex items-center justify-center gap-1">
+                                {manager.stats.europeanCups} <Trophy size={16}/>
+                            </div>
+                            <div className="text-[9px] uppercase text-slate-500 dark:text-slate-400 mt-1 font-bold">Avrupa Kupası</div>
+                        </div>
+                        <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg border-2 border-green-500/20">
+                            <div className="text-2xl font-bold text-green-600 dark:text-green-400 flex items-center justify-center gap-1">
+                                %{winPercentage} <BarChart3 size={16}/>
+                            </div>
+                            <div className="text-[9px] uppercase text-slate-500 dark:text-slate-400 mt-1 font-bold">Galibiyet %</div>
+                        </div>
+
+                        {/* ROW 2: Match Stats */}
+                        <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+                            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{manager.stats.wins}</div>
+                            <div className="text-[9px] uppercase text-slate-500 dark:text-slate-400 mt-1 font-bold">Galibiyet</div>
+                        </div>
+                        <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+                            <div className="text-2xl font-bold text-slate-600 dark:text-slate-300">{manager.stats.draws}</div>
+                            <div className="text-[9px] uppercase text-slate-500 dark:text-slate-400 mt-1 font-bold">Beraberlik</div>
+                        </div>
+                        <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+                            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{manager.stats.losses}</div>
+                            <div className="text-[9px] uppercase text-slate-500 dark:text-slate-400 mt-1 font-bold">Mağlubiyet</div>
+                        </div>
+                        <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
                             <div className="text-2xl font-bold text-slate-900 dark:text-white">{manager.stats.goalsFor}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Atılan Gol</div>
+                            <div className="text-[9px] uppercase text-slate-500 dark:text-slate-400 mt-1 font-bold">Atılan Gol</div>
                         </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+                        <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
                             <div className="text-2xl font-bold text-slate-900 dark:text-white">{manager.stats.goalsAgainst}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Yenilen Gol</div>
+                            <div className="text-[9px] uppercase text-slate-500 dark:text-slate-400 mt-1 font-bold">Yenilen Gol</div>
                         </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{manager.stats.playersBought}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Transfer (Alınan)</div>
+
+                        {/* ROW 3: Transfers & Earnings */}
+                        <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+                            <div className="text-xl font-bold text-blue-600 dark:text-blue-400 flex items-center justify-center gap-1">
+                                {manager.stats.playersBought} <ArrowRightLeft size={14} className="rotate-45"/>
+                            </div>
+                            <div className="text-[9px] uppercase text-slate-500 dark:text-slate-400 mt-1 font-bold">Tr. Alınan</div>
                         </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{manager.stats.playersSold}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Transfer (Satılan)</div>
+                        <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+                            <div className="text-xl font-bold text-red-600 dark:text-red-400 flex items-center justify-center gap-1">
+                                {manager.stats.playersSold} <ArrowRightLeft size={14} className="-rotate-45"/>
+                            </div>
+                            <div className="text-[9px] uppercase text-slate-500 dark:text-slate-400 mt-1 font-bold">Tr. Satılan</div>
                         </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+                        <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
                             <div className="text-xl font-bold text-slate-900 dark:text-white">{manager.stats.recordTransferFee} M€</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Rekor Transfer</div>
+                            <div className="text-[9px] uppercase text-slate-500 dark:text-slate-400 mt-1 font-bold">Rekor Tr.</div>
                         </div>
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg col-span-2">
-                            <div className="text-3xl font-bold text-red-600 dark:text-red-400">{manager.stats.moneySpent.toFixed(1)} M€</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Toplam Harcanan</div>
+                        <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg border-2 border-emerald-500/20">
+                            <div className="text-xl font-bold text-emerald-700 dark:text-emerald-400 flex items-center justify-center gap-1">
+                                <Wallet size={16}/> {manager.stats.careerEarnings.toFixed(1)} M€
+                            </div>
+                            <div className="text-[9px] uppercase text-slate-500 dark:text-slate-400 mt-1 font-bold">Menajer Kazancı</div>
                         </div>
-                         <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg col-span-2">
-                            <div className="text-3xl font-bold text-green-600 dark:text-green-400">{manager.stats.moneyEarned.toFixed(1)} M€</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Toplam Gelir</div>
+                        <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-lg border-2 border-yellow-500/20">
+                            <div className="text-xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-1">
+                                <Clock size={16}/> {formatTime(playTime)}
+                            </div>
+                            <div className="text-[9px] uppercase text-slate-500 dark:text-slate-400 mt-1 font-bold">Oynama Süresi</div>
                         </div>
-                        {/* Play Time Widget */}
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg border-2 border-yellow-500/30 flex flex-col items-center justify-center">
-                            <Clock size={24} className="text-yellow-600 dark:text-yellow-500 mb-1"/>
-                            <div className="text-xl font-bold text-slate-900 dark:text-white">{formatTime(playTime)}</div>
-                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Oynama Süresi</div>
+
+                        {/* ROW 4: Financial Totals (Full Width Split) */}
+                        <div className="col-span-full mt-2">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg flex items-center justify-between border-l-4 border-l-red-500">
+                                    <div className="text-left">
+                                        <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold mb-1">Toplam Harcanan</div>
+                                        <div className="text-2xl font-bold text-red-600 dark:text-red-400">{manager.stats.moneySpent.toFixed(1)} M€</div>
+                                    </div>
+                                    <TrendingDown size={32} className="text-red-200 dark:text-red-900"/>
+                                </div>
+                                <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg flex items-center justify-between border-l-4 border-l-green-500">
+                                    <div className="text-left">
+                                        <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold mb-1">Toplam Gelir</div>
+                                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">{manager.stats.moneyEarned.toFixed(1)} M€</div>
+                                    </div>
+                                    <TrendingUp size={32} className="text-green-200 dark:text-green-900"/>
+                                </div>
+                            </div>
                         </div>
+
                      </div>
                  </div>
             )}
 
             {tab === 'CONTRACT' && (
-                <div className="flex justify-center items-center h-full p-4">
+                <div className="flex justify-center items-center h-full p-4 flex-col gap-6">
                     <div className="bg-white text-slate-900 p-4 md:p-8 rounded shadow-2xl max-w-xl w-full relative border border-slate-200">
                         {/* Header */}
                         <div className="text-center border-b-2 border-slate-100 pb-4 mb-6 relative">
@@ -379,6 +469,36 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    {/* TERMINATE CONTRACT BUTTON */}
+                    <div className="w-full max-w-xl">
+                        {!terminateConfirm ? (
+                            <button 
+                                onClick={() => setTerminateConfirm(true)}
+                                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg transition-all"
+                            >
+                                <LogOut size={20} /> Sözleşmeyi Tek Taraflı Feshet
+                            </button>
+                        ) : (
+                            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-lg border-2 border-red-500 text-center animate-in fade-in slide-in-from-bottom-4">
+                                <p className="text-red-600 dark:text-red-400 font-bold text-lg mb-3">Bu işlem geri alınamaz! İstifa etmek istediğinize emin misiniz?</p>
+                                <div className="flex gap-4 justify-center">
+                                    <button 
+                                        onClick={onTerminateContract}
+                                        className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded font-bold flex items-center gap-2"
+                                    >
+                                        <Check size={18} /> Evet, Feshet
+                                    </button>
+                                    <button 
+                                        onClick={() => setTerminateConfirm(false)}
+                                        className="bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white px-6 py-2 rounded font-bold flex items-center gap-2"
+                                    >
+                                        <X size={18} /> İptal
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

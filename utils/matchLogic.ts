@@ -5,7 +5,7 @@ import { INJURY_TYPES, RIVALRIES } from '../constants';
 import { MATCH_INFO_MESSAGES } from '../data/infoPool';
 import { GOAL_TEXTS, SAVE_TEXTS, MISS_TEXTS, FOUL_TEXTS, YELLOW_CARD_TEXTS, YELLOW_CARD_AGGRESSIVE_TEXTS, OFFSIDE_TEXTS, CORNER_TEXTS } from '../data/eventTexts';
 import { calculateTeamStrength } from './teamCalculations';
-import { calculateRating, determineMVP } from './ratingsAndStats';
+import { calculateRating, determineMVP, calculateRatingsFromEvents } from './ratingsAndStats';
 import { fillTemplate, pick } from './helpers';
 
 // Used for instant simulation generation where we don't have events yet
@@ -43,34 +43,26 @@ export const generateMatchStats = (homePlayers: Player[], awayPlayers: Player[],
     homePossession = Math.min(80, Math.max(20, homePossession + (Math.random() * 10 - 5)));
     
     // --- UPDATED SHOT LOGIC BASED ON POSSESSION ---
-    // Calculate shot bonus derived directly from possession percentage.
-    // Logic: Every ~3% possession advantage gives roughly 1 extra shot attempt.
     const possessionAdvantage = homePossession - 50; 
     
-    // If Home has 60% possession -> +10 advantage -> ~3 extra shots
-    // If Away has 60% possession (Home 40%) -> -10 advantage -> Away gets ~3 extra shots
     const homeShotBonus = possessionAdvantage > 0 ? Math.ceil(possessionAdvantage / 3.0) : 0;
     const awayShotBonus = possessionAdvantage < 0 ? Math.ceil(Math.abs(possessionAdvantage) / 3.0) : 0;
 
-    // Base shots + Score (goals are shots) + Random Factor + Strength Factor + POSSESSION BONUS
     const hShots = hScore + Math.floor(Math.random() * 4) + homeShotBonus + (hStr > aStr ? 2 : 0);
     const aShots = aScore + Math.floor(Math.random() * 4) + awayShotBonus + (aStr > hStr ? 2 : 0);
     
     const hTarget = Math.min(hShots, hScore + Math.floor(Math.random() * (hShots - hScore)));
     const aTarget = Math.min(aShots, aScore + Math.floor(Math.random() * (aShots - aScore)));
 
-    // Corners also influenced slightly by dominance
     const hCorners = Math.floor(Math.random() * 6) + (possessionAdvantage > 5 ? 3 : 0);
     const aCorners = Math.floor(Math.random() * 6) + (possessionAdvantage < -5 ? 3 : 0);
     
     const hFouls = Math.floor(Math.random() * 15);
     const aFouls = Math.floor(Math.random() * 15);
 
-    // Random Red Card Logic for Instant Sim (approx 3-4% chance per team to spice things up)
     const hRed = Math.random() < 0.04 ? 1 : 0;
     const aRed = Math.random() < 0.04 ? 1 : 0;
 
-    // DETERMINISTIC MVP SELECTION
     const mvpInfo = determineMVP(homeRatings, awayRatings);
 
     return {
@@ -110,7 +102,9 @@ export const getEmptyMatchStats = (): MatchStats => ({
     homeRatings: [], awayRatings: []
 });
 
-export const simulateMatchInstant = (home: Team, away: Team): { homeScore: number, awayScore: number, stats: MatchStats } => {
+// New Helper: Generate Synthetic Events for Background Matches
+export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: number, awayScore: number, stats: MatchStats, events: MatchEvent[] } => {
+    // 1. Determine Score
     const homeStr = calculateTeamStrength(home) + 5; 
     const awayStr = calculateTeamStrength(away);
     const luckHome = Math.random() * 20;
@@ -125,10 +119,93 @@ export const simulateMatchInstant = (home: Team, away: Team): { homeScore: numbe
     else if (diff < -15) { homeScore = Math.floor(Math.random() * 2); awayScore = Math.floor(Math.random() * 4) + 2; }
     else if (diff < -5) { homeScore = Math.floor(Math.random() * 2); awayScore = Math.floor(Math.random() * 3) + 1; }
     else { homeScore = Math.floor(Math.random() * 3); awayScore = Math.floor(Math.random() * 3); }
-    
-    const stats = generateMatchStats(home.players, away.players, homeScore, awayScore);
 
-    return { homeScore, awayScore, stats };
+    // 2. Generate Events (Goals, Cards) to populate stats
+    const events: MatchEvent[] = [];
+
+    const generateEventsForTeam = (team: Team, score: number, isHome: boolean) => {
+        const xi = team.players.slice(0, 11);
+        const fwds = xi.filter(p => [Position.SNT, Position.SLK, Position.SGK].includes(p.position));
+        const mids = xi.filter(p => [Position.OS, Position.OOS].includes(p.position));
+        const defs = xi.filter(p => [Position.STP, Position.SLB, Position.SGB].includes(p.position));
+        
+        // Goals
+        // Scorers weighted by position
+        const scorerPool = [...fwds, ...fwds, ...fwds, ...mids, ...mids, ...defs];
+        
+        for(let i=0; i<score; i++) {
+            const scorer = scorerPool.length > 0 ? scorerPool[Math.floor(Math.random() * scorerPool.length)] : xi[0];
+            let assist = xi[Math.floor(Math.random() * xi.length)];
+            if(assist.id === scorer.id) assist = xi.find(p => p.id !== scorer.id) || assist;
+            
+            const isPenalty = Math.random() < 0.10;
+            
+            events.push({
+                minute: Math.floor(Math.random() * 90) + 1,
+                type: 'GOAL',
+                description: isPenalty ? 'Penaltı Golü' : 'Gol',
+                teamName: team.name,
+                scorer: scorer.name,
+                assist: isPenalty ? 'Penaltı' : assist.name,
+                playerId: scorer.id
+            });
+        }
+
+        // Yellow Cards (Random 0-3 per team)
+        const yellowCount = Math.floor(Math.random() * 4);
+        for(let i=0; i<yellowCount; i++) {
+            const sinner = xi[Math.floor(Math.random() * xi.length)];
+            events.push({
+                minute: Math.floor(Math.random() * 90) + 1,
+                type: 'CARD_YELLOW',
+                description: 'Sarı Kart',
+                teamName: team.name,
+                playerId: sinner.id
+            });
+        }
+
+        // Red Cards (Low chance)
+        if(Math.random() < 0.05) {
+            const sinner = xi[Math.floor(Math.random() * xi.length)];
+            events.push({
+                minute: Math.floor(Math.random() * 90) + 1,
+                type: 'CARD_RED',
+                description: 'Kırmızı Kart',
+                teamName: team.name,
+                playerId: sinner.id
+            });
+        }
+    };
+
+    generateEventsForTeam(home, homeScore, true);
+    generateEventsForTeam(away, awayScore, false);
+
+    // Sort events
+    events.sort((a,b) => a.minute - b.minute);
+
+    // 3. Generate Stats
+    const stats = generateMatchStats(home.players, away.players, homeScore, awayScore);
+    
+    // 4. Overwrite Random Stats with Actual Event Data for better accuracy in MVP calculation
+    const { homeRatings, awayRatings } = calculateRatingsFromEvents(home, away, events, homeScore, awayScore);
+    const mvpInfo = determineMVP(homeRatings, awayRatings);
+    
+    stats.homeRatings = homeRatings;
+    stats.awayRatings = awayRatings;
+    stats.mvpPlayerId = mvpInfo.id;
+    stats.mvpPlayerName = mvpInfo.name;
+    stats.homeRedCards = events.filter(e => e.type === 'CARD_RED' && e.teamName === home.name).length;
+    stats.awayRedCards = events.filter(e => e.type === 'CARD_RED' && e.teamName === away.name).length;
+    stats.homeYellowCards = events.filter(e => e.type === 'CARD_YELLOW' && e.teamName === home.name).length;
+    stats.awayYellowCards = events.filter(e => e.type === 'CARD_YELLOW' && e.teamName === away.name).length;
+
+    return { homeScore, awayScore, stats, events };
+};
+
+// Deprecated wrapper kept for compatibility if needed, but simulateBackgroundMatch is preferred
+export const simulateMatchInstant = (home: Team, away: Team): { homeScore: number, awayScore: number, stats: MatchStats } => {
+    const res = simulateBackgroundMatch(home, away);
+    return { homeScore: res.homeScore, awayScore: res.awayScore, stats: res.stats };
 };
 
 // Helper function to get injury based on weighted probability
@@ -140,11 +217,8 @@ const getWeightedInjury = () => {
         if (random < injury.probability) return injury;
         random -= injury.probability;
     }
-    // Fallback to the first one (most common usually) if something goes wrong
     return INJURY_TYPES[0];
 };
-
-// --- RICH MATCH EVENTS (VAR, CARDS, DRAMA, INJURIES) ---
 
 export const simulateMatchStep = (
     minute: number, 

@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Team } from '../types';
+import { Trophy } from 'lucide-react';
 
 const TeamSelection = ({ teams, onSelect }: { teams: Team[], onSelect: (id: string) => void }) => {
     return (
@@ -30,10 +31,10 @@ const TeamSelection = ({ teams, onSelect }: { teams: Team[], onSelect: (id: stri
                                 <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{team.name}</h3>
                                 <div className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
                                     <div className="flex justify-between">
-                                        <span>Yıldız:</span>
-                                        <div className="flex text-yellow-500 dark:text-yellow-400">
-                                            {[...Array(team.stars)].map((_, i) => <span key={i}>★</span>)}
-                                            {team.stars === 0 && <span className="text-slate-400 dark:text-slate-600">-</span>}
+                                        <span>Şampiyonluk:</span>
+                                        <div className="flex items-center gap-1 text-yellow-600 dark:text-yellow-500 font-bold">
+                                            <Trophy size={16} className="fill-yellow-500" />
+                                            {team.championships}
                                         </div>
                                     </div>
                                     <div className="flex justify-between">

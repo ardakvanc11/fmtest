@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Team, Player } from '../types';
-import { ChevronLeft, Star, Users, Home, MapPin } from 'lucide-react';
+import { ChevronLeft, Trophy, Users, Home, MapPin } from 'lucide-react';
 import SquadView from './SquadView';
 
 const TeamDetailView = ({ team, onClose, onPlayerClick }: { team: Team, onClose: () => void, onPlayerClick: (p: Player) => void }) => {
@@ -16,7 +16,7 @@ const TeamDetailView = ({ team, onClose, onPlayerClick }: { team: Team, onClose:
                      <div>
                          <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{team.name}</h2>
                          <div className="flex items-center gap-4 text-slate-600 dark:text-slate-300 mb-4">
-                             <div className="flex gap-1 items-center"><Star size={16} className="fill-yellow-500 text-yellow-500"/> {team.stars} Yıldız</div>
+                             <div className="flex gap-1 items-center font-bold text-yellow-600 dark:text-yellow-500"><Trophy size={16} className="fill-yellow-500"/> {team.championships} Şampiyonluk</div>
                              <div className="flex gap-1 items-center"><Users size={16} /> {(team.fanBase / 1000000).toFixed(1)}M Taraftar</div>
                              <div className="flex gap-1 items-center"><Home size={16} /> {team.stadiumName}</div>
                              <div className="flex gap-1 items-center"><MapPin size={16} /> {team.stadiumCapacity.toLocaleString()} Kapasite</div>

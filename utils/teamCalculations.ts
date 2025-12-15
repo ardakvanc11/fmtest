@@ -1,5 +1,6 @@
 
-import { Team, Position, Fixture, BettingOdds } from '../types';
+
+import { Team, Position, Fixture, BettingOdds, ManagerStats } from '../types';
 
 export const calculateTeamStrength = (team: Team): number => {
     const xi = team.players.slice(0, 11);
@@ -88,4 +89,34 @@ export const calculateOdds = (home: Team, away: Team): BettingOdds => {
         draw: fmt(dProb),
         away: fmt(aProb)
     };
+};
+
+export const calculateManagerPower = (stats: ManagerStats): number => {
+    let power = 50; // Base Power
+
+    // 1. League Titles Logic (Diminishing Returns)
+    const leagueBase = 3;
+    const leagueMultipliers = [1.50, 1.20, 1.00, 0.80, 0.60, 0.45, 0.35, 0.25];
+    for (let i = 0; i < stats.leagueTitles; i++) {
+        const mult = i < 7 ? leagueMultipliers[i] : 0.25;
+        power += (leagueBase * mult);
+    }
+
+    // 2. Domestic Cups Logic (Diminishing Returns)
+    const cupBase = 1;
+    const cupMultipliers = [1.50, 1.20, 1.00, 0.80, 0.60, 0.45, 0.35, 0.25];
+    for (let i = 0; i < stats.domesticCups; i++) {
+        const mult = i < 7 ? cupMultipliers[i] : 0.25;
+        power += (cupBase * mult);
+    }
+
+    // 3. European Cups Logic (Fixed Values)
+    // 1st: +9, 2nd: +3, 3rd: +2, 4th+: +1
+    const euroValues = [9, 3, 2, 1]; // 4th is 1, and subsequent are also 1
+    for (let i = 0; i < stats.europeanCups; i++) {
+        if (i < 3) power += euroValues[i];
+        else power += 1;
+    }
+
+    return Math.round(power);
 };

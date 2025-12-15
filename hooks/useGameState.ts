@@ -1,10 +1,9 @@
-
-
 import { useState, useEffect } from 'react';
 import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, Position, Message } from '../types';
 import { initializeTeams, RIVALRIES } from '../constants';
 import { 
-    simulateMatchInstant, 
+    simulateMatchInstant,
+    simulateBackgroundMatch, 
     generateFixtures, 
     generateTransferMarket, 
     generateWeeklyNews, 
@@ -125,6 +124,14 @@ export const useGameState = () => {
                 if (typeof parsed.playTime === 'undefined') parsed.playTime = 0;
                 if (typeof parsed.lastSeenInjuryCount === 'undefined') parsed.lastSeenInjuryCount = 0;
                 
+                // Compatibility check for new stats
+                if (parsed.manager && parsed.manager.stats) {
+                    if (typeof parsed.manager.stats.leagueTitles === 'undefined') parsed.manager.stats.leagueTitles = 0;
+                    if (typeof parsed.manager.stats.domesticCups === 'undefined') parsed.manager.stats.domesticCups = 0;
+                    if (typeof parsed.manager.stats.europeanCups === 'undefined') parsed.manager.stats.europeanCups = 0;
+                    if (typeof parsed.manager.stats.careerEarnings === 'undefined') parsed.manager.stats.careerEarnings = 0;
+                }
+
                 setGameState(parsed);
                 if(parsed.isGameStarted) {
                     setViewHistory(['home']);
@@ -145,6 +152,18 @@ export const useGameState = () => {
             return true;
         }
         return false;
+    };
+
+    const handleRetire = () => {
+        setGameOverReason("Kendi isteğinle emekliye ayrıldın. Futbol dünyası başarılarını asla unutmayacak.");
+        setViewHistory(['game_over']);
+        setHistoryIndex(0);
+    };
+
+    const handleTerminateContract = () => {
+        setGameOverReason("Sözleşmeni tek taraflı feshettin. Kulüp yönetimi ve taraftarlar bu ani ayrılık karşısında şokta.");
+        setViewHistory(['game_over']);
+        setHistoryIndex(0);
     };
 
     const checkWarnings = (currentManager: any): Message[] => {
@@ -188,7 +207,24 @@ export const useGameState = () => {
                 age: Math.max(18, Math.min(100, currentAge)),
                 nationality: country,
                 power: 50,
-                stats: { matchesManaged: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, trophies: 0, playersBought: 0, playersSold: 0, moneySpent: 0, moneyEarned: 0, recordTransferFee: 0 },
+                stats: { 
+                    matchesManaged: 0, 
+                    wins: 0, 
+                    draws: 0, 
+                    losses: 0, 
+                    goalsFor: 0, 
+                    goalsAgainst: 0, 
+                    trophies: 0,
+                    leagueTitles: 0,
+                    domesticCups: 0,
+                    europeanCups: 0,
+                    playersBought: 0, 
+                    playersSold: 0, 
+                    moneySpent: 0, 
+                    moneyEarned: 0, 
+                    recordTransferFee: 0,
+                    careerEarnings: 0
+                },
                 contract: { salary: 1.5, expires: 2028, teamName: '' },
                 trust: { board: 50, fans: 50, players: 50, referees: 50 },
                 playerRelations: [],
@@ -257,19 +293,38 @@ export const useGameState = () => {
     const handleNextWeek = () => {
         let updatedTeams = [...gameState.teams];
         let updatedFixtures = [...gameState.fixtures];
+        const allWeeklyEvents: MatchEvent[] = []; // Collect all events from all matches
         
         const weekMatches = updatedFixtures.filter(f => f.week === gameState.currentWeek && !f.played);
+        
         weekMatches.forEach(match => {
              const h = updatedTeams.find(t => t.id === match.homeTeamId)!;
              const a = updatedTeams.find(t => t.id === match.awayTeamId)!;
-             const res = simulateMatchInstant(h, a);
              
+             // Use detailed simulation for background matches
+             const res = simulateBackgroundMatch(h, a);
+             
+             // Collect events
+             allWeeklyEvents.push(...res.events);
+
              const idx = updatedFixtures.findIndex(f => f.id === match.id);
              if(idx >= 0) {
-                 updatedFixtures[idx] = { ...match, played: true, homeScore: res.homeScore, awayScore: res.awayScore, stats: res.stats };
+                 updatedFixtures[idx] = { 
+                     ...match, 
+                     played: true, 
+                     homeScore: res.homeScore, 
+                     awayScore: res.awayScore, 
+                     stats: res.stats,
+                     matchEvents: res.events // Save events to fixture for viewing later
+                 };
              }
         });
         
+        // --- KEY CHANGE: PROCESS ALL MATCH EVENTS TO UPDATE PLAYER STATS ---
+        // This ensures every match (not just user's) updates Goals, Assists, Ratings, Morale
+        updatedTeams = processMatchPostGame(updatedTeams, allWeeklyEvents, gameState.currentWeek, updatedFixtures);
+
+        // Update Table Stats based on fixture results
         updatedTeams = updatedTeams.map(team => {
              const playedFixtures = updatedFixtures.filter(f => f.played && (f.homeTeamId === team.id || f.awayTeamId === team.id));
              let played=0, won=0, drawn=0, lost=0, gf=0, ga=0, points=0;
@@ -292,6 +347,7 @@ export const useGameState = () => {
         const nextWeek = gameState.currentWeek + 1;
         const newTransferList = isTransferWindowOpen(nextWeek) ? generateTransferMarket(10, nextWeek) : [];
         
+        // Remove Suspensions that expired
         updatedTeams = updatedTeams.map(t => ({
             ...t,
             players: t.players.map(p => {
@@ -309,12 +365,20 @@ export const useGameState = () => {
         let specialNews: any[] = [];
         let specialMessages: Message[] = [];
 
-        if (gameState.manager) {
-            if (gameState.manager.trust.fans < 40 && updatedMyTeam) {
+        // UPDATE MANAGER STATS & EARNINGS
+        let updatedManager = gameState.manager;
+        if (updatedManager) {
+            updatedManager = { ...updatedManager };
+            
+            // Add Weekly Salary
+            // Salary is annual (e.g. 1.5M), divided by 52 weeks
+            updatedManager.stats.careerEarnings += (updatedManager.contract.salary / 52);
+
+            if (updatedManager.trust.fans < 40 && updatedMyTeam) {
                 const resignationTweets = generateResignationTweets(nextWeek, updatedMyTeam);
                 specialNews = [...resignationTweets];
             }
-            const warningMessages = checkWarnings(gameState.manager);
+            const warningMessages = checkWarnings(updatedManager);
             specialMessages = [...warningMessages];
         }
 
@@ -328,6 +392,7 @@ export const useGameState = () => {
             teams: updatedTeams,
             fixtures: updatedFixtures,
             news: filteredNews,
+            manager: updatedManager, // Save updated manager with new earnings
             transferList: isTransferWindowOpen(nextWeek) ? newTransferList : [],
             trainingPerformed: false,
             messages: [...specialMessages, ...playerMessages, ...prev.messages],
@@ -389,6 +454,8 @@ export const useGameState = () => {
         };
         updatedFixtures[fixtureIdx] = completedFixture;
         
+        // Only process stats for THIS match here. Background matches are handled in handleNextWeek
+        // But we need to use the full fixtures list for streaks
         const processedTeams = processMatchPostGame(gameState.teams, events, gameState.currentWeek, updatedFixtures);
 
         const updatedManager = { ...gameState.manager! };
@@ -569,93 +636,8 @@ export const useGameState = () => {
         const homeTeam = gameState.teams.find(t => t.id === currentFixture.homeTeamId)!;
         const awayTeam = gameState.teams.find(t => t.id === currentFixture.awayTeamId)!;
 
-        const { homeScore, awayScore, stats } = simulateMatchInstant(homeTeam, awayTeam);
-
-        const events: MatchEvent[] = [];
-        
-        const generateGoalEvents = (team: Team, count: number) => {
-            const xi = team.players.slice(0, 11);
-            const scorers = [
-                ...xi.filter(p => [Position.SNT, Position.SLK, Position.SGK].includes(p.position)), 
-                ...xi.filter(p => [Position.OS, Position.OOS].includes(p.position)), 
-                ...xi
-            ];
-            
-            for(let i=0; i<count; i++) {
-                const scorer = scorers[Math.floor(Math.random() * scorers.length)];
-                let assist = xi[Math.floor(Math.random() * xi.length)];
-                if(assist.id === scorer.id) assist = xi.find(p => p.id !== scorer.id) || assist;
-                
-                const isPenalty = Math.random() < 0.15;
-                const description = isPenalty ? `GOL! ${scorer.name} (Penaltı)` : `GOL! ${scorer.name}`;
-                const assistName = isPenalty ? 'Penaltı' : assist.name;
-
-                events.push({
-                    minute: Math.floor(Math.random() * 90) + 1,
-                    type: 'GOAL',
-                    description: description,
-                    teamName: team.name,
-                    scorer: scorer.name,
-                    assist: assistName
-                });
-            }
-        };
-
-        const generateCardEvents = (team: Team, yellowCount: number, redCount: number) => {
-            const xi = team.players.slice(0, 11);
-            for(let i=0; i<yellowCount; i++) {
-                 const player = xi[Math.floor(Math.random() * xi.length)];
-                 events.push({
-                    minute: Math.floor(Math.random() * 90) + 1,
-                    type: 'CARD_YELLOW',
-                    description: `${player.name} sarı kart gördü.`,
-                    teamName: team.name,
-                    playerId: player.id
-                });
-            }
-            for(let i=0; i<redCount; i++) {
-                 const player = xi[Math.floor(Math.random() * xi.length)];
-                 const isSecondYellow = Math.random() > 0.5;
-                 events.push({
-                    minute: Math.floor(Math.random() * 90) + 1,
-                    type: 'CARD_RED',
-                    description: isSecondYellow ? `${player.name} (2. Sarıdan Kırmızı)` : `${player.name} (Kırmızı Kart)`,
-                    teamName: team.name,
-                    playerId: player.id
-                });
-            }
-        };
-
-        const generateSubEvents = (team: Team) => {
-            const subCount = Math.floor(Math.random() * 3) + 3; 
-            const xi = team.players.slice(0, 11);
-            const bench = team.players.slice(11);
-            const actualSubs = Math.min(subCount, bench.length);
-
-            for(let i=0; i<actualSubs; i++) {
-                const minute = 45 + Math.floor(Math.random() * 45); 
-                const outP = xi[i]; 
-                const inP = bench[i];
-                
-                if (outP && inP) {
-                    events.push({
-                        minute,
-                        type: 'SUBSTITUTION',
-                        description: `${outP.name} 🔄 ${inP.name}`,
-                        teamName: team.name,
-                    });
-                }
-            }
-        };
-
-        generateGoalEvents(homeTeam, homeScore);
-        generateGoalEvents(awayTeam, awayScore);
-        generateCardEvents(homeTeam, stats.homeYellowCards, stats.homeRedCards);
-        generateCardEvents(awayTeam, stats.awayYellowCards, stats.awayRedCards);
-        generateSubEvents(homeTeam);
-        generateSubEvents(awayTeam);
-
-        events.sort((a,b) => a.minute - b.minute);
+        // Use the new consistent simulation engine for user fast-forward too
+        const { homeScore, awayScore, stats, events } = simulateBackgroundMatch(homeTeam, awayTeam);
 
         handleMatchFinish(homeScore, awayScore, events, stats);
     };
@@ -807,6 +789,8 @@ export const useGameState = () => {
         handleSellPlayer,
         handleMessageReply,
         handleInterviewComplete,
+        handleRetire,
+        handleTerminateContract,
         myTeam,
         injuredBadgeCount: Math.max(0, injuredBadgeCount),
         isTransferWindowOpen: isTransferWindowOpen(gameState.currentWeek)

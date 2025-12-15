@@ -64,7 +64,7 @@ const IntroScreen = ({ onStart }: { onStart: (name: string, year: string, countr
                         KARİYERE BAŞLA
                     </button>
                 </div>
-                <p className="mt-6 text-slate-500 text-xs">v2.9.0 • 2025/2026 Sezonu</p>
+                <p className="mt-6 text-slate-500 text-xs">BETA v3.0.0</p>
             </div>
         </div>
     );

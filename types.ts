@@ -176,7 +176,7 @@ export interface Team {
     colors: [string, string]; 
     logo?: string;
     jersey?: string; // NEW: Base jersey URL for the team
-    stars: number;
+    championships: number; // CHANGED: Replaced stars with championships
     fanBase: number; 
     stadiumName: string;
     stadiumCapacity: number; // NEW: Added stadium capacity
@@ -331,11 +331,17 @@ export interface ManagerStats {
     goalsFor: number;
     goalsAgainst: number;
     trophies: number;
+    // Detailed Trophies for Power Calculation
+    leagueTitles: number;
+    domesticCups: number;
+    europeanCups: number;
+    
     playersBought: number;
     playersSold: number;
     moneySpent: number;
     moneyEarned: number;
     recordTransferFee: number;
+    careerEarnings: number; // NEW: Personal money earned by manager
 }
 
 export interface ManagerProfile {

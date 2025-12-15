@@ -44,7 +44,7 @@ export const getAssistantAdvice = async (
         Rakip: ${opponent.name} (Güç: ${Math.round(opponent.strength)})
         Mevcut Taktiğimiz: ${currentTactic}
         
-        Rakibin yıldız sayısı: ${opponent.stars}
+        Rakibin şampiyonluk sayısı: ${opponent.championships}
         Bizim bütçemiz: ${myTeam.budget}M€
         
         Kısa bir paragraf yaz. Taktik değişikliği öneriyorsan belirt.

@@ -1,7 +1,6 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { GameState, Team, Player, Fixture, MatchEvent, MatchStats } from '../types';
-import { FileWarning, LogOut } from 'lucide-react';
+import { FileWarning, LogOut, Trophy, Building2, BarChart3, ArrowRightLeft, Wallet, Clock, TrendingUp, TrendingDown, Crown } from 'lucide-react';
 
 // Views
 import IntroScreen from '../views/IntroScreen';
@@ -25,6 +24,7 @@ import Dashboard from '../layout/Dashboard';
 import PlayerDetailModal from '../modals/PlayerDetailModal';
 import MatchDetailModal from '../modals/MatchDetailModal';
 import MatchResultModal from '../modals/MatchResultModal';
+import HallOfFameModal from '../modals/HallOfFameModal';
 
 // Types definition for props
 interface MainContentProps {
@@ -60,6 +60,8 @@ interface MainContentProps {
     handleSellPlayer: (player: Player) => void;
     handleMessageReply: (msgId: number, optIndex: number) => void;
     handleInterviewComplete: (effect: any, relatedPlayerId?: string) => void;
+    handleRetire: () => void;
+    handleTerminateContract: () => void;
     myTeam?: Team;
     injuredBadgeCount: number;
     isTransferWindowOpen: boolean;
@@ -99,10 +101,24 @@ const MainContent: React.FC<MainContentProps> = (props) => {
         handleSellPlayer,
         handleMessageReply,
         handleInterviewComplete,
+        handleRetire,
+        handleTerminateContract,
         myTeam,
         injuredBadgeCount,
         isTransferWindowOpen
     } = props;
+
+    // Helper for formatting time
+    const formatTime = (seconds: number) => {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        
+        if (h > 0) return `${h} Sa ${m} Dk`;
+        return `${m} Dk`;
+    };
+
+    // State for showing Hall of Fame inside Game Over screen
+    const [showGameOverHoF, setShowGameOverHoF] = useState(false);
 
     if (currentView === 'intro') return <IntroScreen onStart={handleStart} />;
     
@@ -126,17 +142,73 @@ const MainContent: React.FC<MainContentProps> = (props) => {
         >
             {/* Game Over Screen */}
             {(currentView === 'game_over' || gameOverReason) && (
-                <div className="h-full flex items-center justify-center bg-red-950 text-white p-8 absolute inset-0 z-50 overflow-y-auto">
-                    <div className="max-w-2xl w-full bg-red-900 border-4 border-red-700 p-12 rounded-2xl text-center shadow-2xl animate-in zoom-in duration-500">
-                        <FileWarning size={80} className="mx-auto mb-6 text-red-300 animate-pulse"/>
-                        <h1 className="text-5xl font-bold mb-6 tracking-widest uppercase">Kovuldunuz</h1>
-                        <p className="text-2xl font-serif italic mb-8 border-l-4 border-red-500 pl-4 text-left bg-red-800/50 p-4 rounded">
+                <div className={`h-full flex items-center justify-center p-8 absolute inset-0 z-50 overflow-y-auto ${gameOverReason?.includes('emekli') || gameOverReason?.includes('feshettin') ? 'bg-slate-900' : 'bg-red-950'} text-white`}>
+                    
+                    {/* Render Hall of Fame Modal ON TOP of Game Over screen if active */}
+                    {showGameOverHoF && gameState.manager && (
+                        <HallOfFameModal manager={gameState.manager} onClose={() => setShowGameOverHoF(false)} />
+                    )}
+
+                    <div className={`max-w-4xl w-full border-4 p-8 rounded-2xl text-center shadow-2xl animate-in zoom-in duration-500 ${gameOverReason?.includes('emekli') || gameOverReason?.includes('feshettin') ? 'bg-slate-800 border-slate-600' : 'bg-red-900 border-red-700'}`}>
+                        {gameOverReason?.includes('emekli') || gameOverReason?.includes('feshettin') ? (
+                            <Trophy size={80} className="mx-auto mb-6 text-yellow-400 animate-bounce"/>
+                        ) : (
+                            <FileWarning size={80} className="mx-auto mb-6 text-red-300 animate-pulse"/>
+                        )}
+                        
+                        <h1 className="text-5xl font-bold mb-6 tracking-widest uppercase">
+                            {gameOverReason?.includes('emekli') ? "Efsanevi Veda" : gameOverReason?.includes('feshettin') ? "Sözleşme Feshi" : "Kovuldunuz"}
+                        </h1>
+                        
+                        <p className={`text-2xl font-serif italic mb-8 border-l-4 pl-4 text-left p-4 rounded ${gameOverReason?.includes('emekli') || gameOverReason?.includes('feshettin') ? 'border-yellow-500 bg-slate-700/50' : 'border-red-500 bg-red-800/50'}`}>
                             "{gameOverReason}"
                         </p>
+
+                        {/* CAREER STATS GRID */}
+                        {gameState.manager && (
+                            <div className="bg-black/30 p-6 rounded-xl mb-8">
+                                <h3 className="text-xl font-bold mb-4 border-b border-white/20 pb-2 text-left uppercase text-slate-300">Kariyer İstatistikleri</h3>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                                    <div className="p-3 bg-white/10 rounded-lg">
+                                        <div className="text-2xl font-bold flex items-center justify-center gap-1">{gameState.manager.stats.leagueTitles} <Trophy size={16} className="text-yellow-400"/></div>
+                                        <div className="text-[10px] uppercase text-slate-400 mt-1 font-bold">Lig Şampiyonluğu</div>
+                                    </div>
+                                    <div className="p-3 bg-white/10 rounded-lg">
+                                        <div className="text-2xl font-bold flex items-center justify-center gap-1">{gameState.manager.stats.domesticCups} <Trophy size={16} className="text-blue-400"/></div>
+                                        <div className="text-[10px] uppercase text-slate-400 mt-1 font-bold">Kupa</div>
+                                    </div>
+                                    <div className="p-3 bg-white/10 rounded-lg">
+                                        <div className="text-2xl font-bold text-green-400">{gameState.manager.stats.wins}</div>
+                                        <div className="text-[10px] uppercase text-slate-400 mt-1 font-bold">Galibiyet</div>
+                                    </div>
+                                    <div className="p-3 bg-white/10 rounded-lg">
+                                        <div className="text-2xl font-bold text-slate-200">{gameState.manager.stats.matchesManaged}</div>
+                                        <div className="text-[10px] uppercase text-slate-400 mt-1 font-bold">Maç Sayısı</div>
+                                    </div>
+                                    <div className="p-3 bg-white/10 rounded-lg">
+                                        <div className="text-xl font-bold text-emerald-400 flex items-center justify-center gap-1"><Wallet size={16}/> {gameState.manager.stats.careerEarnings.toFixed(1)} M€</div>
+                                        <div className="text-[10px] uppercase text-slate-400 mt-1 font-bold">Toplam Kazanç</div>
+                                    </div>
+                                    <div className="p-3 bg-white/10 rounded-lg">
+                                        <div className="text-xl font-bold flex items-center justify-center gap-1"><Clock size={16}/> {formatTime(gameState.playTime)}</div>
+                                        <div className="text-[10px] uppercase text-slate-400 mt-1 font-bold">Oynama Süresi</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex justify-center gap-6">
+                            {(gameOverReason?.includes('emekli') || gameOverReason?.includes('feshettin')) && (
+                                <button 
+                                    onClick={() => setShowGameOverHoF(true)} 
+                                    className="px-8 py-4 rounded-xl font-bold text-xl transition-all shadow-lg flex items-center gap-2 bg-yellow-600 text-white hover:bg-yellow-500"
+                                >
+                                    <Crown size={24}/> ONUR TABLOSU
+                                </button>
+                            )}
                             <button 
                                 onClick={handleNewGame} 
-                                className="bg-white text-red-900 hover:bg-slate-200 px-8 py-4 rounded-xl font-bold text-xl transition-all shadow-lg flex items-center gap-2"
+                                className={`px-8 py-4 rounded-xl font-bold text-xl transition-all shadow-lg flex items-center gap-2 ${gameOverReason?.includes('emekli') || gameOverReason?.includes('feshettin') ? 'bg-white text-slate-900 hover:bg-slate-200' : 'bg-white text-red-900 hover:bg-slate-200'}`}
                             >
                                 <LogOut size={24}/> YENİ KARİYER
                             </button>
@@ -156,6 +228,8 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     onTeamClick={handleShowTeamDetail}
                     onFixtureClick={(f) => setSelectedFixtureForDetail(f)}
                     playTime={gameState.playTime}
+                    onRetire={handleRetire}
+                    onTerminateContract={handleTerminateContract}
                 />
             )}
             

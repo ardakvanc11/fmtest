@@ -2,7 +2,7 @@
 import React from 'react';
 import { Fixture, Team } from '../types';
 import { calculateOdds } from '../utils/gameEngine';
-import { Star, Home, ChevronRight } from 'lucide-react';
+import { Trophy, Home, ChevronRight } from 'lucide-react';
 
 const MatchPreview = ({ fixture, homeTeam, awayTeam, onProceed }: { fixture: Fixture, homeTeam: Team, awayTeam: Team, onProceed: () => void }) => {
     // Calculate odds on the fly
@@ -15,7 +15,10 @@ const MatchPreview = ({ fixture, homeTeam, awayTeam, onProceed }: { fixture: Fix
                  <div className="flex flex-col items-center w-full md:w-1/3">
                      <img src={homeTeam.logo} className="w-24 h-24 md:w-32 md:h-32 object-contain mb-4" />
                      <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white text-center">{homeTeam.name}</h2>
-                     <div className="flex gap-1 mt-2">{[...Array(homeTeam.stars)].map((_,i)=><Star key={i} size={16} className="fill-yellow-500 text-yellow-500"/>)}</div>
+                     <div className="flex gap-2 mt-2 items-center text-yellow-600 dark:text-yellow-500 font-bold">
+                        <Trophy size={20} className="fill-yellow-500"/>
+                        <span className="text-lg">{homeTeam.championships}</span>
+                     </div>
                  </div>
                  
                  <div className="flex flex-col items-center w-full md:w-1/3 order-first md:order-none">
@@ -40,7 +43,10 @@ const MatchPreview = ({ fixture, homeTeam, awayTeam, onProceed }: { fixture: Fix
                  <div className="flex flex-col items-center w-full md:w-1/3">
                      <img src={awayTeam.logo} className="w-24 h-24 md:w-32 md:h-32 object-contain mb-4" />
                      <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white text-center">{awayTeam.name}</h2>
-                     <div className="flex gap-1 mt-2">{[...Array(awayTeam.stars)].map((_,i)=><Star key={i} size={16} className="fill-yellow-500 text-yellow-500"/>)}</div>
+                     <div className="flex gap-2 mt-2 items-center text-yellow-600 dark:text-yellow-500 font-bold">
+                        <Trophy size={20} className="fill-yellow-500"/>
+                        <span className="text-lg">{awayTeam.championships}</span>
+                     </div>
                  </div>
             </div>
             
