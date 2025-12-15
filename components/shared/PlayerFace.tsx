@@ -10,7 +10,20 @@ interface PlayerFaceProps {
 }
 
 const PlayerFace: React.FC<PlayerFaceProps> = ({ player, className = "w-full h-full" }) => {
-    const shirtUrl = player.position === Position.GK ? FACE_ASSETS.shirt.gk : FACE_ASSETS.shirt.outfield;
+    // Determine Shirt Rendering Logic
+    const isGK = player.position === Position.GK;
+
+    // 1. Base Shirt Logic
+    // If GK: Always use the generic GK shirt asset as the base.
+    // If Outfield: Use team jersey if available, else generic outfield.
+    const baseShirtUrl = isGK 
+        ? FACE_ASSETS.shirt.gk 
+        : (player.jersey || FACE_ASSETS.shirt.outfield);
+
+    // 2. GK Overlay Logic
+    // If GK: The `player.jersey` property now holds the *overlay* URL (logo/sponsor) provided in initialization.
+    // If Outfield: No overlay (the base shirt is the full kit).
+    const gkOverlayUrl = isGK ? player.jersey : null;
 
     // Use player.face data if available, otherwise fallback to defaults (for backward compatibility or safety)
     const face = player.face || {
@@ -46,8 +59,13 @@ const PlayerFace: React.FC<PlayerFaceProps> = ({ player, className = "w-full h-f
                 <img src={face.beard} alt="Beard" className="absolute inset-0 w-full h-full object-cover z-35" style={{ zIndex: 35 }} />
             )}
 
-            {/* 7. Shirt (Sits on neck) - Z: 40 */}
-            <img src={shirtUrl} alt="Shirt" className="absolute inset-0 w-full h-full object-cover z-40" />
+            {/* 7. Base Shirt (Sits on neck) - Z: 40 */}
+            <img src={baseShirtUrl} alt="Shirt Base" className="absolute inset-0 w-full h-full object-cover z-40" />
+
+            {/* 7.5 GK Overlay (Logos/Sponsors on top of GK shirt) - Z: 41 */}
+            {gkOverlayUrl && (
+                <img src={gkOverlayUrl} alt="GK Overlay" className="absolute inset-0 w-full h-full object-cover z-41" style={{ zIndex: 41 }} />
+            )}
 
             {/* 8. Hair (Topmost) - Z: 50 */}
             <img src={face.hair} alt="Hair" className="absolute inset-0 w-full h-full object-cover z-50" />

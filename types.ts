@@ -157,6 +157,7 @@ export interface Player {
     stats: PlayerStats; 
     seasonStats: PlayerSeasonStats; // NEW
     face: PlayerFaceData; // NEW: Layered face data
+    jersey?: string; // NEW: Specific jersey URL for the player
     age: number;
     value: number; 
     nationality: string;
@@ -174,6 +175,7 @@ export interface Team {
     name: string;
     colors: [string, string]; 
     logo?: string;
+    jersey?: string; // NEW: Base jersey URL for the team
     stars: number;
     fanBase: number; 
     stadiumName: string;

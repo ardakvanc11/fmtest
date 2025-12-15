@@ -313,20 +313,23 @@ const MainContent: React.FC<MainContentProps> = (props) => {
             )}
             
             {currentView === 'interview' && matchResultData && (
-                <div className="fixed inset-0 bg-slate-50 dark:bg-slate-900 z-50 p-4 transition-colors duration-300">
-                    <PostMatchInterview 
-                        result={matchResultData.result}
-                        events={matchResultData.events}
-                        homeTeam={matchResultData.homeTeam}
-                        awayTeam={matchResultData.awayTeam}
-                        myTeamId={gameState.myTeamId!}
-                        onClose={() => {
-                            // Use handleInterviewComplete to perform necessary cleanup and navigation
-                            // passing empty object as effect
-                            handleInterviewComplete({});
-                        }}
-                        onComplete={handleInterviewComplete}
-                    />
+                <div className="fixed inset-0 z-50 p-4 bg-[url('https://i.imgur.com/xfBpLhO.png')] bg-cover bg-center">
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+                    <div className="relative z-10 h-full">
+                        <PostMatchInterview 
+                            result={matchResultData.result}
+                            events={matchResultData.events}
+                            homeTeam={matchResultData.homeTeam}
+                            awayTeam={matchResultData.awayTeam}
+                            myTeamId={gameState.myTeamId!}
+                            onClose={() => {
+                                // Use handleInterviewComplete to perform necessary cleanup and navigation
+                                // passing empty object as effect
+                                handleInterviewComplete({});
+                            }}
+                            onComplete={handleInterviewComplete}
+                        />
+                    </div>
                 </div>
             )}
         </Dashboard>

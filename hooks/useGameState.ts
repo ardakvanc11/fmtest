@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from 'react';
 import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, Position, Message } from '../types';
 import { initializeTeams, RIVALRIES } from '../constants';
@@ -673,7 +674,8 @@ export const useGameState = () => {
         
         if (myTeam.budget >= player.value) {
             const newTransferList = gameState.transferList.filter(p => p.id !== player.id);
-            const newPlayer = { ...player, teamId: myTeam.id };
+            // Assign team jersey to new player
+            const newPlayer = { ...player, teamId: myTeam.id, jersey: myTeam.jersey };
             const updatedTeam = { 
                 ...myTeam, 
                 budget: myTeam.budget - player.value,

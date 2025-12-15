@@ -14,6 +14,7 @@ interface TacticsViewProps {
     onSubstitution?: (inPlayer: Player, outPlayer: Player) => void;
     currentMinute?: number;
     currentWeek?: number;
+    forcedSubstitutionPlayerId?: string | null;
 }
 
 const TacticsView = ({ 
@@ -25,7 +26,8 @@ const TacticsView = ({
     maxSubs = 5,
     onSubstitution,
     currentMinute,
-    currentWeek
+    currentWeek,
+    forcedSubstitutionPlayerId
 }: TacticsViewProps) => {
     const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
     const [tab, setTab] = useState<'GENERAL' | 'ATTACK' | 'DEFENSE'>('GENERAL');
@@ -69,7 +71,7 @@ const TacticsView = ({
                         const benchPlayer = isPitch1 ? team.players[idx2] : team.players[idx1];
 
                         // Morale Penalty for First Half Substitution
-                        if (currentMinute !== undefined && currentMinute <= 45) {
+                        if (currentMinute !== undefined && currentMinute <= 45 && !forcedSubstitutionPlayerId) {
                             pitchPlayer.morale = Math.max(0, pitchPlayer.morale - 15);
                             alert(`${pitchPlayer.name} ilk yarıda oyundan alındığı için tepkili! (Moral -15)`);
                         }
@@ -145,6 +147,7 @@ const TacticsView = ({
 
     const PlayerListItem = ({ p }: { p: Player }) => {
         const isSuspended = p.suspendedUntilWeek && currentWeek && p.suspendedUntilWeek > currentWeek;
+        const isForcedInjury = forcedSubstitutionPlayerId === p.id;
         
         const getPosBadgeColor = (pos: string) => {
             if (pos === 'GK') return 'bg-yellow-600';
@@ -154,7 +157,7 @@ const TacticsView = ({
         };
 
         return (
-            <div onClick={() => handlePlayerClick(p)} className={`flex items-center justify-between p-2 rounded border cursor-pointer transition mb-2 ${selectedPlayerId === p.id ? 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-500' : 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700'} ${(p.injury || isSuspended) ? 'opacity-70' : ''}`}>
+            <div onClick={() => handlePlayerClick(p)} className={`flex items-center justify-between p-2 rounded border cursor-pointer transition mb-2 ${selectedPlayerId === p.id ? 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-500' : isForcedInjury ? 'bg-red-100 dark:bg-red-900/30 border-red-500 animate-pulse' : 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700'} ${(p.injury || isSuspended) && !isForcedInjury ? 'opacity-70' : ''}`}>
                 <div className="flex items-center gap-2 overflow-hidden">
                     <div className="flex flex-col gap-0.5">
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white shrink-0 w-8 text-center ${getPosBadgeColor(p.position)}`}>{p.position}</span>
@@ -165,12 +168,13 @@ const TacticsView = ({
                     <div className="flex flex-col min-w-0">
                         <span className={`text-sm font-bold flex items-center gap-1 truncate ${selectedPlayerId === p.id ? 'text-yellow-600 dark:text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
                             {p.name}
-                            {p.injury && <Syringe size={12} className="text-red-500 animate-pulse shrink-0"/>}
+                            {(p.injury || isForcedInjury) && <Syringe size={12} className="text-red-500 animate-pulse shrink-0"/>}
                             {isSuspended && <Ban size={12} className="text-red-600 shrink-0"/>}
                         </span>
                         <span className="text-[10px] text-slate-500 dark:text-slate-400">
                             {p.age} Yaş 
                             {p.injury ? ` • ${p.injury.weeksRemaining} Hf Sakat` : ''}
+                            {isForcedInjury ? ' • SAKATLANDI!' : ''}
                             {isSuspended ? ' • CEZALI' : ''}
                         </span>
                     </div>
@@ -241,6 +245,16 @@ const TacticsView = ({
                                     ) : (
                                         <div className="text-xs text-slate-400 italic p-2">Rezerv oyuncu yok.</div>
                                     )}
+                                </div>
+                            </>
+                        )}
+                        
+                        {/* Pitch Players (For easy selection in forced sub scenario) */}
+                        {isMatchActive && forcedSubstitutionPlayerId && (
+                             <>
+                                <h4 className="text-xs font-bold text-red-600 dark:text-red-400 mb-2 uppercase border-b border-red-200 dark:border-red-900 pb-1 mt-4">Saha İçi</h4>
+                                <div className="mb-4">
+                                    {team.players.slice(0, 11).map(p => <PlayerListItem key={p.id} p={p} />)}
                                 </div>
                             </>
                         )}

@@ -557,6 +557,8 @@ const MatchSimulation = ({
     const isManagerSentOff = managerDiscipline === 'RED';
     const activePenaltyTeam = penaltyTeamId ? allTeams.find(t => t.id === penaltyTeamId) : null;
 
+    const forcedPlayer = forcedSubstitutionPlayerId ? myTeamCurrent.players.find(p => p.id === forcedSubstitutionPlayerId) : null;
+
     return (
         <div className="h-full flex flex-col relative">
             {/* TACTICS OVERLAY */}
@@ -567,7 +569,7 @@ const MatchSimulation = ({
                             <h2 className="text-xl md:text-2xl font-bold text-white">Canlı Taktik</h2>
                             {forcedSubstitutionPlayerId && (
                                 <div className="bg-red-600 text-white px-2 py-1 md:px-4 md:py-1 rounded-full text-xs md:text-sm font-bold animate-pulse flex items-center gap-2">
-                                    <Syringe size={16}/> SAKATLIK!
+                                    <Syringe size={16}/> <span className="uppercase">{forcedPlayer ? `SAKATLIK: ${forcedPlayer.name}` : 'SAKATLIK!'}</span>
                                 </div>
                             )}
                         </div>
@@ -589,6 +591,7 @@ const MatchSimulation = ({
                             onSubstitution={handleUserSubstitution}
                             currentMinute={minute}
                             compact={window.innerWidth < 768}
+                            forcedSubstitutionPlayerId={forcedSubstitutionPlayerId}
                         />
                     </div>
                 </div>
