@@ -2,10 +2,10 @@
 import React, { useState } from 'react';
 import { ManagerProfile, Team, Fixture } from '../types';
 import { calculateForm } from '../utils/gameEngine';
-import { Home, User, FileText, Heart, History, Calendar, Star, Feather, AlertTriangle } from 'lucide-react';
+import { Home, User, FileText, Heart, Calendar, Star, Feather, AlertTriangle, Clock } from 'lucide-react';
 import StandingsTable from '../components/shared/StandingsTable';
 
-const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTeamClick, onFixtureClick }: { manager: ManagerProfile, team: Team, teams: Team[], myTeamId: string, currentWeek: number, fixtures: Fixture[], onTeamClick: (id: string) => void, onFixtureClick?: (f: Fixture) => void }) => {
+const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTeamClick, onFixtureClick, playTime }: { manager: ManagerProfile, team: Team, teams: Team[], myTeamId: string, currentWeek: number, fixtures: Fixture[], onTeamClick: (id: string) => void, onFixtureClick?: (f: Fixture) => void, playTime: number }) => {
     const [tab, setTab] = useState('GENERAL');
     
     // Calculate stats
@@ -46,25 +46,37 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
         return { label: 'B', color: 'bg-slate-500 text-white' };
     };
 
+    const formatTime = (seconds: number) => {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        
+        if (h > 0) return `${h} Saat ${m} Dk`;
+        return `${m} Dk`;
+    };
+
     const tabs = [
         { id: 'GENERAL', label: 'Ana Sayfa', icon: Home },
         { id: 'PROFILE', label: 'Profilim', icon: User },
         { id: 'CONTRACT', label: 'Sözleşmem', icon: FileText },
         { id: 'RELATIONS', label: 'İlişkiler', icon: Heart },
-        { id: 'HISTORY', label: 'Geçmişim', icon: History },
     ];
 
+    // Check for critical trust issues to display alert on tab
+    const hasTrustIssue = manager.trust.board < 35 || manager.trust.fans < 40;
+
     return (
-        <div className="space-y-6">
-            {/* New Tabs Style */}
-            <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-700/50 px-2 overflow-x-auto">
+        <div className="space-y-6 pb-10">
+            {/* New Tabs Style - Scrollable on mobile */}
+            <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-700/50 px-2 overflow-x-auto no-scrollbar">
                 {tabs.map((t) => {
                     const isActive = tab === t.id;
+                    const showAlert = t.id === 'RELATIONS' && hasTrustIssue;
+
                     return (
                         <button
                             key={t.id}
                             onClick={() => setTab(t.id)}
-                            className={`flex items-center gap-2 px-6 py-3 text-base font-bold transition-all relative rounded-t-lg group whitespace-nowrap ${
+                            className={`flex items-center gap-2 px-4 md:px-6 py-3 text-sm md:text-base font-bold transition-all relative rounded-t-lg group whitespace-nowrap shrink-0 ${
                                 isActive 
                                 ? 'text-yellow-600 dark:text-yellow-400 bg-white dark:bg-slate-800' 
                                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800/30'
@@ -75,6 +87,9 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                             )}
                             <t.icon size={18} className={`${isActive ? "text-yellow-600 dark:text-yellow-400" : "text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300"}`} />
                             <span>{t.label}</span>
+                            {showAlert && (
+                                <AlertTriangle size={16} className="text-red-500 animate-pulse ml-1 fill-red-500/20" />
+                            )}
                         </button>
                     );
                 })}
@@ -84,54 +99,54 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* LEFT COLUMN */}
                     <div className="space-y-6">
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Takım Durumu</h2>
-                            <div className="grid grid-cols-3 gap-4 mb-4">
-                                <div className="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg text-center">
-                                    <div className="text-slate-500 dark:text-slate-400 text-xs uppercase font-bold">Takım Gücü</div>
-                                    <div className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">{Math.round(team.strength)}</div>
+                        <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-4">Takım Durumu</h2>
+                            <div className="grid grid-cols-3 gap-2 md:gap-4 mb-4">
+                                <div className="bg-slate-100 dark:bg-slate-700 p-2 md:p-4 rounded-lg text-center">
+                                    <div className="text-slate-500 dark:text-slate-400 text-[10px] md:text-xs uppercase font-bold">Takım Gücü</div>
+                                    <div className="text-xl md:text-3xl font-bold text-green-600 dark:text-green-400 mt-1 md:mt-2">{Math.round(team.strength)}</div>
                                 </div>
-                                <div className="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg text-center relative">
-                                    <div className="text-slate-500 dark:text-slate-400 text-xs uppercase font-bold">Taraftar</div>
-                                    <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">{(team.fanBase/1000000).toFixed(1)}M</div>
+                                <div className="bg-slate-100 dark:bg-slate-700 p-2 md:p-4 rounded-lg text-center relative">
+                                    <div className="text-slate-500 dark:text-slate-400 text-[10px] md:text-xs uppercase font-bold">Taraftar</div>
+                                    <div className="text-xl md:text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1 md:mt-2">{(team.fanBase/1000000).toFixed(1)}M</div>
                                     {/* Fan Trust Warning on Home */}
                                     {manager.trust.fans < 40 && (
-                                        <div className="absolute top-2 right-2" title="Güven Düşük!">
-                                            <AlertTriangle size={16} className="text-red-500 animate-pulse"/>
+                                        <div className="absolute top-1 right-1 md:top-2 md:right-2" title="Güven Düşük!">
+                                            <AlertTriangle size={12} className="text-red-500 animate-pulse"/>
                                         </div>
                                     )}
                                 </div>
-                                <div className="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg text-center">
-                                    <div className="text-slate-500 dark:text-slate-400 text-xs uppercase font-bold">Moral</div>
-                                    <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mt-2">%{averageMorale}</div>
+                                <div className="bg-slate-100 dark:bg-slate-700 p-2 md:p-4 rounded-lg text-center">
+                                    <div className="text-slate-500 dark:text-slate-400 text-[10px] md:text-xs uppercase font-bold">Moral</div>
+                                    <div className="text-xl md:text-3xl font-bold text-yellow-600 dark:text-yellow-400 mt-1 md:mt-2">%{averageMorale}</div>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-4 mb-6">
-                                <div className="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg text-center">
-                                    <div className="text-slate-500 dark:text-slate-400 text-xs uppercase font-bold">Sıralama</div>
-                                    <div className="text-3xl font-bold text-slate-900 dark:text-white mt-2">{rank}.</div>
+                            <div className="grid grid-cols-3 gap-2 md:gap-4 mb-6">
+                                <div className="bg-slate-100 dark:bg-slate-700 p-2 md:p-4 rounded-lg text-center">
+                                    <div className="text-slate-500 dark:text-slate-400 text-[10px] md:text-xs uppercase font-bold">Sıralama</div>
+                                    <div className="text-xl md:text-3xl font-bold text-slate-900 dark:text-white mt-1 md:mt-2">{rank}.</div>
                                 </div>
-                                <div className="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg text-center">
-                                    <div className="text-slate-500 dark:text-slate-400 text-xs uppercase font-bold">Puan</div>
-                                    <div className="text-3xl font-bold text-slate-900 dark:text-white mt-2">{team.stats.points}</div>
+                                <div className="bg-slate-100 dark:bg-slate-700 p-2 md:p-4 rounded-lg text-center">
+                                    <div className="text-slate-500 dark:text-slate-400 text-[10px] md:text-xs uppercase font-bold">Puan</div>
+                                    <div className="text-xl md:text-3xl font-bold text-slate-900 dark:text-white mt-1 md:mt-2">{team.stats.points}</div>
                                 </div>
-                                <div className="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg text-center">
-                                    <div className="text-slate-500 dark:text-slate-400 text-xs uppercase font-bold">Form</div>
-                                    <div className="flex justify-center gap-1 mt-3">
+                                <div className="bg-slate-100 dark:bg-slate-700 p-2 md:p-4 rounded-lg text-center">
+                                    <div className="text-slate-500 dark:text-slate-400 text-[10px] md:text-xs uppercase font-bold">Form</div>
+                                    <div className="flex justify-center gap-1 mt-2 md:mt-3">
                                         {form.length > 0 ? form.map((r, i) => (
-                                            <span key={i} className={`w-3 h-3 rounded-full ${r === 'W' ? 'bg-green-500' : r === 'D' ? 'bg-slate-400' : 'bg-red-500'}`}></span>
+                                            <span key={i} className={`w-2 h-2 md:w-3 md:h-3 rounded-full ${r === 'W' ? 'bg-green-500' : r === 'D' ? 'bg-slate-400' : 'bg-red-500'}`}></span>
                                         )) : <span className="text-slate-500 text-sm">-</span>}
                                     </div>
                                 </div>
                             </div>
-                            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Sonraki Maç</h2>
+                            <h2 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white mb-2">Sonraki Maç</h2>
                             {opponent ? (
                                 <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg border border-slate-200 dark:border-slate-600 flex items-center justify-between cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition" onClick={() => onTeamClick(opponent.id)}>
                                     <div className="flex items-center gap-3">
-                                        {opponent.logo && <img src={opponent.logo} className="w-12 h-12 object-contain" />}
-                                        <span className="text-xl font-bold text-slate-900 dark:text-white">{opponent.name}</span>
+                                        {opponent.logo && <img src={opponent.logo} className="w-10 h-10 md:w-12 md:h-12 object-contain" />}
+                                        <span className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">{opponent.name}</span>
                                     </div>
-                                    <span className="text-slate-500 dark:text-slate-400 text-sm">{nextMatch?.homeTeamId === myTeamId ? 'İç Saha' : 'Deplasman'}</span>
+                                    <span className="text-slate-500 dark:text-slate-400 text-xs md:text-sm font-bold bg-white dark:bg-slate-800 px-2 py-1 rounded">{nextMatch?.homeTeamId === myTeamId ? 'İÇ SAHA' : 'DEPLASMAN'}</span>
                                 </div>
                             ) : <div className="p-4 text-slate-500">Bay Haftası</div>}
                         </div>
@@ -140,8 +155,8 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                     {/* RIGHT COLUMN */}
                     <div className="space-y-6">
                         {/* MATCH CALENDAR BLOCK */}
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                        <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <h2 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                                 <Calendar className="text-yellow-600 dark:text-yellow-500" size={20}/> Maç Takvimi
                             </h2>
                             
@@ -163,8 +178,8 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                                                         {res.label}
                                                     </div>
                                                     <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-slate-900 dark:text-white">{opp?.name}</span>
-                                                        <span className="text--[10px] text-slate-500 dark:text-slate-400">{isHome ? 'İç Saha' : 'Deplasman'}</span>
+                                                        <span className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[120px]">{opp?.name}</span>
+                                                        <span className="text-[10px] text-slate-500 dark:text-slate-400">{isHome ? 'İç Saha' : 'Deplasman'}</span>
                                                     </div>
                                                 </div>
                                                 <div 
@@ -212,9 +227,9 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                         </div>
 
                         {/* Standings Table */}
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Puan Durumu</h2>
-                            <StandingsTable teams={teams} myTeamId={myTeamId} compact onTeamClick={onTeamClick}/>
+                        <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                            <h2 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white mb-4">Puan Durumu</h2>
+                            <StandingsTable teams={teams} myTeamId={myTeamId} fixtures={fixtures} onTeamClick={onTeamClick} compact={window.innerWidth < 768}/>
                         </div>
                     </div>
                 </div>
@@ -222,14 +237,14 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
             
              {tab === 'PROFILE' && (
                 <div className="bg-white dark:bg-slate-800 p-8 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                     <div className="flex items-center gap-6 mb-8">
-                        <div className="w-24 h-24 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center border-4 border-yellow-500">
+                     <div className="flex flex-col md:flex-row items-center gap-6 mb-8 text-center md:text-left">
+                        <div className="w-24 h-24 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center border-4 border-yellow-500 shrink-0">
                             <User size={48} className="text-slate-400"/>
                         </div>
                         <div>
                             <h2 className="text-3xl font-bold text-slate-900 dark:text-white">{manager.name}</h2>
                             <p className="text-slate-500 dark:text-slate-400">{manager.nationality} • {manager.age} Yaşında</p>
-                            <div className="flex items-center gap-2 mt-2">
+                            <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
                                 <span className="text-yellow-600 dark:text-yellow-500 font-bold text-xl">Güç Seviyesi: {Math.round(manager.power)}</span>
                                 <Star className="fill-yellow-600 dark:fill-yellow-500 text-yellow-600 dark:text-yellow-500" size={20}/>
                             </div>
@@ -282,9 +297,15 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                             <div className="text-3xl font-bold text-red-600 dark:text-red-400">{manager.stats.moneySpent.toFixed(1)} M€</div>
                             <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Toplam Harcanan</div>
                         </div>
-                         <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg col-span-3">
+                         <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg col-span-2">
                             <div className="text-3xl font-bold text-green-600 dark:text-green-400">{manager.stats.moneyEarned.toFixed(1)} M€</div>
                             <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Toplam Gelir</div>
+                        </div>
+                        {/* Play Time Widget */}
+                        <div className="p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg border-2 border-yellow-500/30 flex flex-col items-center justify-center">
+                            <Clock size={24} className="text-yellow-600 dark:text-yellow-500 mb-1"/>
+                            <div className="text-xl font-bold text-slate-900 dark:text-white">{formatTime(playTime)}</div>
+                            <div className="text-[10px] uppercase text-slate-500 dark:text-slate-400 mt-1">Oynama Süresi</div>
                         </div>
                      </div>
                  </div>
@@ -292,10 +313,10 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
 
             {tab === 'CONTRACT' && (
                 <div className="flex justify-center items-center h-full p-4">
-                    <div className="bg-white text-slate-900 p-8 rounded shadow-2xl max-w-xl w-full relative border border-slate-200">
+                    <div className="bg-white text-slate-900 p-4 md:p-8 rounded shadow-2xl max-w-xl w-full relative border border-slate-200">
                         {/* Header */}
                         <div className="text-center border-b-2 border-slate-100 pb-4 mb-6 relative">
-                            <h2 className="text-2xl font-serif font-bold text-slate-800 tracking-wide uppercase">
+                            <h2 className="text-xl md:text-2xl font-serif font-bold text-slate-800 tracking-wide uppercase">
                                 Profesyonel Teknik Direktör<br/>Sözleşmesi
                             </h2>
                             <div className="absolute top-0 right-0 opacity-10">
@@ -304,14 +325,14 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                         </div>
 
                         {/* Fields */}
-                        <div className="space-y-4 font-serif text-lg mb-12 px-2">
+                        <div className="space-y-4 font-serif text-base md:text-lg mb-12 px-2">
                             <div className="flex items-center justify-between border-b border-slate-200 py-3 border-dashed">
                                 <span className="font-bold text-slate-700">Kulüp:</span>
-                                <span className="text-slate-900 font-bold">{manager.contract.teamName}</span>
+                                <span className="text-slate-900 font-bold text-right">{manager.contract.teamName}</span>
                             </div>
                             <div className="flex items-center justify-between border-b border-slate-200 py-3 border-dashed">
                                 <span className="font-bold text-slate-700">Teknik Direktör:</span>
-                                <span className="text-slate-900 font-bold">{manager.name}</span>
+                                <span className="text-slate-900 font-bold text-right">{manager.name}</span>
                             </div>
                             <div className="flex items-center justify-between border-b border-slate-200 py-3 border-dashed">
                                 <span className="font-bold text-slate-700">Yıllık Ücret:</span>
@@ -324,24 +345,24 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                         </div>
 
                         {/* Signatures */}
-                        <div className="flex justify-between items-end mt-12 px-6 relative pb-6">
+                        <div className="flex justify-between items-end mt-12 px-2 md:px-6 relative pb-6">
                             {/* Club Sig */}
-                            <div className="text-center relative z-10 w-32">
-                                <div className="font-bold text-blue-900 text-lg mb-1 font-serif italic">
+                            <div className="text-center relative z-10 w-24 md:w-32">
+                                <div className="font-bold text-blue-900 text-sm md:text-lg mb-1 font-serif italic truncate">
                                     {manager.contract.teamName} Yk.
                                 </div>
                                 <div className="border-t border-slate-400 w-full mx-auto pt-1">
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">KULÜP BAŞKANI</p>
+                                    <p className="text-[8px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">KULÜP BAŞKANI</p>
                                 </div>
                             </div>
                             
                             {/* Stamp */}
                             <div className="absolute left-1/2 bottom-6 transform -translate-x-1/2 -rotate-12 opacity-90 z-0">
-                                <div className="w-28 h-28 rounded-full border-[3px] border-red-800 flex items-center justify-center p-1">
+                                <div className="w-24 h-24 md:w-28 md:h-28 rounded-full border-[3px] border-red-800 flex items-center justify-center p-1">
                                     <div className="w-full h-full rounded-full border border-red-800 flex items-center justify-center text-center">
                                         <div className="transform rotate-0">
-                                            <span className="text-red-800 font-bold text-[10px] uppercase block mb-1">T.C. SPOR BAKANLIĞI</span>
-                                            <span className="text-red-800 font-bold text-sm uppercase leading-tight block">RESMİ<br/>MÜHÜR</span>
+                                            <span className="text-red-800 font-bold text-[8px] md:text-[10px] uppercase block mb-1">T.C. SPOR BAKANLIĞI</span>
+                                            <span className="text-red-800 font-bold text-xs md:text-sm uppercase leading-tight block">RESMİ<br/>MÜHÜR</span>
                                             <span className="text-red-800 text-[8px] uppercase block mt-1">ONAYLANMIŞTIR</span>
                                         </div>
                                     </div>
@@ -349,12 +370,12 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                             </div>
 
                             {/* Manager Sig */}
-                            <div className="text-center relative z-10 w-32">
-                                <div className="font-serif italic text-blue-900 text-xl mb-1 signature-font">
+                            <div className="text-center relative z-10 w-24 md:w-32">
+                                <div className="font-serif italic text-blue-900 text-base md:text-xl mb-1 signature-font truncate">
                                     {manager.name.toLowerCase()}
                                 </div>
                                 <div className="border-t border-slate-400 w-full mx-auto pt-1">
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">TEKNİK DİREKTÖR</p>
+                                    <p className="text-[8px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">TEKNİK DİREKTÖR</p>
                                 </div>
                             </div>
                         </div>

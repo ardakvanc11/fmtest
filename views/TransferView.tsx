@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Player, Team } from '../types';
 import { Lock } from 'lucide-react';
@@ -16,6 +17,13 @@ const TransferView = ({ transferList, team, budget, isWindowOpen, onBuy, onSell,
         );
     }
 
+    const getPosBadgeColor = (pos: string) => {
+        if (pos === 'GK') return 'bg-yellow-600';
+        if (['SLB', 'STP', 'SGB'].includes(pos)) return 'bg-blue-600';
+        if (['OS', 'OOS'].includes(pos)) return 'bg-green-600';
+        return 'bg-red-600';
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex gap-4 mb-4">
@@ -29,7 +37,7 @@ const TransferView = ({ transferList, team, budget, isWindowOpen, onBuy, onSell,
                      {transferList.map(p => (
                          <div key={p.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between shadow-sm">
                              <div className="flex items-center gap-4 cursor-pointer" onClick={() => onPlayerClick(p)}>
-                                  <div className={`w-10 h-10 rounded flex items-center justify-center text-xs font-bold text-white ${p.position === 'GK' ? 'bg-yellow-600' : p.position === 'DEF' ? 'bg-blue-600' : p.position === 'MID' ? 'bg-green-600' : 'bg-red-600'}`}>{p.position}</div>
+                                  <div className={`w-10 h-10 rounded flex items-center justify-center text-xs font-bold text-white ${getPosBadgeColor(p.position)}`}>{p.position}</div>
                                   <div>
                                       <div className="font-bold text-slate-900 dark:text-white">{p.name}</div>
                                       <div className="text-xs text-slate-500 dark:text-slate-400">{p.age} Yaş • {p.skill} Güç</div>
@@ -52,7 +60,7 @@ const TransferView = ({ transferList, team, budget, isWindowOpen, onBuy, onSell,
                      {team.players.map(p => (
                          <div key={p.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between shadow-sm">
                              <div className="flex items-center gap-4 cursor-pointer" onClick={() => onPlayerClick(p)}>
-                                  <div className={`w-10 h-10 rounded flex items-center justify-center text-xs font-bold text-white ${p.position === 'GK' ? 'bg-yellow-600' : p.position === 'DEF' ? 'bg-blue-600' : p.position === 'MID' ? 'bg-green-600' : 'bg-red-600'}`}>{p.position}</div>
+                                  <div className={`w-10 h-10 rounded flex items-center justify-center text-xs font-bold text-white ${getPosBadgeColor(p.position)}`}>{p.position}</div>
                                   <div>
                                       <div className="font-bold text-slate-900 dark:text-white">{p.name}</div>
                                       <div className="text-xs text-slate-500 dark:text-slate-400">{p.age} Yaş • {p.skill} Güç</div>

@@ -1,4 +1,5 @@
 
+
 import { Position, Team, MatchEvent, PlayerPerformance } from '../types';
 
 // --- RATINGS CALCULATOR ---
@@ -19,15 +20,23 @@ export const calculateRating = (
     let assistWeight = 0;
 
     switch (position) {
-        case Position.FWD:
+        case Position.SNT: // Forvet
             goalWeight = 1.0;
             assistWeight = 0.6;
             break;
-        case Position.MID:
+        case Position.SLK: // Kanatlar
+        case Position.SGK:
+        case Position.OOS: // Ofansif Orta Saha
+            goalWeight = 0.95;
+            assistWeight = 0.8;
+            break;
+        case Position.OS: // Merkez Orta Saha
             goalWeight = 0.9;
             assistWeight = 0.7;
             break;
-        case Position.DEF:
+        case Position.STP: // Defanslar
+        case Position.SLB:
+        case Position.SGB:
         case Position.GK:
             goalWeight = 0.8;
             assistWeight = 0.5;
@@ -43,7 +52,7 @@ export const calculateRating = (
     // Draw is +0.0
 
     // 3. Defensive Bonuses & Penalties (GK & DEF Only)
-    if (position === Position.GK || position === Position.DEF) {
+    if ([Position.GK, Position.STP, Position.SLB, Position.SGB].includes(position)) {
         if (goalsConceded === 0) {
             // Clean Sheet Bonus
             if (position === Position.GK) rating += 1.5;

@@ -1,8 +1,10 @@
 
-import { Fixture, Team, NewsItem, Message, Player } from '../types';
+
+import { Fixture, Team, NewsItem, Message, Player, MatchEvent, Position } from '../types';
 import { generateId, RIVALRIES } from '../constants';
-import { FAN_NAMES, DERBY_TWEETS_WIN, DERBY_TWEETS_LOSS, FAN_TWEETS_WIN, FAN_TWEETS_LOSS, FAN_TWEETS_DRAW, RESIGNATION_TWEETS } from '../data/tweetPool';
+import { FAN_NAMES, DERBY_TWEETS_WIN, DERBY_TWEETS_LOSS, FAN_TWEETS_WIN, FAN_TWEETS_LOSS, FAN_TWEETS_DRAW, RESIGNATION_TWEETS, EVENT_TWEETS } from '../data/tweetPool';
 import { getGameDate, isTransferWindowOpen } from './calendarAndFixtures';
+import { fillTemplate } from './helpers';
 
 // --- FAN TWEETS LOGIC ---
 
@@ -17,12 +19,92 @@ export const generateMatchTweets = (fixture: Fixture, teams: Team[], isUserTeam:
     );
 
     const tweets: NewsItem[] = [];
-    const tweetCount = isUserTeam ? 4 : (isDerby ? 3 : 2); 
+    const tweetCount = isUserTeam ? 5 : (isDerby ? 3 : 2); // Increased tweet count for user team to accommodate events
 
     const getRandomFan = () => FAN_NAMES[Math.floor(Math.random() * FAN_NAMES.length)];
     
     // Shuffle helper to avoid consecutive duplicates
     const shuffle = (array: string[]) => array.sort(() => 0.5 - Math.random());
+
+    const events = fixture.matchEvents || [];
+    const eventTweetsList: { content: string, team: Team }[] = [];
+
+    // --- 1. EVENT BASED TWEET GENERATION ---
+
+    // A. Red Cards
+    events.filter(e => e.type === 'CARD_RED').forEach(e => {
+        const team = e.teamName === home.name ? home : away;
+        // Resolve player name
+        let playerName = e.description.split(' ')[0]; // Basic fallback
+        // If we have direct access to player name via roster (optional/advanced), use it. 
+        // For now relying on event description parsing or raw input if available.
+        // Assuming event.playerId could help if we had full roster map, but description usually has name.
+        if (e.playerId) {
+             const p = team.players.find(pl => pl.id === e.playerId);
+             if (p) playerName = p.name;
+        }
+
+        const template = EVENT_TWEETS.RED_CARD[Math.floor(Math.random() * EVENT_TWEETS.RED_CARD.length)];
+        const content = fillTemplate(template, { player: playerName });
+        eventTweetsList.push({ content, team });
+    });
+
+    // B. Injuries
+    events.filter(e => e.type === 'INJURY').forEach(e => {
+        const team = e.teamName === home.name ? home : away;
+        let playerName = "Oyuncumuz";
+        if (e.playerId) {
+             const p = team.players.find(pl => pl.id === e.playerId);
+             if (p) playerName = p.name;
+        } else {
+             playerName = e.description.split(' ')[0];
+        }
+
+        const template = EVENT_TWEETS.INJURY[Math.floor(Math.random() * EVENT_TWEETS.INJURY.length)];
+        const content = fillTemplate(template, { player: playerName });
+        eventTweetsList.push({ content, team });
+    });
+
+    // C. Penalty Miss
+    events.filter(e => e.type === 'MISS' && e.description.toLowerCase().includes('penaltı')).forEach(e => {
+        const team = e.teamName === home.name ? home : away;
+        let playerName = "Penaltıcı";
+        if (e.playerId) {
+             const p = team.players.find(pl => pl.id === e.playerId);
+             if (p) playerName = p.name;
+        }
+
+        const template = EVENT_TWEETS.PENALTY_MISS[Math.floor(Math.random() * EVENT_TWEETS.PENALTY_MISS.length)];
+        const content = fillTemplate(template, { player: playerName });
+        eventTweetsList.push({ content, team });
+    });
+
+    // D. Penalty Goal
+    events.filter(e => e.type === 'GOAL' && (e.assist === 'Penaltı' || e.description.toLowerCase().includes('penaltı'))).forEach(e => {
+        const team = e.teamName === home.name ? home : away;
+        const playerName = e.scorer || "Oyuncumuz";
+        
+        const template = EVENT_TWEETS.PENALTY_GOAL[Math.floor(Math.random() * EVENT_TWEETS.PENALTY_GOAL.length)];
+        const content = fillTemplate(template, { player: playerName });
+        eventTweetsList.push({ content, team });
+    });
+
+    // E. Goal Hero (Hat-Trick check)
+    const scorers: Record<string, number> = {};
+    events.filter(e => e.type === 'GOAL').forEach(e => {
+        if(e.scorer) scorers[e.scorer] = (scorers[e.scorer] || 0) + 1;
+    });
+    
+    Object.entries(scorers).forEach(([name, count]) => {
+        if (count >= 2) { // 2+ Goals gets praise
+            const team = [home, away].find(t => t.players.some(p => p.name === name)) || home;
+            const template = EVENT_TWEETS.GOAL_HERO[Math.floor(Math.random() * EVENT_TWEETS.GOAL_HERO.length)];
+            const content = fillTemplate(template, { player: name });
+            eventTweetsList.push({ content, team });
+        }
+    });
+
+    // --- 2. GENERAL RESULT TWEET GENERATION ---
 
     let homePool: string[] = [];
     let awayPool: string[] = [];
@@ -46,25 +128,48 @@ export const generateMatchTweets = (fixture: Fixture, teams: Team[], isUserTeam:
         awayPool = shuffle(drawSource);
     }
 
-    // We alternate creating tweets for home and away fans to keep the feed diverse
-    for (let i = 0; i < tweetCount; i++) {
-        // Even index = Home Fan Tweet, Odd index = Away Fan Tweet
-        const isHomeFan = i % 2 === 0;
-        
-        const fan = getRandomFan();
-        const content = isHomeFan ? homePool[i % homePool.length] : awayPool[i % awayPool.length];
-        const fanTeam = isHomeFan ? home : away;
-        
-        // Format: "Name|Handle|TeamName" to pass structure to UI
-        const fanTitle = `${fan.name}|${fan.handle}|${fanTeam.name}`;
+    // --- 3. MERGE AND SELECT TWEETS ---
+    
+    let createdCount = 0;
 
+    // First, add all Event Tweets (limited to 3 max to not spam feed if match was crazy)
+    const shuffledEventTweets = eventTweetsList.sort(() => 0.5 - Math.random()).slice(0, 3);
+    
+    shuffledEventTweets.forEach(et => {
+        const fan = getRandomFan();
+        const fanTitle = `${fan.name}|${fan.handle}|${et.team.name}`;
+        
         tweets.push({
             id: generateId(),
             week: fixture.week,
-            type: 'MATCH', // Re-using MATCH type for tweets related to matches
-            title: fanTitle, 
-            content: content
+            type: 'MATCH',
+            title: fanTitle,
+            content: et.content
         });
+        createdCount++;
+    });
+
+    // Fill the rest with Result Tweets
+    while (createdCount < tweetCount) {
+        // Alternate between home and away fans for balance
+        const isHomeFan = createdCount % 2 === 0;
+        const pool = isHomeFan ? homePool : awayPool;
+        const fanTeam = isHomeFan ? home : away;
+        
+        if (pool.length > 0) {
+            const fan = getRandomFan();
+            const content = pool[createdCount % pool.length]; // Cycle through pool
+            const fanTitle = `${fan.name}|${fan.handle}|${fanTeam.name}`;
+
+            tweets.push({
+                id: generateId(),
+                week: fixture.week,
+                type: 'MATCH',
+                title: fanTitle, 
+                content: content
+            });
+        }
+        createdCount++;
     }
 
     return tweets;
@@ -300,7 +405,8 @@ export const generatePlayerMessages = (week: number, myTeam: Team, fixtures: Fix
             preview: text,
             date: 'Bugün',
             read: false,
-            avatarColor: player.position === 'GK' ? 'bg-yellow-600' : player.position === 'DEF' ? 'bg-blue-600' : player.position === 'MID' ? 'bg-green-600' : 'bg-red-600',
+            // Correct avatar logic for Positions using enums
+            avatarColor: player.position === Position.GK ? 'bg-yellow-600' : [Position.SLB, Position.STP, Position.SGB].includes(player.position) ? 'bg-blue-600' : [Position.OS, Position.OOS].includes(player.position) ? 'bg-green-600' : 'bg-red-600',
             history: [
                 { id: Date.now(), text: text, time: '09:00', isMe: false }
             ],

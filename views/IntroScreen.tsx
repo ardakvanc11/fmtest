@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 
 const IntroScreen = ({ onStart }: { onStart: (name: string, year: string, country: string) => void }) => {
@@ -6,8 +7,8 @@ const IntroScreen = ({ onStart }: { onStart: (name: string, year: string, countr
     const [country, setCountry] = useState('Türkiye');
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[url('https://i.imgur.com/SlgaMNf.jpeg')] bg-cover bg-center">
-            <div className="bg-slate-900/90 dark:bg-slate-900/90 p-8 rounded-xl shadow-2xl border border-slate-700 max-w-md w-full text-center backdrop-blur-sm">
+        <div className="min-h-screen h-full w-full flex items-center justify-center bg-[url('https://i.imgur.com/SlgaMNf.jpeg')] bg-cover bg-center overflow-y-auto py-10 px-4">
+            <div className="bg-slate-900/90 dark:bg-slate-900/90 p-8 rounded-xl shadow-2xl border border-slate-700 max-w-md w-full text-center backdrop-blur-sm my-auto">
                 <div className="mb-6 flex justify-center">
                     <img 
                         src="https://imgur.com/jMJ7IEw.png" 

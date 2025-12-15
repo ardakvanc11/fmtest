@@ -2,9 +2,14 @@
 
 export enum Position {
     GK = 'GK',
-    DEF = 'DEF',
-    MID = 'MID',
-    FWD = 'FWD'
+    SLB = 'SLB', // Sol Bek
+    STP = 'STP', // Stoper
+    SGB = 'SGB', // Sağ Bek
+    OS = 'OS',   // Merkez Orta Saha
+    OOS = 'OOS', // Ofansif Orta Saha
+    SLK = 'SLK', // Sol Kanat
+    SGK = 'SGK', // Sağ Kanat
+    SNT = 'SNT'  // Santrafor
 }
 
 // --- NEW TACTICAL ENUMS ---
@@ -127,13 +132,28 @@ export interface Injury {
     description: string;
 }
 
+export interface PastInjury {
+    type: string;
+    week: number;
+    duration: number;
+}
+
+export interface PlayerFaceData {
+    skin: string;
+    eyes: string;
+    brows: string;
+    hair: string;
+}
+
 export interface Player {
     id: string;
     name: string;
     position: Position;
+    secondaryPosition?: Position; // NEW: Added secondary position
     skill: number; 
     stats: PlayerStats; 
     seasonStats: PlayerSeasonStats; // NEW
+    face: PlayerFaceData; // NEW: Layered face data
     age: number;
     value: number; 
     nationality: string;
@@ -142,6 +162,8 @@ export interface Player {
     suspendedUntilWeek?: number;
     injury?: Injury; 
     hasInjectionForNextMatch?: boolean; 
+    injurySusceptibility: number; // 0-100 (Higher is worse)
+    injuryHistory: PastInjury[];
 }
 
 export interface Team {
@@ -191,7 +213,7 @@ export interface Team {
 export interface MatchEvent {
     minute: number;
     description: string;
-    type: 'GOAL' | 'MISS' | 'CARD_YELLOW' | 'CARD_RED' | 'INFO' | 'VAR' | 'FOUL' | 'CORNER' | 'INJURY' | 'OFFSIDE' | 'SAVE';
+    type: 'GOAL' | 'MISS' | 'CARD_YELLOW' | 'CARD_RED' | 'INFO' | 'VAR' | 'FOUL' | 'CORNER' | 'INJURY' | 'OFFSIDE' | 'SAVE' | 'SUBSTITUTION';
     teamName?: string;
     scorer?: string;
     assist?: string;
@@ -363,4 +385,6 @@ export interface GameState {
     transferList: Player[]; 
     trainingPerformed: boolean;
     news: NewsItem[]; 
+    playTime: number; // Seconds played
+    lastSeenInjuryCount: number; // For health center badge
 }

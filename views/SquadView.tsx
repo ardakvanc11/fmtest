@@ -28,39 +28,63 @@ const SquadView = ({ team, onPlayerClick }: { team: Team, onPlayerClick: (p: Pla
         setSortConfig({ key, direction });
     };
 
-    const SortableHeader = ({ label, sortKey, align = 'center' }: { label: string, sortKey: string, align?: string }) => (
-        <th className={`px-4 py-2 text-${align} cursor-pointer hover:text-black dark:hover:text-white transition select-none group`} onClick={() => requestSort(sortKey)}>
+    const SortableHeader = ({ label, sortKey, align = 'center', className = '' }: { label: string, sortKey: string, align?: string, className?: string }) => (
+        <th className={`px-2 md:px-4 py-2 text-${align} cursor-pointer hover:text-black dark:hover:text-white transition select-none group ${className}`} onClick={() => requestSort(sortKey)}>
             <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start'}`}>
                 {label} <ArrowUpDown size={12} className={`text-slate-400 dark:text-slate-600 group-hover:text-yellow-600 dark:group-hover:text-yellow-500 ${sortConfig?.key === sortKey ? 'text-yellow-600 dark:text-yellow-500' : ''}`}/>
             </div>
         </th>
     );
 
+    // Slice Logic:
+    // XI: 0-11
+    // Subs: 11-18 (7 players)
+    // Reserves: 18+ (Kadro Dışı)
+    const startingXI = team.players.slice(0, 11);
+    const substitutes = team.players.slice(11, 18);
+    const reserves = team.players.slice(18);
+
+    const groups = [
+        { title: 'İLK 11', players: startingXI, colorClass: 'text-green-600 dark:text-green-400', startIndex: 0 },
+        { title: 'YEDEKLER', players: substitutes, colorClass: 'text-blue-600 dark:text-blue-400', startIndex: 11 },
+        { title: 'KADRO DIŞI (REZERV)', players: reserves, colorClass: 'text-slate-500 dark:text-slate-400', startIndex: 18 }
+    ];
+
     return (
-        <div className="space-y-6">
-            {[team.players.slice(0, 11), team.players.slice(11)].map((group, idx) => (
+        <div className="space-y-6 pb-10">
+            {groups.map((group, idx) => (
                 <div key={idx} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-                    <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 font-bold text-green-600 dark:text-green-400 flex justify-between">
-                        <span>{idx === 0 ? 'İLK 11' : 'YEDEKLER'}</span>
+                    <div className={`px-4 md:px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 font-bold flex justify-between ${group.colorClass}`}>
+                        <span>{group.title}</span>
                         {sortConfig && <span className="text-xs text-slate-500 font-normal">Sıralama: {sortConfig.key}</span>}
                     </div>
-                    <table className="w-full text-left text-sm">
-                        <thead>
-                            <tr className="text-xs text-slate-500 uppercase border-b border-slate-200 dark:border-slate-700">
-                                <th className="px-4 py-2 w-8">#</th>
-                                <SortableHeader label="Oyuncu" sortKey="position" align="left" />
-                                <SortableHeader label="Yaş" sortKey="age" />
-                                <SortableHeader label="Güç" sortKey="skill" />
-                                <SortableHeader label="Kondisyon" sortKey="stamina" />
-                                <SortableHeader label="Moral" sortKey="morale" />
-                                <SortableHeader label="Gol" sortKey="goals" />
-                                <SortableHeader label="Asist" sortKey="assists" />
-                                <SortableHeader label="Ort" sortKey="rating" />
-                                <SortableHeader label="Değer" sortKey="value" align="right" />
-                            </tr>
-                        </thead>
-                        <tbody>{sortPlayers(group).map((p, i) => <PlayerRow key={p.id} p={p} index={idx === 0 ? i : i + 11} onClick={onPlayerClick} />)}</tbody>
-                    </table>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm whitespace-nowrap">
+                            <thead>
+                                <tr className="text-xs text-slate-500 uppercase border-b border-slate-200 dark:border-slate-700">
+                                    <th className="px-2 md:px-4 py-2 w-8">#</th>
+                                    <SortableHeader label="Oyuncu" sortKey="position" align="left" />
+                                    <SortableHeader label="Güç" sortKey="skill" />
+                                    <SortableHeader label="Yaş" sortKey="age" className="hidden sm:table-cell"/>
+                                    <SortableHeader label="Kondisyon" sortKey="stamina" className="hidden md:table-cell"/>
+                                    <SortableHeader label="Moral" sortKey="morale" className="hidden md:table-cell"/>
+                                    <SortableHeader label="Gol" sortKey="goals" />
+                                    <SortableHeader label="Asist" sortKey="assists" />
+                                    <SortableHeader label="Form (5)" sortKey="rating" className="hidden sm:table-cell"/>
+                                    <SortableHeader label="Değer" sortKey="value" align="right" />
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {group.players.length > 0 ? (
+                                    sortPlayers(group.players).map((p, i) => <PlayerRow key={p.id} p={p} index={group.startIndex + i} onClick={onPlayerClick} />)
+                                ) : (
+                                    <tr>
+                                        <td colSpan={10} className="px-4 py-8 text-center text-slate-400 italic">Bu bölümde oyuncu yok.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             ))}
         </div>

@@ -1,8 +1,9 @@
 
+
 import React, { useState } from 'react';
 import { GameState } from '../types';
 import { getGameDate } from '../utils/gameEngine';
-import { Home, Users, Briefcase, DollarSign, Calendar, Dumbbell, Smartphone, Save, RotateCcw, X, Menu, ChevronLeft, ChevronRight, PlayCircle, Sun, Moon } from 'lucide-react';
+import { Home, Users, Briefcase, DollarSign, Calendar, Dumbbell, Smartphone, Save, RotateCcw, X, Menu, ChevronLeft, ChevronRight, PlayCircle, Sun, Moon, Activity } from 'lucide-react';
 
 const NavItem = ({ id, label, icon: Icon, badge, onClick, currentView, isMatchMode }: any) => (
     <button 
@@ -33,7 +34,8 @@ const Dashboard = ({
     onBack,
     onForward,
     canBack,
-    canForward
+    canForward,
+    injuredCount
 }: { 
     state: GameState, 
     onNavigate: (view: string) => void, 
@@ -47,7 +49,8 @@ const Dashboard = ({
     onBack: () => void,
     onForward: () => void,
     canBack: boolean,
-    canForward: boolean
+    canForward: boolean,
+    injuredCount?: number
 }) => {
     const myTeam = state.teams.find(t => t.id === state.myTeamId);
     const { label: dateLabel } = getGameDate(state.currentWeek);
@@ -59,8 +62,8 @@ const Dashboard = ({
     
     const canAdvance = currentFixture ? !!currentFixture.played : true;
     
-    // Updated isMatchMode to restrict navigation only during active match play or mandatory match flow sequences
-    const isMatchMode = ['match_live', 'match_result', 'interview'].includes(currentView);
+    // Updated isMatchMode to restrict navigation during active match play, match flow, AND game over
+    const isMatchMode = ['match_live', 'match_result', 'interview', 'game_over'].includes(currentView);
 
     // Calculate unread messages
     const unreadMessagesCount = state.messages.filter(m => !m.read).length;
@@ -72,8 +75,8 @@ const Dashboard = ({
     // Notification State
     const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
-    // Determine if we need padding (standard views) or full screen (match views)
-    const noPaddingViews = ['match_live', 'locker_room'];
+    // Determine if we need padding (standard views) or full screen (match views/game over)
+    const noPaddingViews = ['match_live', 'locker_room', 'game_over'];
     const usePadding = !noPaddingViews.includes(currentView);
 
     return (
@@ -93,13 +96,14 @@ const Dashboard = ({
                         className="h-10 w-auto object-contain"
                     />
                     </div>
-                    <button className="md:hidden text-slate-400" onClick={() => setMobileMenuOpen(false)}><X size={24}/></button>
+                    <button className="md:hidden text-slate-400 p-2" onClick={() => setMobileMenuOpen(false)}><X size={24}/></button>
                 </div>
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                     <NavItem id="home" label="Genel Bakış" icon={Home} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                     <NavItem id="social" label="Sosyal Medya" icon={Smartphone} badge={unreadMessagesCount} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                     <NavItem id="squad" label="Kadro" icon={Users} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                     <NavItem id="tactics" label="Taktik & 11" icon={Briefcase} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
+                    <NavItem id="health_center" label="Sağlık Merkezi" icon={Activity} badge={injuredCount} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                     <NavItem id="transfer" label="Transfer" icon={DollarSign} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                     <NavItem id="fixtures" label="Fikstür" icon={Calendar} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                     <NavItem id="training" label="Antrenman" icon={Dumbbell} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
@@ -163,14 +167,16 @@ const Dashboard = ({
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden w-full">
-                <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shadow-sm z-10 shrink-0 transition-colors duration-300">
-                    <div className="flex items-center space-x-4">
-                        <button className="md:hidden text-slate-600 dark:text-slate-200 hover:text-black dark:hover:text-white" onClick={() => setMobileMenuOpen(true)}>
+                {/* HEADER - RESPONSIVE */}
+                <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-3 md:px-6 shadow-sm z-10 shrink-0 transition-colors duration-300">
+                    <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
+                        {/* Hamburger */}
+                        <button className="md:hidden text-slate-600 dark:text-slate-200 hover:text-black dark:hover:text-white p-2" onClick={() => setMobileMenuOpen(true)}>
                             <Menu size={24} />
                         </button>
                         
-                        {/* NAVIGATION BUTTONS */}
-                        <div className="flex items-center space-x-1 mr-2">
+                        {/* History Nav - Hidden on mobile to save space */}
+                        <div className="hidden md:flex items-center space-x-1 mr-2">
                              <button
                                  onClick={onBack}
                                  disabled={!canBack || isMatchMode}
@@ -187,47 +193,57 @@ const Dashboard = ({
                              </button>
                         </div>
 
-                        <div className="flex items-center space-x-2 border-l border-slate-200 dark:border-slate-700 pl-4">
+                        {/* Team Info */}
+                        <div className="flex items-center gap-2 border-l-0 md:border-l border-slate-200 dark:border-slate-700 md:pl-4 overflow-hidden">
                             {myTeam?.logo ? (
-                                <img src={myTeam.logo} alt={myTeam.name} className="w-8 h-8 object-contain" />
+                                <img src={myTeam.logo} alt={myTeam.name} className="w-8 h-8 object-contain shrink-0" />
                             ) : (
-                                <div className={`w-8 h-8 rounded-full ${myTeam?.colors?.[0] || 'bg-gray-500'}`} />
+                                <div className={`w-8 h-8 rounded-full shrink-0 ${myTeam?.colors?.[0] || 'bg-gray-500'}`} />
                             )}
-                            <span className="font-bold text-lg hidden sm:block text-slate-900 dark:text-white">{myTeam?.name}</span>
+                            <span className="font-bold text-base md:text-lg text-slate-900 dark:text-white truncate">{myTeam?.name}</span>
                         </div>
                     </div>
-                    <div className="flex items-center space-x-4 md:space-x-6">
-                         <div className="hidden sm:flex items-center space-x-2 text-green-600 dark:text-green-400 font-mono">
+
+                    <div className="flex items-center gap-2 md:gap-4 shrink-0">
+                         {/* Budget - Hidden on very small screens if needed, mostly visible */}
+                         <div className="hidden sm:flex items-center space-x-2 text-green-600 dark:text-green-400 font-mono text-sm md:text-base">
                             <DollarSign size={16} />
                             <span>{myTeam?.budget?.toFixed(1)} M€</span>
                         </div>
-                        <div className="hidden sm:flex items-center space-x-2 text-yellow-600 dark:text-yellow-400 font-mono border border-slate-300 dark:border-slate-600 px-3 py-1 rounded bg-slate-100 dark:bg-slate-700 min-w-[200px] justify-center transition-colors">
+                        
+                        {/* Date - Icon only on mobile, text on desktop */}
+                        <div className="flex items-center space-x-2 text-yellow-600 dark:text-yellow-400 font-mono border border-slate-300 dark:border-slate-600 px-2 md:px-3 py-1 rounded bg-slate-100 dark:bg-slate-700 justify-center transition-colors">
                             <Calendar size={16} />
-                            <span className="text-sm font-bold uppercase">{dateLabel}</span>
+                            <span className="hidden lg:inline text-sm font-bold uppercase">{dateLabel}</span>
+                            <span className="lg:hidden text-xs font-bold">{state.currentWeek}.Hf</span>
                         </div>
                         
-                        {isMatchMode ? (
-                            <button disabled className="bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-400 px-3 py-2 md:px-4 md:py-2 rounded font-bold flex items-center cursor-not-allowed animate-pulse text-sm md:text-base transition-colors">
+                        {currentView === 'game_over' ? (
+                             <button disabled className="bg-red-800 text-white px-3 py-2 md:px-4 md:py-2 rounded font-bold flex items-center cursor-not-allowed opacity-100 text-xs md:text-base transition-colors whitespace-nowrap">
+                                <span className="hidden sm:inline">KARİYER SONU</span><span className="sm:hidden">BİTTİ</span>
+                            </button>
+                        ) : isMatchMode ? (
+                            <button disabled className="bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-400 px-3 py-2 md:px-4 md:py-2 rounded font-bold flex items-center cursor-not-allowed animate-pulse text-xs md:text-base transition-colors whitespace-nowrap">
                                 <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span> <span className="hidden sm:inline">MAÇ GÜNÜ</span><span className="sm:hidden">MAÇ</span>
                             </button>
                         ) : canAdvance ? (
                             <button 
                                 onClick={onNextWeek}
-                                className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 md:px-4 md:py-2 rounded font-bold flex items-center animate-pulse shadow-lg shadow-blue-900/20 dark:shadow-blue-900/50 text-sm md:text-base transition-colors"
+                                className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 md:px-4 md:py-2 rounded font-bold flex items-center animate-pulse shadow-lg shadow-blue-900/20 dark:shadow-blue-900/50 text-xs md:text-base transition-colors whitespace-nowrap"
                             >
-                                <span className="hidden sm:inline">Sonraki Hafta</span><span className="sm:hidden">İleri</span> <ChevronRight size={16} className="ml-1"/>
+                                <span className="hidden sm:inline">Sonraki Hafta</span><span className="sm:hidden">İLERİ</span> <ChevronRight size={16} className="ml-1"/>
                             </button>
                         ) : (
                              <button 
                                 onClick={() => onNavigate('match_preview')}
-                                className="bg-red-600 hover:bg-red-500 text-white px-3 py-2 md:px-4 md:py-2 rounded font-bold flex items-center shadow-lg shadow-red-900/20 dark:shadow-red-900/50 text-sm md:text-base transition-colors"
+                                className="bg-red-600 hover:bg-red-500 text-white px-3 py-2 md:px-4 md:py-2 rounded font-bold flex items-center shadow-lg shadow-red-900/20 dark:shadow-red-900/50 text-xs md:text-base transition-colors whitespace-nowrap"
                             >
-                                <PlayCircle size={16} className="mr-2"/> <span className="hidden sm:inline">MAÇA GİT</span><span className="sm:hidden">MAÇ</span>
+                                <PlayCircle size={16} className="mr-1 md:mr-2"/> <span className="hidden sm:inline">MAÇA GİT</span><span className="sm:hidden">MAÇ</span>
                             </button>
                         )}
                     </div>
                 </header>
-                <main className={`flex-1 flex flex-col bg-slate-50 dark:bg-slate-900 relative transition-colors duration-300 ${usePadding ? 'p-4 md:p-6 overflow-auto' : 'overflow-hidden'}`}>
+                <main className={`flex-1 flex flex-col bg-slate-50 dark:bg-slate-900 relative transition-colors duration-300 ${usePadding ? 'p-2 md:p-6 overflow-auto' : 'overflow-hidden'}`}>
                      {children}
                 </main>
             </div>

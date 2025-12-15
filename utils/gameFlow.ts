@@ -1,4 +1,5 @@
 
+
 import { Player, Team, Position } from '../types';
 import { generatePlayer } from '../constants';
 import { getGameDate } from './calendarAndFixtures';
@@ -10,7 +11,13 @@ export const generateTransferMarket = (count: number, week: number): Player[] =>
     const priceMultiplier = month === 0 ? 1.5 : 1.0;
 
     for(let i=0; i<count; i++) {
-        const positions = [Position.GK, Position.DEF, Position.MID, Position.FWD];
+        // Detailed positions for transfer market
+        const positions = [
+            Position.GK, 
+            Position.STP, Position.STP, Position.SLB, Position.SGB,
+            Position.OS, Position.OS, Position.OOS, 
+            Position.SLK, Position.SGK, Position.SNT
+        ];
         const randomPos = positions[Math.floor(Math.random() * positions.length)];
         
         // 80% chance for low tier (40-65), 20% chance for high tier (70-85)

@@ -1,7 +1,8 @@
 
+
 import React, { useState } from 'react';
 import { Team, MatchStats, MatchEvent } from '../types';
-import { MonitorPlay, Syringe, Disc, Users, BarChart2, Star } from 'lucide-react';
+import { MonitorPlay, Syringe, Disc, Users, BarChart2, Star, RefreshCw } from 'lucide-react';
 
 const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, events, onProceed }: {homeTeam: Team, awayTeam: Team, homeScore: number, awayScore: number, stats: MatchStats, events: MatchEvent[], onProceed: () => void }) => {
     const [statsTab, setStatsTab] = useState<'STATS' | 'RATINGS'>('STATS');
@@ -16,6 +17,7 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
         e.type === 'CARD_YELLOW' || 
         e.type === 'CARD_RED' || 
         e.type === 'INJURY' || 
+        e.type === 'SUBSTITUTION' ||
         e.type === 'VAR' || 
         e.type === 'MISS' // Optional: Show missed penalties or huge chances
     ).sort((a,b) => a.minute - b.minute);
@@ -27,6 +29,7 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
             case 'CARD_RED': return <div className="w-3 h-4 bg-red-600 rounded-sm border border-red-700 shadow-sm"></div>;
             case 'INJURY': return <Syringe size={16} className="text-red-400"/>;
             case 'VAR': return <MonitorPlay size={16} className="text-purple-400"/>;
+            case 'SUBSTITUTION': return <RefreshCw size={16} className="text-green-400"/>;
             default: return null;
         }
     };
@@ -39,6 +42,13 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
             if (player) return player.name;
         }
         return null;
+    };
+
+    const getPosBadgeColor = (pos: string) => {
+        if (pos === 'GK') return 'bg-yellow-600';
+        if (['SLB', 'STP', 'SGB'].includes(pos)) return 'bg-blue-600';
+        if (['OS', 'OOS'].includes(pos)) return 'bg-green-600';
+        return 'bg-red-600';
     };
 
     const renderPlayerRatings = (ratings: any[], teamName: string) => (
@@ -56,7 +66,7 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
                     return (
                         <div key={i} className="flex justify-between items-center text-sm p-1.5 hover:bg-slate-700/50 rounded transition">
                              <div className="flex items-center gap-2">
-                                 <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white ${p.position === 'GK' ? 'bg-yellow-600' : p.position === 'DEF' ? 'bg-blue-600' : p.position === 'MID' ? 'bg-green-600' : 'bg-red-600'}`}>
+                                 <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white ${getPosBadgeColor(p.position)}`}>
                                      {p.position}
                                  </div>
                                  <span className="text-slate-200 font-medium truncate max-w-[120px]">{p.name}</span>
@@ -122,6 +132,9 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
                                                         {playerName && <span className={`text-sm font-bold ${isGoal ? 'text-green-400' : 'text-white'}`}>{playerName}</span>}
                                                         {getEventIcon(e.type)}
                                                      </div>
+                                                     {e.type === 'SUBSTITUTION' && (
+                                                         <span className="text-xs text-white font-bold mt-0.5">{e.description}</span>
+                                                     )}
                                                      {isGoal && e.assist && (
                                                          <span className="text-[10px] text-slate-400">Asist: {e.assist}</span>
                                                      )}
@@ -142,6 +155,9 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
                                                         {getEventIcon(e.type)}
                                                         {playerName && <span className={`text-sm font-bold ${isGoal ? 'text-green-400' : 'text-white'}`}>{playerName}</span>}
                                                      </div>
+                                                     {e.type === 'SUBSTITUTION' && (
+                                                         <span className="text-xs text-white font-bold mt-0.5">{e.description}</span>
+                                                     )}
                                                      {isGoal && e.assist && (
                                                          <span className="text-[10px] text-slate-400">Asist: {e.assist}</span>
                                                      )}

@@ -20,6 +20,7 @@ import MatchPreview from './views/MatchPreview';
 import LockerRoomView from './views/LockerRoomView';
 import MatchSimulation from './views/MatchSimulation';
 import PostMatchInterview from './views/PostMatchInterview';
+import HealthCenterView from './views/HealthCenterView';
 
 // Layouts & Modals
 import Dashboard from './layout/Dashboard';
@@ -40,7 +41,9 @@ const App: React.FC = () => {
         isGameStarted: false,
         transferList: [],
         trainingPerformed: false,
-        news: []
+        news: [],
+        playTime: 0,
+        lastSeenInjuryCount: 0
     });
     
     // NAVIGATION HISTORY STATE
@@ -60,6 +63,14 @@ const App: React.FC = () => {
     // Navigation Functions
     const navigateTo = (view: string) => {
         if (view === currentView) return;
+
+        // NEW: Clear injury notification when visiting health center
+        if (view === 'health_center') {
+            const t = gameState.teams.find(t => t.id === gameState.myTeamId);
+            const currentInjured = t ? t.players.filter(p => p.injury && p.injury.weeksRemaining > 0).length : 0;
+            setGameState(prev => ({ ...prev, lastSeenInjuryCount: currentInjured }));
+        }
+
         const newHistory = viewHistory.slice(0, historyIndex + 1);
         newHistory.push(view);
         setViewHistory(newHistory);
@@ -99,11 +110,32 @@ const App: React.FC = () => {
         setTheme(prev => prev === 'dark' ? 'light' : 'dark');
     };
 
+    // PLAY TIME TRACKER
+    useEffect(() => {
+        let interval: any;
+        if (gameState.isGameStarted) {
+            interval = setInterval(() => {
+                setGameState(prev => ({
+                    ...prev,
+                    playTime: (prev.playTime || 0) + 1
+                }));
+            }, 1000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [gameState.isGameStarted]);
+
     useEffect(() => {
         const saved = localStorage.getItem('sthl_save_v2');
         if(saved) {
             try {
                 const parsed = JSON.parse(saved);
+                // Ensure playTime exists in old saves
+                if (typeof parsed.playTime === 'undefined') parsed.playTime = 0;
+                // Ensure lastSeenInjuryCount exists in old saves
+                if (typeof parsed.lastSeenInjuryCount === 'undefined') parsed.lastSeenInjuryCount = 0;
+                
                 setGameState(parsed);
                 if(parsed.isGameStarted) {
                     // Reset history to home on load if game started
@@ -192,7 +224,9 @@ const App: React.FC = () => {
             isGameStarted: false,
             transferList,
             trainingPerformed: false,
-            news
+            news,
+            playTime: 0,
+            lastSeenInjuryCount: 0
         };
         setGameState(newState);
         navigateTo('team_select');
@@ -229,7 +263,9 @@ const App: React.FC = () => {
             isGameStarted: false,
             transferList: [],
             trainingPerformed: false,
-            news: []
+            news: [],
+            playTime: 0,
+            lastSeenInjuryCount: 0
         });
         
         setSelectedPlayerForDetail(null);
@@ -252,6 +288,7 @@ const App: React.FC = () => {
         weekMatches.forEach(match => {
              const h = updatedTeams.find(t => t.id === match.homeTeamId)!;
              const a = updatedTeams.find(t => t.id === match.awayTeamId)!;
+             // Pass all fixtures for history calculation inside simulation if needed
              const res = simulateMatchInstant(h, a);
              
              const idx = updatedFixtures.findIndex(f => f.id === match.id);
@@ -286,6 +323,19 @@ const App: React.FC = () => {
         const nextWeek = gameState.currentWeek + 1;
         const newTransferList = isTransferWindowOpen(nextWeek) ? generateTransferMarket(10, nextWeek) : [];
         
+        // CLEANUP SUSPENSIONS
+        // If nextWeek >= suspendedUntilWeek, clear the suspension data so it disappears from UI
+        updatedTeams = updatedTeams.map(t => ({
+            ...t,
+            players: t.players.map(p => {
+                const newP = { ...p };
+                if (newP.suspendedUntilWeek && newP.suspendedUntilWeek <= nextWeek) {
+                    newP.suspendedUntilWeek = undefined;
+                }
+                return newP;
+            })
+        }));
+
         // 5. Player Complaints / Messages
         const updatedMyTeam = updatedTeams.find(t => t.id === gameState.myTeamId);
         // PASS FIXTURES HERE
@@ -391,6 +441,7 @@ const App: React.FC = () => {
         updatedFixtures[fixtureIdx] = completedFixture;
         
         // Process Post Game (Injuries, Morale, Suspensions)
+        // Pass ALL fixtures so history can be checked inside processing
         const processedTeams = processMatchPostGame(gameState.teams, events, gameState.currentWeek, updatedFixtures);
 
         const updatedManager = { ...gameState.manager! };
@@ -398,12 +449,28 @@ const App: React.FC = () => {
         updatedManager.stats.goalsFor += myScore;
         updatedManager.stats.goalsAgainst += oppScore;
         
+        // MOVED UP: Streak Calculation needed for Trust Logic
+        const pastMatchesForStreak = updatedFixtures
+            .filter(f => f.played && f.week <= gameState.currentWeek && (f.homeTeamId === myTeamId || f.awayTeamId === myTeamId))
+            .sort((a, b) => b.week - a.week); // Descending (Newest first)
+
+        let currentLossStreak = 0;
+        for (const f of pastMatchesForStreak) {
+             const isH = f.homeTeamId === myTeamId;
+             const mS = isH ? f.homeScore! : f.awayScore!;
+             const oS = isH ? f.awayScore! : f.homeScore!;
+             if (mS < oS) currentLossStreak++;
+             else break;
+        }
+
         // --- COMPLEX FAN & BOARD TRUST LOGIC ---
         // 1. Determine Team Strength Tier
         const currentStrength = calculateTeamStrength(myTeam);
         const opponentStrength = calculateTeamStrength(opponent);
-        const isHighTier = currentStrength >= 80;
         
+        // Logic: Underdog bonus if my strength < 80 and opponent >= 80
+        const isUnderdogBonus = currentStrength < 80 && opponentStrength >= 80;
+
         // 2. Determine Derby Status
         const isDerby = RIVALRIES.some(pair => pair.includes(myTeam.name) && pair.includes(opponent.name));
         
@@ -414,27 +481,40 @@ const App: React.FC = () => {
 
         // A. Match Result Logic (Fans & Board)
         
-        // --- HARDER BOARD TRUST LOGIC ---
+        // --- BOARD TRUST LOGIC ---
         if (res === 'WIN') {
-            updatedManager.trust.board = Math.min(100, updatedManager.trust.board + 2);
+            if (isUnderdogBonus) {
+                 // Özel istek: Güçsüz takımla güçlüyü yenince +4
+                 updatedManager.trust.board = Math.min(100, updatedManager.trust.board + 4);
+            } else {
+                 updatedManager.trust.board = Math.min(100, updatedManager.trust.board + 2);
+            }
         } else if (res === 'DRAW') {
-            if (currentStrength < 80) {
-                // Beraberlik nötr, ödül yok.
+            if (isUnderdogBonus) {
+                // Özel istek: Güçsüz takımla güçlüye karşı beraberlik +2
+                updatedManager.trust.board = Math.min(100, updatedManager.trust.board + 2);
+            } else if (currentStrength < 80) {
+                // Normal beraberlik (küçük takım)
                 updatedManager.trust.board = Math.min(100, updatedManager.trust.board + 0);
             } else {
                 // Güçlü takım berabere kalırsa yönetim mutsuz (-1)
                 updatedManager.trust.board = Math.max(0, updatedManager.trust.board - 1);
             }
         } else if (res === 'LOSS') {
-            // YENİLGİ CEZASI: Artık tolerans yok. Yenilgi yönetim güvenini sert düşürür.
-            // Eskiden -1 veya -2 idi, şimdi standart -3.
-            // Eğer fark yendiyse -5.
-            let lossPenalty = 3; 
-            if (goalDiff <= -3) lossPenalty = 5;
-            updatedManager.trust.board = Math.max(0, updatedManager.trust.board - lossPenalty);
+            // NEW LOGIC FOR WEAK TEAMS
+            if (currentStrength < 80) {
+                let penalty = 2;
+                if (currentLossStreak >= 5) penalty = 4;
+                updatedManager.trust.board = Math.max(0, updatedManager.trust.board - penalty);
+            } else {
+                // YENİLGİ CEZASI: Artık tolerans yok. Yenilgi yönetim güvenini sert düşürür.
+                let lossPenalty = 3; 
+                if (goalDiff <= -3) lossPenalty = 5;
+                updatedManager.trust.board = Math.max(0, updatedManager.trust.board - lossPenalty);
+            }
         }
 
-        // --- HARDER FAN TRUST LOGIC ---
+        // --- FAN TRUST LOGIC ---
         if (isDerby) {
             if (res === 'WIN') {
                 if (goalDiff >= 4) fanTrustChange += 10;
@@ -442,38 +522,47 @@ const App: React.FC = () => {
             } else if (res === 'DRAW') {
                 fanTrustChange += -4; 
             } else if (res === 'LOSS') {
-                // Derby Loss is HUGE
-                fanTrustChange += -10;
-                if (goalDiff <= -3) fanTrustChange += -5; // Farklı yenilgi
+                if (currentStrength < 80) {
+                     let penalty = 2;
+                     if (currentLossStreak >= 5) penalty = 4;
+                     fanTrustChange -= penalty;
+                } else {
+                    // Derby Loss is HUGE
+                    fanTrustChange += -10;
+                    if (goalDiff <= -3) fanTrustChange += -5; // Farklı yenilgi
+                }
             }
         } else {
             // Normal Match
             if (res === 'WIN') {
-                fanTrustChange += 3;
-            } else if (res === 'DRAW') {
-                // High tier draw penalty
-                if (isHighTier) fanTrustChange += -3;
-                else fanTrustChange += -1; // Even weak teams lose fan trust on draw
-            } else if (res === 'LOSS') {
-                // UNDERDOG EXCUSE REMOVED
-                // Taraftar güçsüz takım da olsa yenilgiyi kabul etmez.
-                if (currentStrength < 80 && opponentStrength > 85) {
-                    // Rakip ÇOK güçlüyse biraz az düşer
-                    fanTrustChange += -2; 
+                if (isUnderdogBonus) {
+                    fanTrustChange += 4;
                 } else {
-                    // Standart Yenilgi Cezası
+                    fanTrustChange += 3;
+                }
+            } else if (res === 'DRAW') {
+                if (isUnderdogBonus) {
+                    fanTrustChange += 2;
+                } else if (currentStrength >= 80) {
+                    fanTrustChange += -3;
+                } else {
+                    fanTrustChange += -1; // Even weak teams lose fan trust on draw if not underdog bonus
+                }
+            } else if (res === 'LOSS') {
+                if (currentStrength < 80) {
+                     let penalty = 2;
+                     if (currentLossStreak >= 5) penalty = 4;
+                     fanTrustChange -= penalty;
+                } else {
+                    // Standart Yenilgi Cezası for stronger teams
                     fanTrustChange += -5;
                 }
             }
         }
 
         // B. Streak Logic
-        // Get past matches including current one implicitly by using `updatedFixtures`
-        const pastMatchesForStreak = updatedFixtures
-            .filter(f => f.played && f.week <= gameState.currentWeek && (f.homeTeamId === myTeamId || f.awayTeamId === myTeamId))
-            .sort((a, b) => b.week - a.week); // Descending (Newest first)
+        // pastMatchesForStreak is already defined above
 
-        let streakLossCount = 0;
         let streakDrawCount = 0;
 
         for(let i=0; i<3; i++) {
@@ -483,46 +572,14 @@ const App: React.FC = () => {
             const mS = isH ? f.homeScore! : f.awayScore!;
             const oS = isH ? f.awayScore! : f.homeScore!;
             
-            if (mS < oS) streakLossCount++;
-            else if (mS === oS) streakDrawCount++;
+            if (mS === oS) streakDrawCount++;
             else break;
         }
 
-        // ADDED CONSECUTIVE LOSS PENALTIES
-        if (streakLossCount >= 2) {
-            fanTrustChange += -5; // Seri mağlubiyet taraftarı çıldırtır
-            updatedManager.trust.board = Math.max(0, updatedManager.trust.board - 3); // Yönetim güveni ekstra düşer
-        }
+        // REMOVED CONSECUTIVE LOSS PENALTIES
+        // (Seri mağlubiyet cezaları kaldırıldı)
         
         if (streakDrawCount >= 3) fanTrustChange += -3;
-
-        // C. League Standing (Leader Logic)
-        const tempTeams = processedTeams.map(t => {
-             const playedF = updatedFixtures.filter(f => f.played && (f.homeTeamId === t.id || f.awayTeamId === t.id));
-             let pts = 0, gf = 0, ga = 0;
-             playedF.forEach(f => {
-                 const isH = f.homeTeamId === t.id;
-                 const s1 = isH ? f.homeScore! : f.awayScore!;
-                 const s2 = isH ? f.awayScore! : f.homeScore!;
-                 gf += s1; ga += s2;
-                 if(s1 > s2) pts+=3; else if(s1===s2) pts+=1;
-             });
-             return { id: t.id, pts, diff: gf - ga, gf };
-        });
-        tempTeams.sort((a,b) => {
-            if (b.pts !== a.pts) return b.pts - a.pts;
-            return b.diff - a.diff;
-        });
-        if (tempTeams[0].id === myTeamId) {
-            fanTrustChange += isHighTier ? 2 : 3;
-        }
-
-        // D. Youth Usage (<20 years old in Starting XI)
-        const startingXI = myTeam.players.slice(0, 11);
-        const youthPlayers = startingXI.filter(p => p.age < 20).length;
-        if (youthPlayers >= 2) {
-            fanTrustChange += 2;
-        }
 
         // Apply Fan Trust Change
         updatedManager.trust.fans = Math.max(0, Math.min(100, updatedManager.trust.fans + fanTrustChange));
@@ -604,20 +661,29 @@ const App: React.FC = () => {
         
         const generateGoalEvents = (team: Team, count: number) => {
             const xi = team.players.slice(0, 11);
-            const scorers = [...xi.filter(p => p.position === Position.FWD), ...xi.filter(p => p.position === Position.MID), ...xi];
+            const scorers = [
+                ...xi.filter(p => [Position.SNT, Position.SLK, Position.SGK].includes(p.position)), 
+                ...xi.filter(p => [Position.OS, Position.OOS].includes(p.position)), 
+                ...xi
+            ];
             
             for(let i=0; i<count; i++) {
                 const scorer = scorers[Math.floor(Math.random() * scorers.length)];
                 let assist = xi[Math.floor(Math.random() * xi.length)];
                 if(assist.id === scorer.id) assist = xi.find(p => p.id !== scorer.id) || assist;
                 
+                // Add PENALTY logic to fast sim goal generation
+                const isPenalty = Math.random() < 0.15; // 15% chance of goal being a penalty
+                const description = isPenalty ? `GOL! ${scorer.name} (Penaltı)` : `GOL! ${scorer.name}`;
+                const assistName = isPenalty ? 'Penaltı' : assist.name;
+
                 events.push({
                     minute: Math.floor(Math.random() * 90) + 1,
                     type: 'GOAL',
-                    description: `GOL! ${scorer.name}`,
+                    description: description,
                     teamName: team.name,
                     scorer: scorer.name,
-                    assist: assist.name
+                    assist: assistName
                 });
             }
         };
@@ -637,13 +703,42 @@ const App: React.FC = () => {
             }
             for(let i=0; i<redCount; i++) {
                  const player = xi[Math.floor(Math.random() * xi.length)];
+                 // Randomized description for fast sim variety
+                 const isSecondYellow = Math.random() > 0.5;
                  events.push({
                     minute: Math.floor(Math.random() * 90) + 1,
                     type: 'CARD_RED',
-                    description: `${player.name} kırmızı kart gördü!`,
+                    description: isSecondYellow ? `${player.name} (2. Sarıdan Kırmızı)` : `${player.name} (Kırmızı Kart)`,
                     teamName: team.name,
                     playerId: player.id
                 });
+            }
+        };
+
+        // Generate Substitution Events for Fast Sim
+        const generateSubEvents = (team: Team) => {
+            // Generate 3 to 5 random substitutions per team
+            const subCount = Math.floor(Math.random() * 3) + 3; 
+            const xi = team.players.slice(0, 11);
+            const bench = team.players.slice(11);
+            
+            // Limit subs to bench size
+            const actualSubs = Math.min(subCount, bench.length);
+
+            for(let i=0; i<actualSubs; i++) {
+                // Subs usually happen in 2nd half
+                const minute = 45 + Math.floor(Math.random() * 45); 
+                const outP = xi[i]; // Just simulate taking out first few players for simplicity
+                const inP = bench[i];
+                
+                if (outP && inP) {
+                    events.push({
+                        minute,
+                        type: 'SUBSTITUTION',
+                        description: `${outP.name} 🔄 ${inP.name}`,
+                        teamName: team.name,
+                    });
+                }
             }
         };
 
@@ -652,6 +747,9 @@ const App: React.FC = () => {
         
         generateCardEvents(homeTeam, stats.homeYellowCards, stats.homeRedCards);
         generateCardEvents(awayTeam, stats.awayYellowCards, stats.awayRedCards);
+        
+        generateSubEvents(homeTeam);
+        generateSubEvents(awayTeam);
         
         // Random Injury Logic for simulation depth
         if (Math.random() < 0.2) { // 20% chance of injury in simulated match
@@ -860,32 +958,13 @@ const App: React.FC = () => {
     };
 
     const myTeam = gameState.teams.find(t => t.id === gameState.myTeamId);
+    
+    // Calculate injured count for the badge (Difference between real injuries and seen count)
+    const totalInjured = myTeam ? myTeam.players.filter(p => p.injury && p.injury.weeksRemaining > 0).length : 0;
+    const injuredBadgeCount = Math.max(0, totalInjured - gameState.lastSeenInjuryCount);
 
     if (currentView === 'intro') return <IntroScreen onStart={handleStart} />;
     
-    // --- GAME OVER SCREEN ---
-    if (currentView === 'game_over' || gameOverReason) {
-        return (
-            <div className="h-screen flex items-center justify-center bg-red-950 text-white p-8">
-                <div className="max-w-2xl w-full bg-red-900 border-4 border-red-700 p-12 rounded-2xl text-center shadow-2xl animate-in zoom-in duration-500">
-                    <FileWarning size={80} className="mx-auto mb-6 text-red-300 animate-pulse"/>
-                    <h1 className="text-5xl font-bold mb-6 tracking-widest uppercase">Kovuldunuz</h1>
-                    <p className="text-2xl font-serif italic mb-8 border-l-4 border-red-500 pl-4 text-left bg-red-800/50 p-4 rounded">
-                        "{gameOverReason}"
-                    </p>
-                    <div className="flex justify-center gap-6">
-                        <button 
-                            onClick={handleNewGame} 
-                            className="bg-white text-red-900 hover:bg-slate-200 px-8 py-4 rounded-xl font-bold text-xl transition-all shadow-lg flex items-center gap-2"
-                        >
-                            <LogOut size={24}/> YENİ KARİYER
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     if (currentView === 'team_select') return <TeamSelection teams={gameState.teams} onSelect={handleSelectTeam} />;
 
     return (
@@ -902,7 +981,29 @@ const App: React.FC = () => {
             onForward={goForward}
             canBack={historyIndex > 0}
             canForward={historyIndex < viewHistory.length - 1}
+            injuredCount={injuredBadgeCount}
         >
+            {/* Game Over Screen */}
+            {(currentView === 'game_over' || gameOverReason) && (
+                <div className="h-full flex items-center justify-center bg-red-950 text-white p-8 absolute inset-0 z-50 overflow-y-auto">
+                    <div className="max-w-2xl w-full bg-red-900 border-4 border-red-700 p-12 rounded-2xl text-center shadow-2xl animate-in zoom-in duration-500">
+                        <FileWarning size={80} className="mx-auto mb-6 text-red-300 animate-pulse"/>
+                        <h1 className="text-5xl font-bold mb-6 tracking-widest uppercase">Kovuldunuz</h1>
+                        <p className="text-2xl font-serif italic mb-8 border-l-4 border-red-500 pl-4 text-left bg-red-800/50 p-4 rounded">
+                            "{gameOverReason}"
+                        </p>
+                        <div className="flex justify-center gap-6">
+                            <button 
+                                onClick={handleNewGame} 
+                                className="bg-white text-red-900 hover:bg-slate-200 px-8 py-4 rounded-xl font-bold text-xl transition-all shadow-lg flex items-center gap-2"
+                            >
+                                <LogOut size={24}/> YENİ KARİYER
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {currentView === 'home' && myTeam && (
                 <HomeView 
                     manager={gameState.manager!} 
@@ -913,6 +1014,7 @@ const App: React.FC = () => {
                     fixtures={gameState.fixtures}
                     onTeamClick={handleShowTeamDetail}
                     onFixtureClick={(f) => setSelectedFixtureForDetail(f)}
+                    playTime={gameState.playTime}
                 />
             )}
             
@@ -929,6 +1031,15 @@ const App: React.FC = () => {
                             teams: prev.teams.map(t => t.id === updatedTeam.id ? updatedTeam : t)
                         }));
                     }} 
+                    currentWeek={gameState.currentWeek}
+                />
+            )}
+
+            {currentView === 'health_center' && myTeam && (
+                <HealthCenterView 
+                    team={myTeam} 
+                    currentWeek={gameState.currentWeek} 
+                    onPlayerClick={(p) => setSelectedPlayerForDetail(p)}
                 />
             )}
 
@@ -1004,6 +1115,7 @@ const App: React.FC = () => {
                         setTeam={(t) => setGameState(prev => ({ ...prev, teams: prev.teams.map(team => team.id === t.id ? t : team) }))}
                         onStartMatch={() => navigateTo('match_live')}
                         onSimulateMatch={handleFastSimulate}
+                        currentWeek={gameState.currentWeek}
                     />
                 </div>
             )}

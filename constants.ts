@@ -1,6 +1,6 @@
 
 
-import { Team, Player, Position, TacticStyle, PlayerStats, AttackStyle, PressingStyle, Mentality, PassingStyle, Tempo, Width, CreativeFreedom, FinalThird, Crossing, DefensiveLine, Tackling, PressingFocus, TimeWasting } from './types';
+import { Team, Player, Position, TacticStyle, PlayerStats, AttackStyle, PressingStyle, Mentality, PassingStyle, Tempo, Width, CreativeFreedom, FinalThird, Crossing, DefensiveLine, Tackling, PressingFocus, TimeWasting, PlayerFaceData } from './types';
 
 // Random Turkish First Names
 const FIRST_NAMES = [
@@ -21,6 +21,32 @@ const LAST_NAMES = [
     'İlter','Kavruk','Dedeoğlu','Baysu','Kuşçu','Kahriman','Bayraktar','Göçmen','Dikmen','Kalkan','Sayın','Yurtsever','Ateşoğlu','Şenyurt','Demirkol','Hasanoğlu','Sarıgül','Tataroğlu','Uzuner','Bilgiç','Cevahir','Karaduman','Arısoy','Ekmekçi','Koparan','Gökmen','Karakuş','Erşan','Güntekin','Yardımcıoğlu','Zeybek','Erbaş','Yolcu',
     'Akpınar','Ekmekçioğlu','Kaynakoğlu','Gürbuğa','Kınacı','Aydoğdu','Baytekin','Kurtuluş','Altınsoy','Erkoç','Tırak','Geçin','Kuzucu','Yenilmez','Artun','Göksun','Dalkıran','Savran','Başer','Özdilek','Yurtoğlu','Erginer','Karabulut','Torun','Gülperi','Aykan','Denktaş','Topçu','Kaygusuz','Büyükoğlu','Özçelik','Korsan'
 ];
+
+// FACE ASSETS (IMGUR LINKS)
+export const FACE_ASSETS = {
+    skin: [
+        'https://imgur.com/sAlSd9N.png'
+    ],
+    brows: [
+        'https://imgur.com/6yuuhSe.png',
+        'https://imgur.com/p9YkaCn.png'
+    ],
+    eyes: [
+        'https://imgur.com/Mxzu3wO.png',
+        'https://imgur.com/9WzIval.png'
+    ],
+    hair: [
+        'https://imgur.com/SyZICK0.png',
+        'https://imgur.com/uKM3x9I.png',
+        'https://imgur.com/X4V8Oaw.png',
+        'https://imgur.com/rfu089x.png',
+        'https://imgur.com/OfBeRn0.png'
+    ],
+    shirt: {
+        outfield: 'https://imgur.com/O1J9xSW.png',
+        gk: 'https://imgur.com/aLpywTB.png'
+    }
+};
 
 // Some foreign stars for spice
 const FOREIGN_STARS = [
@@ -111,31 +137,28 @@ const FOREIGN_STARS = [
 ];
 
 export const INJURY_TYPES = [
-    { type: 'Arka Adale', minWeeks: 2, maxWeeks: 4, desc: 'Koşu sırasında zorlanma.' },
-    { type: 'Ayak Bileği Burkulması', minWeeks: 3, maxWeeks: 5, desc: 'İkili mücadele sonrası.' },
-    { type: 'Diz Bağları', minWeeks: 6, maxWeeks: 10, desc: 'Ciddi bir sakatlık.' },
-    { type: 'Kasık Ağrısı', minWeeks: 1, maxWeeks: 2, desc: 'Aşırı yüklenme sonucu.' },
-    { type: 'Kaval Kemiği Darbesi', minWeeks: 2, maxWeeks: 3, desc: 'Sert darbe sonucu ödem.' },
-    { type: 'Arka Çapraz Bağ Zedelenmesi', minWeeks: 5, maxWeeks: 8, desc: 'Diz stabilitesini etkileyen darbe sonrası.' },
-    { type: 'Hamstring Yırtığı', minWeeks: 4, maxWeeks: 7, desc: 'Sprint sırasında aşırı gerilme.' },
-    { type: 'Quadriceps Zorlanması', minWeeks: 2, maxWeeks: 4, desc: 'Şut anında kas zorlanması.' },
-    { type: 'Menisküs Problemi', minWeeks: 5, maxWeeks: 9, desc: 'Dizde dönme hareketi sonrası.' },
-    { type: 'Bilek Bağları Kopması', minWeeks: 6, maxWeeks: 12, desc: 'Ağır darbe veya ters basma sonucu.' },
-    { type: 'Kaburga Çatlağı', minWeeks: 3, maxWeeks: 5, desc: 'Hava mücadelelerinde alınan darbe.' },
-    { type: 'Omuz Çıkması', minWeeks: 4, maxWeeks: 8, desc: 'Düşme sonucu omuzun yerinden çıkması.' },
-    { type: 'Burun Kırılması', minWeeks: 2, maxWeeks: 3, desc: 'Hava topu mücadelesinde çarpışma.' },
-    { type: 'Çekme (Strain)', minWeeks: 1, maxWeeks: 2, desc: 'Anlık kas kasılması sonucu.' },
-    { type: 'Turf Toe', minWeeks: 2, maxWeeks: 3, desc: 'Ayak başparmağının zemine takılmasıyla yaşanan zorlanma.' },
-    { type: 'Alt Baldır Zorlanması', minWeeks: 1, maxWeeks: 3, desc: 'Koşu sırasında aşırı çekme.' },
-    { type: 'Aşil Tendonu Zorlanması', minWeeks: 4, maxWeeks: 6, desc: 'Aşil bölgesine aşırı yük binmesi sonucu.' },
-    { type: 'Aşil Tendonu Kopması', minWeeks: 20, maxWeeks: 30, desc: 'Kariyeri etkileyebilecek ciddi bir sakatlık.' },
-    { type: 'Bel Fıtığı Ağrısı', minWeeks: 3, maxWeeks: 6, desc: 'Ani hareket sonucu sinir sıkışması.' },
-    { type: 'Boyun Zedelenmesi', minWeeks: 1, maxWeeks: 2, desc: 'Kafa topu mücadelesinde çarpışma.' },
-    { type: 'Arka Kaburga Kas Yırtığı', minWeeks: 3, maxWeeks: 5, desc: 'Şut veya dönüş hareketinde yaşanan zorlanma.' },
-    { type: 'Kas spazmı', minWeeks: 1, maxWeeks: 1, desc: 'Kasın anlık olarak kilitlenmesi.' },
-    { type: 'Mide Zehirlenmesi', minWeeks: 1, maxWeeks: 1, desc: 'Hafif gıda zehirlenmesi sonucu sahadan uzak kalır.' },
-    { type: 'Virüs Enfeksiyonu', minWeeks: 1, maxWeeks: 2, desc: 'Hastalık nedeniyle kondisyon kaybı.' },
-    { type: 'Ayak Parmağı Morarması', minWeeks: 1, maxWeeks: 2, desc: 'Rakip oyuncunun krampon darbesi sonrası.' }
+    { type: 'Çekme (Strain)', minWeeks: 1, maxWeeks: 2, desc: 'Anlık kas kasılması sonucu.', probability: 12 },
+    { type: 'Kasık Ağrısı', minWeeks: 1, maxWeeks: 2, desc: 'Aşırı yüklenme sonucu.', probability: 8 },
+    { type: 'Ayak Bileği Burkulması', minWeeks: 3, maxWeeks: 5, desc: 'İkili mücadele sonrası.', probability: 8 },
+    { type: 'Arka Adale', minWeeks: 2, maxWeeks: 4, desc: 'Koşu sırasında zorlanma.', probability: 7 },
+    { type: 'Kas Spazmı', minWeeks: 1, maxWeeks: 1, desc: 'Kasın anlık olarak kilitlenmesi.', probability: 6 },
+    { type: 'Virüs Enfeksiyonu', minWeeks: 1, maxWeeks: 2, desc: 'Hastalık nedeniyle kondisyon kaybı.', probability: 5 },
+    { type: 'Alt Baldır Zorlanması', minWeeks: 1, maxWeeks: 3, desc: 'Koşu sırasında aşırı çekme.', probability: 5 },
+    { type: 'Kaval Kemiği Darbesi', minWeeks: 2, maxWeeks: 3, desc: 'Sert darbe sonucu ödem.', probability: 5 },
+    { type: 'Quadriceps Zorlanması', minWeeks: 2, maxWeeks: 4, desc: 'Şut anında kas zorlanması.', probability: 5 },
+    { type: 'Bel Fıtığı Ağrısı', minWeeks: 3, maxWeeks: 6, desc: 'Ani hareket sonucu sinir sıkışması.', probability: 5 },
+    { type: 'Mide Zehirlenmesi', minWeeks: 1, maxWeeks: 1, desc: 'Hafif gıda zehirlenmesi.', probability: 4 },
+    { type: 'Ayak Parmağı Morarması', minWeeks: 1, maxWeeks: 2, desc: 'Rakip oyuncunun krampon darbesi.', probability: 4 },
+    { type: 'Kaburga Çatlağı', minWeeks: 3, maxWeeks: 5, desc: 'Hava mücadelelerinde alınan darbe.', probability: 4 },
+    { type: 'Omuz Çıkması', minWeeks: 4, maxWeeks: 8, desc: 'Düşme sonucu omuzun yerinden çıkması.', probability: 4 },
+    { type: 'Hamstring Yırtığı', minWeeks: 4, maxWeeks: 7, desc: 'Sprint sırasında aşırı gerilme.', probability: 4 },
+    { type: 'Boyun Zedelenmesi', minWeeks: 1, maxWeeks: 2, desc: 'Kafa topu mücadelesinde çarpışma.', probability: 3 },
+    { type: 'Burun Kırılması', minWeeks: 2, maxWeeks: 3, desc: 'Hava topu mücadelesinde çarpışma.', probability: 3 },
+    { type: 'Menisküs Problemi', minWeeks: 5, maxWeeks: 9, desc: 'Dizde dönme hareketi sonrası.', probability: 3 },
+    { type: 'Arka Çapraz Bağ (PCL)', minWeeks: 5, maxWeeks: 8, desc: 'Diz stabilitesini etkileyen darbe.', probability: 2 },
+    { type: 'Bilek Bağları Kopması', minWeeks: 6, maxWeeks: 12, desc: 'Ağır darbe veya ters basma.', probability: 2 },
+    { type: 'Aşil Tendonu Zorlanması', minWeeks: 4, maxWeeks: 6, desc: 'Aşil bölgesine aşırı yük binmesi.', probability: 2 },
+    { type: 'Aşil Tendonu Kopması', minWeeks: 20, maxWeeks: 30, desc: 'Kariyeri etkileyebilecek ciddi sakatlık.', probability: 1 }
 ];
 
 // User Defined Teams with provided Imgur Logos and Stadium Capacities
@@ -145,7 +168,7 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/eV74XlV.png', 
         colors: ['bg-purple-600', 'text-white'], 
         stars: 3, 
-        stadium: 'Mağara Arena',
+        stadium: 'Mağara Arena', 
         capacity: 45000, 
         fans: 12000000, 
         budget: 15, 
@@ -167,8 +190,8 @@ export const TEAM_TEMPLATES = [
         logo: 'https://i.imgur.com/T1RiW8H.png',
         colors: ['bg-blue-600', 'text-yellow-400'], 
         stars: 5, 
-        stadium: 'Anadolu Arena',
-        capacity: 65000,
+        stadium: 'Anadolu Arena', 
+        capacity: 65000, 
         fans: 15000000, 
         budget: 12, 
         targetStrength: 81 
@@ -364,7 +387,7 @@ const generateStats = (position: Position, skill: number): PlayerStats => {
     let stats: PlayerStats;
 
     switch (position) {
-        case Position.FWD:
+        case Position.SNT: // Santrafor
             stats = {
                 pace: getStat(1.0),
                 shooting: getStat(1.1), 
@@ -378,32 +401,76 @@ const generateStats = (position: Position, skill: number): PlayerStats => {
                 stamina: getStat(0.9)
             };
             break;
-        case Position.MID:
+        case Position.SLK: // Sol Kanat
+        case Position.SGK: // Sağ Kanat
+            stats = {
+                pace: getStat(1.1), // Daha hızlı
+                shooting: getStat(0.95), 
+                passing: getStat(0.9),
+                dribbling: getStat(1.1), // Daha iyi top süren
+                defending: getStat(0.5), 
+                physical: getStat(0.8),
+                finishing: getStat(0.85), 
+                heading: getStat(0.6),
+                corners: getStat(1.0), // Korner kullanabilir
+                stamina: getStat(1.0)
+            };
+            break;
+        case Position.OOS: // Ofansif Orta Saha
+            stats = {
+                pace: getStat(0.9),
+                shooting: getStat(0.95),
+                passing: getStat(1.15), // Mükemmel pasör
+                dribbling: getStat(1.05),
+                defending: getStat(0.6),
+                physical: getStat(0.75),
+                finishing: getStat(0.9),
+                heading: getStat(0.6),
+                corners: getStat(1.1), 
+                stamina: getStat(0.95)
+            };
+            break;
+        case Position.OS: // Merkez Orta Saha
             stats = {
                 pace: getStat(0.85),
                 shooting: getStat(0.8),
                 passing: getStat(1.1), 
                 dribbling: getStat(0.9),
-                defending: getStat(0.7),
-                physical: getStat(0.8),
+                defending: getStat(0.8), // Dengeli
+                physical: getStat(0.85),
                 finishing: getStat(0.7),
-                heading: getStat(0.6),
-                corners: getStat(1.1, 5), 
-                stamina: getStat(1.0)
+                heading: getStat(0.7),
+                corners: getStat(0.9), 
+                stamina: getStat(1.1) // Yüksek dayanıklılık
             };
             break;
-        case Position.DEF:
+        case Position.SLB: // Sol Bek
+        case Position.SGB: // Sağ Bek
             stats = {
-                pace: getStat(0.75),
-                shooting: getStat(0.4),
-                passing: getStat(0.7),
-                dribbling: getStat(0.6),
-                defending: getStat(1.15), 
-                physical: getStat(1.1),
-                finishing: getStat(0.3),
-                heading: getStat(1.1), 
-                corners: getStat(0.4),
-                stamina: getStat(0.95)
+                pace: getStat(1.0),
+                shooting: getStat(0.5),
+                passing: getStat(0.8),
+                dribbling: getStat(0.8),
+                defending: getStat(0.95), 
+                physical: getStat(0.9),
+                finishing: getStat(0.4),
+                heading: getStat(0.8), 
+                corners: getStat(0.5),
+                stamina: getStat(1.05)
+            };
+            break;
+        case Position.STP: // Stoper
+            stats = {
+                pace: getStat(0.7),
+                shooting: getStat(0.3),
+                passing: getStat(0.6),
+                dribbling: getStat(0.5),
+                defending: getStat(1.2), // En iyi defans
+                physical: getStat(1.15), // En güçlü
+                finishing: getStat(0.2),
+                heading: getStat(1.2), // İyi kafa topu
+                corners: getStat(0.2),
+                stamina: getStat(0.9)
             };
             break;
         case Position.GK:
@@ -431,6 +498,98 @@ const generateStats = (position: Position, skill: number): PlayerStats => {
     return stats;
 };
 
+// --- UPDATED DETAILED VALUE CALCULATION ---
+// Based on specific tiers requested:
+// Baseline: Forward (SNT) at Age 28.
+// 79-75 Güç: 16M - 4M
+// 75-70 Güç: 4M - 1M
+// < 70 Güç: < 1M
+const calculateMarketValue = (position: Position, skill: number, age: number): number => {
+    let baseValue = 0;
+
+    // 1. BASE VALUE CALCULATION (Based on Forward/SNT standards as baseline)
+    if (skill >= 90) {
+        // Elite: 100M+
+        baseValue = 100 + (skill - 90) * 15;
+    } else if (skill >= 85) {
+        // World Class: 50M -> 100M
+        baseValue = 50 + ((skill - 85) / 5) * 50;
+    } else if (skill >= 80) {
+        // High Tier: 20M -> 50M
+        baseValue = 20 + ((skill - 80) / 5) * 30;
+    } else if (skill >= 75) {
+        // Requested Range: 75-79 -> 4M to 16M
+        // 75 = 4M, 79 = 16M -> Range is 12M over 4 skill points
+        const range = 16 - 4; 
+        const progress = (skill - 75) / 4; // 0 to 1
+        baseValue = 4 + (progress * range);
+    } else if (skill >= 70) {
+        // Requested Range: 70-74 -> 1M to 4M
+        const range = 4 - 1; 
+        const progress = (skill - 70) / 5;
+        baseValue = 1 + (progress * range);
+    } else {
+        // Requested Range: 50-69 -> 0.1M to 1M (approx)
+        const effectiveSkill = Math.max(50, skill);
+        const range = 1 - 0.1;
+        const progress = (effectiveSkill - 50) / 20;
+        baseValue = 0.1 + (progress * range);
+    }
+
+    // 2. POSITION MULTIPLIERS (Reducing value for non-forwards from the baseline)
+    let posMultiplier = 1.0;
+    switch (position) {
+        case Position.SNT:
+            posMultiplier = 1.0;
+            break;
+        case Position.SLK:
+        case Position.SGK:
+        case Position.OOS:
+            posMultiplier = 0.95; // Wingers/CAM slightly less than pure striker
+            break;
+        case Position.OS:
+            posMultiplier = 0.85; // CM
+            break;
+        case Position.SLB:
+        case Position.SGB:
+            posMultiplier = 0.75; // Fullbacks
+            break;
+        case Position.STP:
+            posMultiplier = 0.70; // CB
+            break;
+        case Position.GK:
+            posMultiplier = 0.60; // GK usually lowest market value relative to impact
+            break;
+    }
+
+    // 3. AGE MULTIPLIERS (Baseline 28 years old = 1.0)
+    let ageMultiplier = 1.0;
+    if (age <= 19) ageMultiplier = 2.5; // High potential premium
+    else if (age <= 21) ageMultiplier = 1.8;
+    else if (age <= 24) ageMultiplier = 1.4;
+    else if (age <= 27) ageMultiplier = 1.1;
+    // UPDATED: Value doesn't drop until after 30
+    else if (age <= 30) ageMultiplier = 1.0; 
+    else if (age <= 32) ageMultiplier = 0.75; // Smoother drop after 30
+    else if (age <= 34) ageMultiplier = 0.45;
+    else ageMultiplier = 0.15; // Retirement age
+
+    // Calculate Final Value
+    let finalValue = baseValue * posMultiplier * ageMultiplier;
+
+    // Add slight random variance (+/- 5%)
+    finalValue = finalValue * (0.95 + Math.random() * 0.10);
+
+    // Rounding for cleaner UI
+    if (finalValue > 20) {
+        return Math.round(finalValue);
+    } else if (finalValue > 1) {
+        return Number(finalValue.toFixed(1));
+    } else {
+        return Number(finalValue.toFixed(2));
+    }
+};
+
 // Modified to accept exact target skill instead of abstract tier
 export const generatePlayer = (position: Position, targetSkill: number, teamId: string): Player => {
     let name = `${FIRST_NAMES[getRandomInt(0, FIRST_NAMES.length - 1)]} ${LAST_NAMES[getRandomInt(0, LAST_NAMES.length - 1)]}`;
@@ -443,27 +602,109 @@ export const generatePlayer = (position: Position, targetSkill: number, teamId: 
         nation = star.nation;
     }
 
-    const age = getRandomInt(17, 36);
+    let age = getRandomInt(17, 36);
     // Create variance around the target skill
-    const skill = Math.min(99, Math.max(40, targetSkill + getRandomInt(-4, 4)));
+    let skill = Math.min(99, Math.max(40, targetSkill + getRandomInt(-4, 4)));
     
-    let value = (skill * skill * (40 - age)) / 10000;
-    value = Math.round(value * 10) / 10; 
+    // --- CONSTRAINT: 32+ Yaş ve 86+ Güç Nadirliği ---
+    if (age > 32 && skill >= 86) {
+        // %95 ihtimalle müdahale et (Çok nadir olsun)
+        if (Math.random() < 0.95) {
+            // Ya yaşı düşür ya da gücü düşür
+            if (Math.random() < 0.5) {
+                // Yaşı küçült (Prime yaşa çek)
+                age = getRandomInt(27, 31);
+            } else {
+                // Gücü düşür (Yaşlı ama iyi oyuncu seviyesi)
+                skill = getRandomInt(79, 85);
+            }
+        }
+    }
+
+    // --- RARITY CHECK FOR YOUNG STARS ---
+    if (skill >= 80 && age < 22) {
+        if (Math.random() > 0.05) {
+            age = getRandomInt(23, 34);
+        }
+    }
+
+    // --- SECONDARY POSITION LOGIC ---
+    let secondaryPosition: Position | undefined = undefined;
+    
+    // 35% chance to have a secondary position (excluding GK mostly)
+    if (position !== Position.GK && Math.random() < 0.35) {
+        switch (position) {
+            case Position.STP: 
+                secondaryPosition = [Position.SLB, Position.SGB, Position.OS][getRandomInt(0, 2)];
+                break;
+            case Position.SLB:
+                secondaryPosition = [Position.STP, Position.SLK][getRandomInt(0, 1)];
+                break;
+            case Position.SGB:
+                secondaryPosition = [Position.STP, Position.SGK][getRandomInt(0, 1)];
+                break;
+            case Position.OS:
+                secondaryPosition = [Position.OOS, Position.STP][getRandomInt(0, 1)];
+                break;
+            case Position.OOS:
+                secondaryPosition = [Position.SLK, Position.SGK, Position.OS, Position.SNT][getRandomInt(0, 3)];
+                break;
+            case Position.SLK:
+            case Position.SGK:
+                secondaryPosition = [Position.OOS, Position.SNT, Position.SLB, Position.SGB][getRandomInt(0, 3)];
+                break;
+            case Position.SNT:
+                secondaryPosition = [Position.SLK, Position.SGK, Position.OOS][getRandomInt(0, 2)];
+                break;
+        }
+    }
+
+    // NEW VALUE CALCULATION (Use the higher value of the two positions)
+    const valPrimary = calculateMarketValue(position, skill, age);
+    let valSecondary = 0;
+    
+    if (secondaryPosition) {
+        valSecondary = calculateMarketValue(secondaryPosition, skill, age);
+    }
+
+    const value = Math.max(valPrimary, valSecondary);
 
     const stats = generateStats(position, skill);
+
+    // Generate Face Data
+    const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+    const faceData: PlayerFaceData = {
+        skin: pick(FACE_ASSETS.skin),
+        brows: pick(FACE_ASSETS.brows),
+        eyes: pick(FACE_ASSETS.eyes),
+        hair: pick(FACE_ASSETS.hair)
+    };
+
+    // Calculate Injury Susceptibility (0-100)
+    // Older players generally have higher risk
+    let baseSusceptibility = getRandomInt(1, 20);
+    if (age > 28) baseSusceptibility += (age - 28) * 2;
+    if (stats.physical < 60) baseSusceptibility += 10;
+    if (Math.random() < 0.1) baseSusceptibility += 30; // Random "Glass Bones" trait
+
+    const injurySusceptibility = Math.min(100, Math.max(1, baseSusceptibility));
 
     return {
         id: generateId(),
         name,
         position,
+        secondaryPosition,
         skill,
         stats,
-        seasonStats: { goals: 0, assists: 0, ratings: [], averageRating: 0, matchesPlayed: 0 }, // NEW
+        seasonStats: { goals: 0, assists: 0, ratings: [], averageRating: 0, matchesPlayed: 0 }, 
+        face: faceData,
         age,
-        value: Math.max(0.1, value),
+        value,
         nationality: nation,
         teamId,
-        morale: getRandomInt(70, 100)
+        morale: getRandomInt(70, 100),
+        injurySusceptibility,
+        injuryHistory: []
     };
 };
 
@@ -471,12 +712,57 @@ export const initializeTeams = (): Team[] => {
     return TEAM_TEMPLATES.map((tmpl) => {
         const teamId = generateId();
         
-        // Generate players centered around the target strength
-        const players: Player[] = [];
-        for(let i=0; i<2; i++) players.push(generatePlayer(Position.GK, tmpl.targetStrength, teamId));
-        for(let i=0; i<6; i++) players.push(generatePlayer(Position.DEF, tmpl.targetStrength, teamId));
-        for(let i=0; i<6; i++) players.push(generatePlayer(Position.MID, tmpl.targetStrength, teamId));
-        for(let i=0; i<4; i++) players.push(generatePlayer(Position.FWD, tmpl.targetStrength, teamId));
+        // Construct detailed 4-4-2 Lineup (0-10) with specific positions
+        
+        // 1. GK
+        const gk = generatePlayer(Position.GK, tmpl.targetStrength, teamId);
+        
+        // 2. Defense Line (SLB - STP - STP - SGB)
+        const slb = generatePlayer(Position.SLB, tmpl.targetStrength, teamId);
+        const stp1 = generatePlayer(Position.STP, tmpl.targetStrength, teamId);
+        const stp2 = generatePlayer(Position.STP, tmpl.targetStrength, teamId);
+        const sgb = generatePlayer(Position.SGB, tmpl.targetStrength, teamId);
+        
+        // 3. Midfield Line (SLK - OS - OS - SGK)
+        const slk = generatePlayer(Position.SLK, tmpl.targetStrength, teamId);
+        const os1 = generatePlayer(Position.OS, tmpl.targetStrength, teamId);
+        const os2 = generatePlayer(Position.OS, tmpl.targetStrength, teamId);
+        const sgk = generatePlayer(Position.SGK, tmpl.targetStrength, teamId);
+        
+        // 4. Attack Line (SNT - SNT)
+        const snt1 = generatePlayer(Position.SNT, tmpl.targetStrength, teamId);
+        const snt2 = generatePlayer(Position.SNT, tmpl.targetStrength, teamId);
+
+        // --- SUBSTITUTES (7 Players) ---
+        const subGK = generatePlayer(Position.GK, tmpl.targetStrength - 5, teamId);
+        const subDEF1 = generatePlayer(Position.STP, tmpl.targetStrength - 5, teamId);
+        const subDEF2 = generatePlayer(Position.SLB, tmpl.targetStrength - 5, teamId); // Or SGB
+        const subMID1 = generatePlayer(Position.OS, tmpl.targetStrength - 5, teamId);
+        const subMID2 = generatePlayer(Position.OOS, tmpl.targetStrength - 5, teamId); // Include OOS as option
+        const subFWD1 = generatePlayer(Position.SLK, tmpl.targetStrength - 5, teamId); // Or SGK
+        const subFWD2 = generatePlayer(Position.SNT, tmpl.targetStrength - 5, teamId);
+
+        // --- RESERVES (Balanced Mix) ---
+        const reserves = [];
+        reserves.push(generatePlayer(Position.GK, tmpl.targetStrength - 10, teamId));
+        reserves.push(generatePlayer(Position.SGB, tmpl.targetStrength - 8, teamId));
+        reserves.push(generatePlayer(Position.STP, tmpl.targetStrength - 8, teamId));
+        reserves.push(generatePlayer(Position.OS, tmpl.targetStrength - 8, teamId));
+        reserves.push(generatePlayer(Position.SGK, tmpl.targetStrength - 8, teamId));
+        reserves.push(generatePlayer(Position.SNT, tmpl.targetStrength - 8, teamId));
+
+        // Combine all in standard order
+        // 0-10: XI
+        // 11-17: Subs
+        // 18+: Reserves
+        const players = [
+            gk, 
+            slb, stp1, stp2, sgb, 
+            slk, os1, os2, sgk, 
+            snt1, snt2,
+            subGK, subDEF1, subDEF2, subMID1, subMID2, subFWD1, subFWD2,
+            ...reserves
+        ];
 
         return {
             id: teamId,
@@ -486,7 +772,7 @@ export const initializeTeams = (): Team[] => {
             stars: tmpl.stars,
             fanBase: tmpl.fans,
             stadiumName: tmpl.stadium,
-            stadiumCapacity: tmpl.capacity, // Initialize capacity
+            stadiumCapacity: tmpl.capacity,
             budget: tmpl.budget,
             players,
             // DEFAULT TACTICS
