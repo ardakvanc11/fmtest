@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Player, Position } from '../../types';
 import { FACE_ASSETS } from '../../constants';
@@ -21,19 +22,34 @@ const PlayerFace: React.FC<PlayerFaceProps> = ({ player, className = "w-full h-f
 
     return (
         <div className={`relative overflow-hidden bg-slate-200 rounded-lg ${className}`}>
-            {/* 1. Skin (Base) */}
+            {/* 1. Skin (Base) - Z: 10 */}
             <img src={face.skin} alt="Skin" className="absolute inset-0 w-full h-full object-cover z-10" />
             
-            {/* 2. Eyes */}
+            {/* 2. Tattoo (Optional) - Z: 15 */}
+            {face.tattoo && (
+                <img src={face.tattoo} alt="Tattoo" className="absolute inset-0 w-full h-full object-cover z-15" style={{ zIndex: 15 }} />
+            )}
+
+            {/* 3. Freckles (Optional) - Z: 16 */}
+            {face.freckles && (
+                <img src={face.freckles} alt="Freckles" className="absolute inset-0 w-full h-full object-cover z-16" style={{ zIndex: 16 }} />
+            )}
+
+            {/* 4. Eyes - Z: 20 */}
             <img src={face.eyes} alt="Eyes" className="absolute inset-0 w-full h-full object-cover z-20" />
             
-            {/* 3. Brows */}
+            {/* 5. Brows - Z: 30 */}
             <img src={face.brows} alt="Brows" className="absolute inset-0 w-full h-full object-cover z-30" />
             
-            {/* 4. Shirt (Sits on neck, usually below hair but above skin neck) */}
+            {/* 6. Beard (Optional) - Z: 35 - Usually sits on chin/jaw */}
+            {face.beard && (
+                <img src={face.beard} alt="Beard" className="absolute inset-0 w-full h-full object-cover z-35" style={{ zIndex: 35 }} />
+            )}
+
+            {/* 7. Shirt (Sits on neck) - Z: 40 */}
             <img src={shirtUrl} alt="Shirt" className="absolute inset-0 w-full h-full object-cover z-40" />
 
-            {/* 5. Hair (Topmost) */}
+            {/* 8. Hair (Topmost) - Z: 50 */}
             <img src={face.hair} alt="Hair" className="absolute inset-0 w-full h-full object-cover z-50" />
         </div>
     );

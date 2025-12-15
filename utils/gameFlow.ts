@@ -26,7 +26,8 @@ export const generateTransferMarket = (count: number, week: number): Player[] =>
             ? Math.floor(Math.random() * 16) + 70 // 70-85
             : Math.floor(Math.random() * 26) + 40; // 40-65
 
-        const player = generatePlayer(randomPos, targetSkill, 'free_agent');
+        // Transfer market players can be foreign without restriction
+        const player = generatePlayer(randomPos, targetSkill, 'free_agent', true);
         
         let marketValue = (player.value * (0.8 + Math.random() * 0.4));
         marketValue = marketValue * priceMultiplier;

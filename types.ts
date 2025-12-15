@@ -143,6 +143,9 @@ export interface PlayerFaceData {
     eyes: string;
     brows: string;
     hair: string;
+    beard?: string;
+    freckles?: string;
+    tattoo?: string;
 }
 
 export interface Player {

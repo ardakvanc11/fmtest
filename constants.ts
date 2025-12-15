@@ -25,28 +25,80 @@ const LAST_NAMES = [
 // FACE ASSETS (IMGUR LINKS)
 export const FACE_ASSETS = {
     skin: [
-        'https://imgur.com/sAlSd9N.png'
+        'https://imgur.com/sAlSd9N.png', // skin_1 (Original) - Light
+        'https://imgur.com/QjsOqAT.png', // skin_2 - Medium/Latino
+        'https://imgur.com/4CCIFgM.png'  // skin_3 - Dark
     ],
     brows: [
-        'https://imgur.com/6yuuhSe.png',
-        'https://imgur.com/p9YkaCn.png'
+        'https://imgur.com/6yuuhSe.png', // 1
+        'https://imgur.com/p9YkaCn.png', // 2
+        'https://imgur.com/MeoE2eX.png', // 4
+        'https://imgur.com/EV7ZMKf.png'  // 5
     ],
     eyes: [
-        'https://imgur.com/Mxzu3wO.png',
-        'https://imgur.com/9WzIval.png'
+        'https://imgur.com/Mxzu3wO.png', // 1
+        'https://imgur.com/9WzIval.png', // 2
+        'https://imgur.com/vK8QodM.png', // 4
+        'https://imgur.com/DSHZ0bK.png', // 5
+        'https://imgur.com/DHC7Vdb.png', // 6
+        'https://imgur.com/4RkbaDc.png'  // 7
     ],
     hair: [
-        'https://imgur.com/SyZICK0.png',
-        'https://imgur.com/uKM3x9I.png',
-        'https://imgur.com/X4V8Oaw.png',
-        'https://imgur.com/rfu089x.png',
-        'https://imgur.com/OfBeRn0.png'
+        // Old Hairs (1-5) - Assuming these are generally applicable or primarily for Skin 1
+        'https://imgur.com/SyZICK0.png', // 1
+        'https://imgur.com/uKM3x9I.png', // 2
+        'https://imgur.com/X4V8Oaw.png', // 3
+        'https://imgur.com/rfu089x.png', // 4
+        'https://imgur.com/OfBeRn0.png', // 5
+        
+        // New Hairs
+        'https://imgur.com/lBKSLaJ.png', // 6 (skin 2,3)
+        'https://imgur.com/fmrpncz.png', // 7 (skin 1)
+        'https://imgur.com/6JdqPyE.png', // 8 (skin 1)
+        'https://imgur.com/KG5yeif.png', // 9 (skin 1)
+        'https://imgur.com/YMwAtRC.png', // 10 (skin 1,2)
+        'https://imgur.com/u63XsEJ.png', // 11 (skin 1)
+        'https://imgur.com/bFH26yj.png', // 12 (skin 1)
+        'https://imgur.com/krdMdiA.png', // 13 (skin 1)
+        'https://imgur.com/X3BmAGt.png', // 14 (skin 1)
+        'https://imgur.com/J8jrGsi.png', // 15 (all)
+        'https://imgur.com/oDHTeAK.png', // 16 (all)
+        'https://imgur.com/8rcEtB5.png', // 17 (all)
+        'https://imgur.com/JnxnaR6.png'  // 18 (all)
+    ],
+    beard: [
+        'https://imgur.com/ykkE5bM.png', // beard_1 (index 0)
+        'https://imgur.com/zwdfWmT.png', // beard_2 (index 1)
+        'https://imgur.com/smplMOA.png'  // beard_3 (index 2)
+    ],
+    freckles: [
+        'https://imgur.com/X28mAPS.png'
+    ],
+    tattoo: [
+        'https://imgur.com/rnbP7XS.png', // tatoo_1 (skin 3 only)
+        'https://imgur.com/QF77VkW.png'  // tatoo_2 (skin 1, 2 only)
     ],
     shirt: {
         outfield: 'https://imgur.com/O1J9xSW.png',
         gk: 'https://imgur.com/aLpywTB.png'
     }
 };
+
+const AFRICAN_NATIONS = [
+    'Nijerya', 'Gana', 'Senegal', 'Mali', 'Fas', 'Cezayir', 'Angola', 'Fildişi Sahili', 'Gine'
+];
+
+const SOUTH_AMERICAN_NATIONS = [
+    'Brezilya', 'Arjantin', 'Şili', 'Kolombiya', 'Bolivya', 'Ekvador', 'Venezuela', 'Paraguay', 'Uruguay', 'Peru', 'Meksika', 'Küba'
+];
+
+const EUROPEAN_NATIONS = [
+    'İtalya', 'Fransa', 'İngiltere', 'Sırbistan', 'Hırvatistan', 'Makedonya', 'Finlandiya', 'Almanya', 'İsveç', 'Danimarka', 'Yunanistan', 'İspanya', 'Portekiz', 'Hollanda', 'Belçika', 'Rusya', 'Ukrayna', 'Polonya'
+];
+
+const NORTH_AMERICAN_NATIONS = [
+    'ABD', 'Kanada'
+];
 
 // Some foreign stars for spice
 const FOREIGN_STARS = [
@@ -591,20 +643,55 @@ const calculateMarketValue = (position: Position, skill: number, age: number): n
 };
 
 // Modified to accept exact target skill instead of abstract tier
-export const generatePlayer = (position: Position, targetSkill: number, teamId: string): Player => {
+// Added canBeForeign parameter to respect squad limits
+export const generatePlayer = (position: Position, targetSkill: number, teamId: string, canBeForeign: boolean = true): Player => {
+    // 1. Calculate Skill First to determine Nationality logic
+    let skill = Math.min(99, Math.max(40, targetSkill + getRandomInt(-4, 4)));
+
+    // 2. Determine Nationality based on Skill
+    // Constraint: Strongest players (82+) are generally foreign. Turkish 82+ is rare.
+    let isForeign = false;
+
+    if (canBeForeign) {
+        if (skill > 82) {
+            // High Skill Zone: 90% chance to be Foreign
+            // This makes 82+ Turkish players rare (10%)
+            if (Math.random() < 0.90) {
+                isForeign = true;
+            }
+        } else {
+            // Normal/Low Skill Zone
+            // Standard probability distribution based on team strength context
+            // Strong teams need foreigners to fill roster, weak teams mostly Turkish
+            const baseForeignChance = targetSkill >= 75 ? 0.20 : 0.05;
+            if (Math.random() < baseForeignChance) {
+                isForeign = true;
+            }
+        }
+    } else {
+        isForeign = false;
+    }
+
+    // 3. Name Generation
     let name = `${FIRST_NAMES[getRandomInt(0, FIRST_NAMES.length - 1)]} ${LAST_NAMES[getRandomInt(0, LAST_NAMES.length - 1)]}`;
     let nation = 'Türkiye';
     
-    // 5% chance for a foreign star if skill is high (>80)
-    if (targetSkill > 80 && Math.random() > 0.95 && FOREIGN_STARS.length > 0) {
+    if (isForeign && FOREIGN_STARS.length > 0) {
         const star = FOREIGN_STARS[getRandomInt(0, FOREIGN_STARS.length - 1)];
         name = star.name;
         nation = star.nation;
     }
 
+    // 4. Age Generation
     let age = getRandomInt(17, 36);
-    // Create variance around the target skill
-    let skill = Math.min(99, Math.max(40, targetSkill + getRandomInt(-4, 4)));
+
+    // Rule: 18-22 Foreigners are rare. If generated in this range, reroll to 23+ mostly.
+    if (isForeign && age >= 18 && age <= 22) {
+        // 85% chance to force older age for foreigners
+        if (Math.random() < 0.85) {
+            age = getRandomInt(23, 35);
+        }
+    }
     
     // --- CONSTRAINT: 32+ Yaş ve 86+ Güç Nadirliği ---
     if (age > 32 && skill >= 86) {
@@ -671,21 +758,113 @@ export const generatePlayer = (position: Position, targetSkill: number, teamId: 
 
     const stats = generateStats(position, skill);
 
-    // Generate Face Data
+    // --- FACE GENERATION LOGIC ---
+    
+    // 1. Determine Skin Index based on Nation
+    const rand = Math.random();
+    let skinIndex = 0; // Default Skin 1
+
+    if (nation === 'Türkiye') {
+        // Turkish: 70% Skin 1, 30% Skin 2
+        skinIndex = rand < 0.7 ? 0 : 1;
+    } else if (SOUTH_AMERICAN_NATIONS.includes(nation)) {
+        // South American: 10% Skin 1, 80% Skin 2, 10% Skin 3
+        if (rand < 0.1) skinIndex = 0; 
+        else if (rand < 0.9) skinIndex = 1;
+        else skinIndex = 2;
+    } else if (AFRICAN_NATIONS.includes(nation)) {
+        // African: 20% Skin 2, 80% Skin 3
+        if (rand < 0.2) skinIndex = 1;
+        else skinIndex = 2;
+    } else if (EUROPEAN_NATIONS.includes(nation)) {
+        // European: 80% Skin 1, 20% Skin 2
+        skinIndex = rand < 0.8 ? 0 : 1;
+    } else if (NORTH_AMERICAN_NATIONS.includes(nation)) {
+        // North American: 60% Skin 1, 40% Skin 3
+        skinIndex = rand < 0.6 ? 0 : 2;
+    } else {
+        // Rest of the World (Fallback): 70% Skin 1, 30% Skin 2
+        skinIndex = rand < 0.7 ? 0 : 1;
+    }
+
+    const skin = FACE_ASSETS.skin[skinIndex];
     const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+
+    // 2. Select Hair based on Skin
+    let allowedHairs: string[] = [];
+    const oldHairs = FACE_ASSETS.hair.slice(0, 5);
+    const universalHairs = FACE_ASSETS.hair.slice(14, 18);
+
+    if (skinIndex === 0) { 
+        // Skin 1
+        const specificHairs = FACE_ASSETS.hair.slice(6, 14);
+        allowedHairs = [...oldHairs, ...universalHairs, ...specificHairs];
+    } else if (skinIndex === 1) {
+        // Skin 2
+        allowedHairs = [...oldHairs, ...universalHairs, FACE_ASSETS.hair[5], FACE_ASSETS.hair[9]];
+    } else if (skinIndex === 2) {
+        // Skin 3
+        allowedHairs = [...oldHairs, ...universalHairs, FACE_ASSETS.hair[5]];
+    } else {
+        allowedHairs = oldHairs;
+    }
+
+    const hair = pick(allowedHairs);
+
+    // 3. Select Tattoo based on Skin
+    let tattoo: string | undefined = undefined;
+    if (Math.random() < 0.04) { // 4% Probability
+        if (skinIndex === 2) { 
+            tattoo = FACE_ASSETS.tattoo[0];
+        } else {
+            tattoo = FACE_ASSETS.tattoo[1];
+        }
+    }
+
+    // 4. Beard Selection Logic
+    // Rules:
+    // beard_1 (index 0): Only for Skin 1
+    // beard_2 (index 1), beard_3 (index 2): Not for Skin 2
+    // Implied: Skin 2 gets NO beard.
+    
+    let allowedBeardIndices: number[] = [];
+    
+    if (skinIndex === 0) {
+        // Skin 1: Allows all beards
+        allowedBeardIndices = [0, 1, 2];
+    } else if (skinIndex === 1) {
+        // Skin 2: Allows NO beards (beard_1, beard_2, beard_3 explicitly banned or not allowed)
+        allowedBeardIndices = [];
+    } else if (skinIndex === 2) {
+        // Skin 3: beard_1 is incompatible (it's for skin 1 only). beard_2 and beard_3 are allowed.
+        allowedBeardIndices = [1, 2];
+    }
+
+    let beard: string | undefined = undefined;
+    // 40% chance to have beard IF allowed
+    if (allowedBeardIndices.length > 0 && Math.random() < 0.4) {
+        const bIdx = allowedBeardIndices[Math.floor(Math.random() * allowedBeardIndices.length)];
+        beard = FACE_ASSETS.beard[bIdx];
+    }
+
+    // 5. Freckles - 15% Probability
+    const freckles = Math.random() < 0.15 ? pick(FACE_ASSETS.freckles) : undefined;
+
     const faceData: PlayerFaceData = {
-        skin: pick(FACE_ASSETS.skin),
+        skin,
         brows: pick(FACE_ASSETS.brows),
         eyes: pick(FACE_ASSETS.eyes),
-        hair: pick(FACE_ASSETS.hair)
+        hair,
+        beard,
+        freckles,
+        tattoo
     };
 
     // Calculate Injury Susceptibility (0-100)
-    // Older players generally have higher risk
     let baseSusceptibility = getRandomInt(1, 20);
     if (age > 28) baseSusceptibility += (age - 28) * 2;
     if (stats.physical < 60) baseSusceptibility += 10;
-    if (Math.random() < 0.1) baseSusceptibility += 30; // Random "Glass Bones" trait
+    if (Math.random() < 0.1) baseSusceptibility += 30;
 
     const injurySusceptibility = Math.min(100, Math.max(1, baseSusceptibility));
 
@@ -712,44 +891,60 @@ export const initializeTeams = (): Team[] => {
     return TEAM_TEMPLATES.map((tmpl) => {
         const teamId = generateId();
         
+        // Define foreign player limits based on team strength
+        // > 80 Strength: Max 11 foreigners
+        // < 80 Strength: Max 5 foreigners
+        const maxForeigners = tmpl.targetStrength >= 80 ? 11 : 5;
+        let currentForeigners = 0;
+
+        // Helper wrapper to create player and track foreign count
+        const createPlayer = (pos: Position, strength: number) => {
+            const canBeForeign = currentForeigners < maxForeigners;
+            const p = generatePlayer(pos, strength, teamId, canBeForeign);
+            if (p.nationality !== 'Türkiye') {
+                currentForeigners++;
+            }
+            return p;
+        }
+        
         // Construct detailed 4-4-2 Lineup (0-10) with specific positions
         
         // 1. GK
-        const gk = generatePlayer(Position.GK, tmpl.targetStrength, teamId);
+        const gk = createPlayer(Position.GK, tmpl.targetStrength);
         
         // 2. Defense Line (SLB - STP - STP - SGB)
-        const slb = generatePlayer(Position.SLB, tmpl.targetStrength, teamId);
-        const stp1 = generatePlayer(Position.STP, tmpl.targetStrength, teamId);
-        const stp2 = generatePlayer(Position.STP, tmpl.targetStrength, teamId);
-        const sgb = generatePlayer(Position.SGB, tmpl.targetStrength, teamId);
+        const slb = createPlayer(Position.SLB, tmpl.targetStrength);
+        const stp1 = createPlayer(Position.STP, tmpl.targetStrength);
+        const stp2 = createPlayer(Position.STP, tmpl.targetStrength);
+        const sgb = createPlayer(Position.SGB, tmpl.targetStrength);
         
         // 3. Midfield Line (SLK - OS - OS - SGK)
-        const slk = generatePlayer(Position.SLK, tmpl.targetStrength, teamId);
-        const os1 = generatePlayer(Position.OS, tmpl.targetStrength, teamId);
-        const os2 = generatePlayer(Position.OS, tmpl.targetStrength, teamId);
-        const sgk = generatePlayer(Position.SGK, tmpl.targetStrength, teamId);
+        const slk = createPlayer(Position.SLK, tmpl.targetStrength);
+        const os1 = createPlayer(Position.OS, tmpl.targetStrength);
+        const os2 = createPlayer(Position.OS, tmpl.targetStrength);
+        const sgk = createPlayer(Position.SGK, tmpl.targetStrength);
         
         // 4. Attack Line (SNT - SNT)
-        const snt1 = generatePlayer(Position.SNT, tmpl.targetStrength, teamId);
-        const snt2 = generatePlayer(Position.SNT, tmpl.targetStrength, teamId);
+        const snt1 = createPlayer(Position.SNT, tmpl.targetStrength);
+        const snt2 = createPlayer(Position.SNT, tmpl.targetStrength);
 
         // --- SUBSTITUTES (7 Players) ---
-        const subGK = generatePlayer(Position.GK, tmpl.targetStrength - 5, teamId);
-        const subDEF1 = generatePlayer(Position.STP, tmpl.targetStrength - 5, teamId);
-        const subDEF2 = generatePlayer(Position.SLB, tmpl.targetStrength - 5, teamId); // Or SGB
-        const subMID1 = generatePlayer(Position.OS, tmpl.targetStrength - 5, teamId);
-        const subMID2 = generatePlayer(Position.OOS, tmpl.targetStrength - 5, teamId); // Include OOS as option
-        const subFWD1 = generatePlayer(Position.SLK, tmpl.targetStrength - 5, teamId); // Or SGK
-        const subFWD2 = generatePlayer(Position.SNT, tmpl.targetStrength - 5, teamId);
+        const subGK = createPlayer(Position.GK, tmpl.targetStrength - 5);
+        const subDEF1 = createPlayer(Position.STP, tmpl.targetStrength - 5);
+        const subDEF2 = createPlayer(Position.SLB, tmpl.targetStrength - 5); // Or SGB
+        const subMID1 = createPlayer(Position.OS, tmpl.targetStrength - 5);
+        const subMID2 = createPlayer(Position.OOS, tmpl.targetStrength - 5); // Include OOS as option
+        const subFWD1 = createPlayer(Position.SLK, tmpl.targetStrength - 5); // Or SGK
+        const subFWD2 = createPlayer(Position.SNT, tmpl.targetStrength - 5);
 
         // --- RESERVES (Balanced Mix) ---
         const reserves = [];
-        reserves.push(generatePlayer(Position.GK, tmpl.targetStrength - 10, teamId));
-        reserves.push(generatePlayer(Position.SGB, tmpl.targetStrength - 8, teamId));
-        reserves.push(generatePlayer(Position.STP, tmpl.targetStrength - 8, teamId));
-        reserves.push(generatePlayer(Position.OS, tmpl.targetStrength - 8, teamId));
-        reserves.push(generatePlayer(Position.SGK, tmpl.targetStrength - 8, teamId));
-        reserves.push(generatePlayer(Position.SNT, tmpl.targetStrength - 8, teamId));
+        reserves.push(createPlayer(Position.GK, tmpl.targetStrength - 10));
+        reserves.push(createPlayer(Position.SGB, tmpl.targetStrength - 8));
+        reserves.push(createPlayer(Position.STP, tmpl.targetStrength - 8));
+        reserves.push(createPlayer(Position.OS, tmpl.targetStrength - 8));
+        reserves.push(createPlayer(Position.SGK, tmpl.targetStrength - 8));
+        reserves.push(createPlayer(Position.SNT, tmpl.targetStrength - 8));
 
         // Combine all in standard order
         // 0-10: XI
