@@ -1,3 +1,4 @@
+
 import { Team, Player, MatchEvent, MatchStats, Position, Tackling, PlayerPerformance, Fixture } from '../types';
 import { INJURY_TYPES, RIVALRIES } from '../constants';
 import { MATCH_INFO_MESSAGES } from '../data/infoPool';
@@ -291,8 +292,7 @@ export const simulateMatchStep = (
     const sentOffPlayers = new Set(existingEvents.filter(e => e.type === 'CARD_RED').map(e => e.playerId));
 
     // --- NEW: WEIGHTED PLAYER SELECTION FOR INJURIES ---
-    // Specifically targets players with Low Stamina (<40) and High Susceptibility
-    // BUT still allows a base weight for healthy players
+    // UPDATED: Allows healthy players to be injured, but increases risk for tired/susceptible players
     const getPlayerForInjury = (team: Team): Player => {
         const xi = team.players.slice(0, 11).filter(p => !sentOffPlayers.has(p.id));
         if (xi.length === 0) return team.players[0];
@@ -300,27 +300,34 @@ export const simulateMatchStep = (
         const weightedPool: Player[] = [];
         
         xi.forEach(p => {
-            let weight = 1; // Base weight for healthy players
+            // Determine current condition (Use dynamic condition if available, else stat as fallback)
+            const currentCondition = p.condition !== undefined ? p.condition : p.stats.stamina;
             
-            // --- CRITICAL STAMINA LOGIC ---
-            // If stamina is below 40%, risk increases drastically based on susceptibility
-            if (p.stats.stamina < 40) {
-                // Base weight + (Susceptibility Factor)
-                // e.g. Susceptibility 80 -> weight += 15 (Very high chance)
-                // e.g. Susceptibility 20 -> weight += 3
-                weight += 5 + (p.injurySusceptibility / 8); 
-            } else if (p.stats.stamina < 60) {
-                // Slight risk increase for tired players
-                weight += 2;
+            // Base weight: Every player has a baseline chance (e.g., 15 tickets)
+            let weight = 15; 
+            
+            // 1. Susceptibility Factor (0-100)
+            // A player with 80 susceptibility adds ~16 tickets.
+            weight += (p.injurySusceptibility || 10) / 5;
+
+            // 2. Fatigue Factor
+            // If condition is perfect (100), no added risk.
+            // If condition is 50, added risk.
+            if (currentCondition < 50) {
+                weight += 40; // Massive risk for exhausted players
+            } else if (currentCondition < 70) {
+                weight += 15; // Moderate risk
+            } else if (currentCondition < 90) {
+                weight += 5;  // Slight risk
             }
 
             // Add player to pool 'weight' times
-            for(let i=0; i<Math.floor(weight); i++) {
+            const entries = Math.max(1, Math.floor(weight));
+            for(let i=0; i<entries; i++) {
                 weightedPool.push(p);
             }
         });
 
-        // Fallback to XI if pool is empty (shouldn't happen)
         const finalPool = weightedPool.length > 0 ? weightedPool : xi;
         return finalPool[Math.floor(Math.random() * finalPool.length)];
     };
@@ -359,14 +366,14 @@ export const simulateMatchStep = (
     else if (maxReds >= 3) currentGoalProb = 0.12;
 
     // --- DYNAMIC INJURY PROBABILITY ---
-    // Count how many players have < 40 stamina
-    const homeExhausted = home.players.slice(0, 11).filter(p => p.stats.stamina < 40).length;
-    const awayExhausted = away.players.slice(0, 11).filter(p => p.stats.stamina < 40).length;
+    // Count how many players have < 50 condition (critical fatigue)
+    const homeExhausted = home.players.slice(0, 11).filter(p => (p.condition !== undefined ? p.condition : p.stats.stamina) < 50).length;
+    const awayExhausted = away.players.slice(0, 11).filter(p => (p.condition !== undefined ? p.condition : p.stats.stamina) < 50).length;
     const totalExhausted = homeExhausted + awayExhausted;
     
-    // Base 1% chance + 0.3% per exhausted player on field
-    // This satisfies the requirement: Even without low condition, rate is ~1%.
-    const calculatedInjuryProb = 0.01 + (totalExhausted * 0.003);
+    // Base 1.2% chance per minute (High frequency)
+    // + 0.2% per exhausted player
+    const calculatedInjuryProb = 0.012 + (totalExhausted * 0.002);
 
     const PROB_GOAL = currentGoalProb;
     const PROB_INJURY = calculatedInjuryProb;
@@ -408,30 +415,33 @@ export const simulateMatchStep = (
             playerId: d.scorer.id 
         };
     } 
-    // 2. INJURY (Variable based on Stamina)
+    // 2. INJURY (Weighted Random)
     else if (eventRoll < T_INJURY) {
         // Decide which team gets injured. 
-        // If one team has significantly more exhausted players, they are more likely to get injured.
-        let injuryHomeProb = 0.5;
-        if (totalExhausted > 0) {
-            injuryHomeProb = (homeExhausted + 1) / (totalExhausted + 2); // Smoothing
-        }
-        
-        const isHomeInj = Math.random() < injuryHomeProb;
+        const isHomeInj = Math.random() < 0.5; // Randomize which team first
         const activeTeam = isHomeInj ? home : away;
         const opponentIsAggressive = isHomeInj ? isAwayAggressive : isHomeAggressive;
         
-        // USE WEIGHTED SELECTOR
+        // USE WEIGHTED SELECTOR (Allows full stamina players to get injured too)
         const player = getPlayerForInjury(activeTeam);
         
         // Use weighted injury selection
         const injuryType = getWeightedInjury();
         
         let desc = `${player.name} (${activeTeam.name}) acı içinde yerde!`;
-        if (player.stats.stamina < 40) {
+        const currentCond = player.condition !== undefined ? player.condition : player.stats.stamina;
+        
+        if (currentCond < 40) {
             desc += " Yorgunluk nedeniyle kas sakatlığı yaşadı.";
         } else {
-            desc += ` ${opponentIsAggressive ? 'Rakibin sert müdahalesi!' : 'Ters bastı.'}`;
+            // Random reason for healthy/normal players
+            const reasons = [
+                opponentIsAggressive ? 'Rakibin sert müdahalesi!' : 'Ters bastı.',
+                'İkili mücadelede darbe aldı.',
+                'Ani hızlanma sırasında sakatlandı.',
+                'Zemine takıldı.'
+            ];
+            desc += ` ${reasons[Math.floor(Math.random() * reasons.length)]}`;
         }
         desc += ` Sakatlık: ${injuryType.type}`;
 
