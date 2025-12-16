@@ -62,10 +62,10 @@ const StandingsTable = ({ teams, myTeamId, compact, onTeamClick, liveScores, fix
                                 <th className="px-3 py-3 text-center" title="Atılan">A</th>
                                 <th className="px-3 py-3 text-center" title="Yenilen">Y</th>
                                 <th className="px-3 py-3 text-center" title="Averaj">Av</th>
-                                <th className="px-3 py-3 text-center w-24">Form</th>
                             </>
                         )}
                         <th className="px-3 py-3 text-center font-black text-slate-900 dark:text-white">P</th>
+                        {!compact && <th className="px-3 py-3 text-center w-24">Form</th>}
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -96,26 +96,29 @@ const StandingsTable = ({ teams, myTeamId, compact, onTeamClick, liveScores, fix
                                         <td className="px-3 py-3 text-center text-slate-600 dark:text-slate-400">{team.stats.gf}</td>
                                         <td className="px-3 py-3 text-center text-slate-600 dark:text-slate-400">{team.stats.ga}</td>
                                         <td className="px-3 py-3 text-center font-bold text-slate-700 dark:text-slate-300">{team.stats.gf - team.stats.ga}</td>
-                                        <td className="px-3 py-3">
-                                            <div className="flex items-center justify-center gap-1">
-                                                {form.map((res, i) => (
-                                                    <div 
-                                                        key={i} 
-                                                        className={`w-2.5 h-2.5 rounded-full ${
-                                                            res === 'W' ? 'bg-green-500' : 
-                                                            res === 'D' ? 'bg-slate-400' : 
-                                                            'bg-red-500'
-                                                        }`}
-                                                        title={res === 'W' ? 'Galibiyet' : res === 'D' ? 'Beraberlik' : 'Mağlubiyet'}
-                                                    />
-                                                ))}
-                                                {form.length === 0 && <span className="text-xs text-slate-400">-</span>}
-                                            </div>
-                                        </td>
                                     </>
                                 )}
                                 
                                 <td className="px-3 py-3 text-center font-black text-base text-slate-900 dark:text-white">{team.stats.points}</td>
+
+                                {!compact && (
+                                    <td className="px-3 py-3">
+                                        <div className="flex items-center justify-center gap-1">
+                                            {form.map((res, i) => (
+                                                <div 
+                                                    key={i} 
+                                                    className={`w-2.5 h-2.5 rounded-full ${
+                                                        res === 'W' ? 'bg-green-500' : 
+                                                        res === 'D' ? 'bg-slate-400' : 
+                                                        'bg-red-500'
+                                                    }`}
+                                                    title={res === 'W' ? 'Galibiyet' : res === 'D' ? 'Beraberlik' : 'Mağlubiyet'}
+                                                />
+                                            ))}
+                                            {form.length === 0 && <span className="text-xs text-slate-400">-</span>}
+                                        </div>
+                                    </td>
+                                )}
                             </tr>
                         );
                     })}

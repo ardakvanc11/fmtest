@@ -48,7 +48,6 @@ export const TEAM_TEMPLATES = [
         name: 'Maymunspor', 
         logo: 'https://i.imgur.com/kvhASjK.png',
         jersey: 'https://imgur.com/jfH3kal.png',
-        // jerseyGK: undefined, // No GK Overlay provided
         colors: ['bg-purple-800', 'text-white'], 
         championships: 4, 
         stadium: 'Muz Park',
@@ -84,39 +83,39 @@ export const TEAM_TEMPLATES = [
         targetStrength: 80 
     },
     { 
-        name: 'Bulgariaspor', 
+        name: 'Boğaspor', // Eski Bulgariaspor
         logo: 'https://i.imgur.com/RuCGNuc.png',
         jersey: 'https://imgur.com/eHAW2Fg.png',
-        jerseyGK: 'https://imgur.com/Nz7hWFC.png', // GK Overlay
-        colors: ['bg-green-600', 'text-black'], 
+        jerseyGK: 'https://imgur.com/Nz7hWFC.png', 
+        colors: ['bg-red-700', 'text-black'], // Red for Bull
         championships: 0, 
-        stadium: 'Tuna Park',
+        stadium: 'Matador Park',
         capacity: 16500,
         fans: 500000, 
         budget: 5, 
         targetStrength: 75 
     },
     { 
-        name: 'Bedirspor', 
+        name: 'Baykuşspor', // Eski Bedirspor
         logo: 'https://i.imgur.com/pPchTUI.png',
         jersey: 'https://imgur.com/bdI85Wq.png',
-        jerseyGK: 'https://imgur.com/eT3Qn69.png', // GK Overlay
-        colors: ['bg-purple-900', 'text-white'], 
+        jerseyGK: 'https://imgur.com/eT3Qn69.png',
+        colors: ['bg-slate-700', 'text-white'], 
         championships: 0, 
-        stadium: 'Bedir Stadı',
+        stadium: 'Gece Stadyumu',
         capacity: 25000,
         fans: 850000, 
         budget: 6, 
         targetStrength: 73 
     },
     { 
-        name: 'Yakhubspor', 
+        name: 'Yunusspor', // Eski Yakhubspor
         logo: 'https://i.imgur.com/vcN5VhI.png',
         jersey: 'https://imgur.com/k64QPcT.png',
-        jerseyGK: 'https://imgur.com/H2oygfo.png', // GK Overlay
-        colors: ['bg-orange-500', 'text-black'], 
+        jerseyGK: 'https://imgur.com/H2oygfo.png',
+        colors: ['bg-cyan-500', 'text-white'], 
         championships: 0, 
-        stadium: 'Çöl Fırtınası',
+        stadium: 'Okyanus Arena',
         capacity: 19500,
         fans: 750000, 
         budget: 6, 
@@ -129,20 +128,20 @@ export const TEAM_TEMPLATES = [
         jerseyGK: 'https://imgur.com/G73BOHq.png', // GK Overlay
         colors: ['bg-orange-400', 'text-white'], 
         championships: 0, 
-        stadium: 'Liman Arena',
+        stadium: 'Pati Park',
         capacity: 18000,
         fans: 1200000, 
         budget: 7, 
         targetStrength: 74 
     },
     { 
-        name: 'Uzunoğullarıspor', 
+        name: 'Zürafagücü', // Eski Uzunoğullarıspor
         logo: 'https://i.imgur.com/S4TVTee.png',
         jersey: 'https://imgur.com/BOyr0e6.png',
-        jerseyGK: 'https://imgur.com/wAOAVng.png', // GK Overlay
-        colors: ['bg-black', 'text-white'], 
+        jerseyGK: 'https://imgur.com/wAOAVng.png', 
+        colors: ['bg-yellow-400', 'text-orange-900'], 
         championships: 0, 
-        stadium: 'Kule Stadı',
+        stadium: 'Savana Stadı',
         capacity: 9500,
         fans: 200000, 
         budget: 4, 
@@ -155,20 +154,20 @@ export const TEAM_TEMPLATES = [
         jerseyGK: 'https://imgur.com/rhp2PXq.png', // GK Overlay
         colors: ['bg-red-900', 'text-blue-400'], 
         championships: 0, 
-        stadium: 'Deniz Kenarı',
+        stadium: 'Karadeniz Arena',
         capacity: 22000,
         fans: 2000000, 
         budget: 5, 
         targetStrength: 70 
     },
     { 
-        name: 'Osurukspor', 
+        name: 'Kartalspor', // Eski Osurukspor
         logo: 'https://i.imgur.com/Iz505sK.png',
         jersey: 'https://imgur.com/eqUzVTA.png',
-        jerseyGK: 'https://imgur.com/ZjPlTwJ.png', // GK Overlay
-        colors: ['bg-green-500', 'text-white'], 
+        jerseyGK: 'https://imgur.com/ZjPlTwJ.png', 
+        colors: ['bg-black', 'text-white'], 
         championships: 0, 
-        stadium: 'Rüzgar Vadisi',
+        stadium: 'Yüksek Tepe',
         capacity: 14500,
         fans: 300000, 
         budget: 3, 
@@ -201,20 +200,20 @@ export const TEAM_TEMPLATES = [
         targetStrength: 68 
     },
     { 
-        name: 'Aston Karakoçan', 
+        name: 'Aston Karakoçan', // Koç (Ram) - Animal based
         logo: 'https://i.imgur.com/sw63G9H.png',
         jersey: 'https://imgur.com/z3S5RuL.png',
         jerseyGK: 'https://imgur.com/HXvBipD.png', // GK Overlay
         colors: ['bg-indigo-900', 'text-blue-400'], 
         championships: 0, 
-        stadium: 'Şehir Stadı',
+        stadium: 'Dağlık Stadı',
         capacity: 29000,
         fans: 1600000, 
         budget: 8, 
         targetStrength: 75 
     },
     { 
-        name: 'Küheylanspor', 
+        name: 'Küheylanspor', // At (Horse) - Animal based
         logo: 'https://i.imgur.com/WG9bJgB.png',
         jersey: 'https://imgur.com/QDHs7Sy.png',
         jerseyGK: 'https://imgur.com/r4F2Ykh.png', // GK Overlay
@@ -227,13 +226,13 @@ export const TEAM_TEMPLATES = [
         targetStrength: 72 
     },
     { 
-        name: 'İslamspor', 
+        name: 'Timsahspor', // Eski İslamspor
         logo: 'https://i.imgur.com/JROZfTX.png',
         jersey: 'https://imgur.com/g5voy0X.png',
-        jerseyGK: 'https://imgur.com/W71pkOG.png', // GK Overlay
-        colors: ['bg-green-500', 'text-green-900'], 
+        jerseyGK: 'https://imgur.com/W71pkOG.png', 
+        colors: ['bg-green-600', 'text-white'], 
         championships: 0, 
-        stadium: 'Barış Parkı',
+        stadium: 'Bataklık Arena',
         capacity: 33100,
         fans: 1950000, 
         budget: 8, 
@@ -247,23 +246,18 @@ export const RIVALRIES = [
     ['Kedispor', 'Eşşekboğanspor FK'],
     ['Eşşekboğanspor FK', 'Ayıboğanspor SK'],
     ['Kedispor', 'Köpekspor'],
-    ['Bedirspor', 'Yakhubspor']
+    ['Baykuşspor', 'Yunusspor']
 ];
 
 export const initializeTeams = (): Team[] => {
     return TEAM_TEMPLATES.map((tmpl) => {
         const teamId = generateId();
         
-        // Define foreign player limits based on team strength
-        // > 80 Strength: Max 11 foreigners
-        // < 80 Strength: Max 5 foreigners
         const maxForeigners = tmpl.targetStrength >= 80 ? 11 : 5;
         let currentForeigners = 0;
 
-        // Helper wrapper to create player and track foreign count
         const createPlayer = (pos: Position, strength: number) => {
             const canBeForeign = currentForeigners < maxForeigners;
-            // Determine Jersey: If GK, use the GK overlay. If outfield, use normal jersey.
             const jerseyToUse = pos === Position.GK ? tmpl.jerseyGK : tmpl.jersey;
             
             const p = generatePlayer(pos, strength, teamId, canBeForeign, jerseyToUse);
@@ -273,37 +267,28 @@ export const initializeTeams = (): Team[] => {
             return p;
         }
         
-        // Construct detailed 4-4-2 Lineup (0-10) with specific positions
-        
-        // 1. GK
         const gk = createPlayer(Position.GK, tmpl.targetStrength);
-        
-        // 2. Defense Line (SLB - STP - STP - SGB)
         const slb = createPlayer(Position.SLB, tmpl.targetStrength);
         const stp1 = createPlayer(Position.STP, tmpl.targetStrength);
         const stp2 = createPlayer(Position.STP, tmpl.targetStrength);
         const sgb = createPlayer(Position.SGB, tmpl.targetStrength);
         
-        // 3. Midfield Line (SLK - OS - OS - SGK)
         const slk = createPlayer(Position.SLK, tmpl.targetStrength);
         const os1 = createPlayer(Position.OS, tmpl.targetStrength);
         const os2 = createPlayer(Position.OS, tmpl.targetStrength);
         const sgk = createPlayer(Position.SGK, tmpl.targetStrength);
         
-        // 4. Attack Line (SNT - SNT)
         const snt1 = createPlayer(Position.SNT, tmpl.targetStrength);
         const snt2 = createPlayer(Position.SNT, tmpl.targetStrength);
 
-        // --- SUBSTITUTES (7 Players) ---
         const subGK = createPlayer(Position.GK, tmpl.targetStrength - 5);
         const subDEF1 = createPlayer(Position.STP, tmpl.targetStrength - 5);
-        const subDEF2 = createPlayer(Position.SLB, tmpl.targetStrength - 5); // Or SGB
+        const subDEF2 = createPlayer(Position.SLB, tmpl.targetStrength - 5); 
         const subMID1 = createPlayer(Position.OS, tmpl.targetStrength - 5);
-        const subMID2 = createPlayer(Position.OOS, tmpl.targetStrength - 5); // Include OOS as option
-        const subFWD1 = createPlayer(Position.SLK, tmpl.targetStrength - 5); // Or SGK
+        const subMID2 = createPlayer(Position.OOS, tmpl.targetStrength - 5); 
+        const subFWD1 = createPlayer(Position.SLK, tmpl.targetStrength - 5); 
         const subFWD2 = createPlayer(Position.SNT, tmpl.targetStrength - 5);
 
-        // --- RESERVES (Balanced Mix) ---
         const reserves = [];
         reserves.push(createPlayer(Position.GK, tmpl.targetStrength - 10));
         reserves.push(createPlayer(Position.SGB, tmpl.targetStrength - 8));
@@ -312,10 +297,6 @@ export const initializeTeams = (): Team[] => {
         reserves.push(createPlayer(Position.SGK, tmpl.targetStrength - 8));
         reserves.push(createPlayer(Position.SNT, tmpl.targetStrength - 8));
 
-        // Combine all in standard order
-        // 0-10: XI
-        // 11-17: Subs
-        // 18+: Reserves
         const players = [
             gk, 
             slb, stp1, stp2, sgb, 
@@ -337,7 +318,6 @@ export const initializeTeams = (): Team[] => {
             stadiumCapacity: tmpl.capacity,
             budget: tmpl.budget,
             players,
-            // DEFAULT TACTICS
             formation: '4-4-2',
             mentality: Mentality.BALANCED,
             passing: PassingStyle.MIXED,
@@ -351,7 +331,6 @@ export const initializeTeams = (): Team[] => {
             pressFocus: PressingFocus.MIXED,
             timeWasting: TimeWasting.SOMETIMES,
             
-            // Legacy mapping
             tactic: TacticStyle.BALANCED,
             attackStyle: AttackStyle.MIXED,
             pressingStyle: PressingStyle.BALANCED,

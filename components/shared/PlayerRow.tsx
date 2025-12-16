@@ -1,11 +1,12 @@
-
 import React from 'react';
 import { Player } from '../../types';
 import { Syringe, Heart } from 'lucide-react';
 import PlayerFace from './PlayerFace';
 
 const PlayerRow: React.FC<{ p: Player, index: number, onClick: (p: Player) => void }> = ({ p, index, onClick }) => {
-    const getConditionColor = (stamina: number) => stamina >= 80 ? 'text-green-500 fill-green-500' : stamina >= 50 ? 'text-yellow-500 fill-yellow-500' : 'text-red-500 fill-red-500';
+    // UPDATED: Using `p.condition` instead of `p.stats.stamina`
+    const currentCondition = p.condition !== undefined ? p.condition : p.stats.stamina;
+    const getConditionColor = (cond: number) => cond >= 80 ? 'text-green-500 fill-green-500' : cond >= 50 ? 'text-yellow-500 fill-yellow-500' : 'text-red-500 fill-red-500';
 
     const getPosBadgeColor = (pos: string) => {
         if (pos === 'GK') return 'bg-yellow-600';
@@ -44,7 +45,7 @@ const PlayerRow: React.FC<{ p: Player, index: number, onClick: (p: Player) => vo
             </td>
             <td className="px-2 md:px-4 py-2 text-center font-black text-base md:text-lg text-indigo-700 dark:text-indigo-400">{p.skill}</td>
             <td className="px-2 md:px-4 py-2 text-center text-slate-600 dark:text-slate-300 text-sm hidden sm:table-cell">{p.age}</td>
-            <td className="px-2 md:px-4 py-2 text-center hidden md:table-cell"><div className="flex items-center justify-center gap-1 group-hover:scale-110 transition-transform"><Heart size={16} className={getConditionColor(p.stats.stamina)} /><span className="text-xs text-slate-400 hidden group-hover:inline">{p.stats.stamina}</span></div></td>
+            <td className="px-2 md:px-4 py-2 text-center hidden md:table-cell"><div className="flex items-center justify-center gap-1 group-hover:scale-110 transition-transform"><Heart size={16} className={getConditionColor(Math.round(currentCondition))} /><span className="text-xs text-slate-400 hidden group-hover:inline">{Math.round(currentCondition)}</span></div></td>
             <td className="px-2 md:px-4 py-2 text-center font-bold text-yellow-600 dark:text-yellow-500 text-sm hidden md:table-cell">{p.morale}</td>
             <td className="px-2 md:px-4 py-2 text-center font-mono text-green-600 dark:text-green-400 text-sm">{p.seasonStats.goals}</td>
             <td className="px-2 md:px-4 py-2 text-center font-mono text-blue-600 dark:text-blue-400 text-sm">{p.seasonStats.assists}</td>

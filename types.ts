@@ -163,6 +163,7 @@ export interface Player {
     nationality: string;
     teamId: string;
     morale: number;
+    condition: number; // NEW: Current Energy (0-100). stats.stamina is the Attribute.
     suspendedUntilWeek?: number;
     injury?: Injury; 
     hasInjectionForNextMatch?: boolean; 
@@ -275,6 +276,7 @@ export interface BettingOdds {
 export interface Fixture {
     id: string;
     week: number;
+    date: string; // ISO Date String
     homeTeamId: string;
     awayTeamId: string;
     played: boolean;
@@ -389,6 +391,7 @@ export interface GameState {
     manager: ManagerProfile | null; 
     myTeamId: string | null;
     currentWeek: number; 
+    currentDate: string; // ISO Date String
     teams: Team[];
     fixtures: Fixture[];
     messages: Message[]; // Updated to Message[]

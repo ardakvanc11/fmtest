@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Player } from '../types';
-import { X } from 'lucide-react';
+import { X, Heart } from 'lucide-react';
 import PlayerFace from '../components/shared/PlayerFace';
 
 const PlayerDetailModal = ({ player, onClose }: { player: Player, onClose: () => void }) => {
@@ -14,6 +14,8 @@ const PlayerDetailModal = ({ player, onClose }: { player: Player, onClose: () =>
         if (['OS', 'OOS'].includes(pos)) return 'bg-green-600';
         return 'bg-red-600';
     };
+
+    const currentCondition = player.condition !== undefined ? player.condition : player.stats.stamina;
 
     return (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -57,7 +59,15 @@ const PlayerDetailModal = ({ player, onClose }: { player: Player, onClose: () =>
                         <h4 className="text-yellow-600 dark:text-yellow-500 font-bold uppercase text-sm border-b border-slate-200 dark:border-slate-700 pb-1 mb-3">Fiziksel & Mental</h4>
                         <div className="flex justify-between text-sm"><span>Hız</span><span className="font-bold">{player.stats.pace}</span></div>
                         <div className="flex justify-between text-sm"><span>Güç</span><span className="font-bold">{player.stats.physical}</span></div>
-                        <div className="flex justify-between text-sm"><span>Dayanıklılık</span><span className="font-bold">{player.stats.stamina}</span></div>
+                        {/* New Display: Current Condition vs Stamina Stat */}
+                        <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
+                            <span className="flex items-center gap-1"><Heart size={14}/> Anlık Kondisyon</span>
+                            <span className="font-bold">{Math.round(currentCondition)}%</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-slate-500">
+                            <span>Dayanıklılık (Yetenek)</span>
+                            <span className="font-bold">{player.stats.stamina}</span>
+                        </div>
                     </div>
                     <div className="space-y-3">
                         <h4 className="text-blue-600 dark:text-blue-500 font-bold uppercase text-sm border-b border-slate-200 dark:border-slate-700 pb-1 mb-3">Teknik</h4>

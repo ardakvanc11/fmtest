@@ -4,6 +4,53 @@ import { Team, Player, Mentality, Tempo, TimeWasting, PassingStyle, Width, Creat
 import PitchVisual from '../components/shared/PitchVisual';
 import { Syringe, Ban } from 'lucide-react';
 
+interface PlayerListItemProps {
+    p: Player;
+    selectedPlayerId: string | null;
+    forcedSubstitutionPlayerId: string | null | undefined;
+    currentWeek?: number;
+    onPlayerClick: (p: Player) => void;
+}
+
+const PlayerListItem = ({ p, selectedPlayerId, forcedSubstitutionPlayerId, currentWeek, onPlayerClick }: PlayerListItemProps) => {
+    const isSuspended = p.suspendedUntilWeek && currentWeek && p.suspendedUntilWeek > currentWeek;
+    const isForcedInjury = forcedSubstitutionPlayerId === p.id;
+    
+    const getPosBadgeColor = (pos: string) => {
+        if (pos === 'GK') return 'bg-yellow-600';
+        if (['SLB', 'STP', 'SGB'].includes(pos)) return 'bg-blue-600';
+        if (['OS', 'OOS'].includes(pos)) return 'bg-green-600';
+        return 'bg-red-600'; 
+    };
+
+    return (
+        <div onClick={() => onPlayerClick(p)} className={`flex items-center justify-between p-2 rounded border cursor-pointer transition mb-2 ${selectedPlayerId === p.id ? 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-500' : isForcedInjury ? 'bg-red-100 dark:bg-red-900/30 border-red-500 animate-pulse' : 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700'} ${(p.injury || isSuspended) && !isForcedInjury ? 'opacity-70' : ''}`}>
+            <div className="flex items-center gap-2 overflow-hidden">
+                <div className="flex flex-col gap-0.5">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white shrink-0 w-8 text-center ${getPosBadgeColor(p.position)}`}>{p.position}</span>
+                    {p.secondaryPosition && (
+                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded text-white shrink-0 w-8 text-center opacity-70 ${getPosBadgeColor(p.secondaryPosition)}`}>{p.secondaryPosition}</span>
+                    )}
+                </div>
+                <div className="flex flex-col min-w-0">
+                    <span className={`text-sm font-bold flex items-center gap-1 truncate ${selectedPlayerId === p.id ? 'text-yellow-600 dark:text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                        {p.name}
+                        {(p.injury || isForcedInjury) && <Syringe size={12} className="text-red-500 animate-pulse shrink-0"/>}
+                        {isSuspended && <Ban size={12} className="text-red-600 shrink-0"/>}
+                    </span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        {p.age} Yaş 
+                        {p.injury ? ` • ${p.injury.weeksRemaining} Hf Sakat` : ''}
+                        {isForcedInjury ? ' • SAKATLANDI!' : ''}
+                        {isSuspended ? ' • CEZALI' : ''}
+                    </span>
+                </div>
+            </div>
+            <div className="font-bold text-slate-900 dark:text-white text-sm pl-2">{p.skill}</div>
+        </div>
+    );
+};
+
 interface TacticsViewProps {
     team: Team;
     setTeam: (t: Team) => void;
@@ -145,45 +192,6 @@ const TacticsView = ({
         </div>
     );
 
-    const PlayerListItem = ({ p }: { p: Player }) => {
-        const isSuspended = p.suspendedUntilWeek && currentWeek && p.suspendedUntilWeek > currentWeek;
-        const isForcedInjury = forcedSubstitutionPlayerId === p.id;
-        
-        const getPosBadgeColor = (pos: string) => {
-            if (pos === 'GK') return 'bg-yellow-600';
-            if (['SLB', 'STP', 'SGB'].includes(pos)) return 'bg-blue-600';
-            if (['OS', 'OOS'].includes(pos)) return 'bg-green-600';
-            return 'bg-red-600'; 
-        };
-
-        return (
-            <div onClick={() => handlePlayerClick(p)} className={`flex items-center justify-between p-2 rounded border cursor-pointer transition mb-2 ${selectedPlayerId === p.id ? 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-500' : isForcedInjury ? 'bg-red-100 dark:bg-red-900/30 border-red-500 animate-pulse' : 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700'} ${(p.injury || isSuspended) && !isForcedInjury ? 'opacity-70' : ''}`}>
-                <div className="flex items-center gap-2 overflow-hidden">
-                    <div className="flex flex-col gap-0.5">
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white shrink-0 w-8 text-center ${getPosBadgeColor(p.position)}`}>{p.position}</span>
-                        {p.secondaryPosition && (
-                            <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded text-white shrink-0 w-8 text-center opacity-70 ${getPosBadgeColor(p.secondaryPosition)}`}>{p.secondaryPosition}</span>
-                        )}
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                        <span className={`text-sm font-bold flex items-center gap-1 truncate ${selectedPlayerId === p.id ? 'text-yellow-600 dark:text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-                            {p.name}
-                            {(p.injury || isForcedInjury) && <Syringe size={12} className="text-red-500 animate-pulse shrink-0"/>}
-                            {isSuspended && <Ban size={12} className="text-red-600 shrink-0"/>}
-                        </span>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                            {p.age} Yaş 
-                            {p.injury ? ` • ${p.injury.weeksRemaining} Hf Sakat` : ''}
-                            {isForcedInjury ? ' • SAKATLANDI!' : ''}
-                            {isSuspended ? ' • CEZALI' : ''}
-                        </span>
-                    </div>
-                </div>
-                <div className="font-bold text-slate-900 dark:text-white text-sm pl-2">{p.skill}</div>
-            </div>
-        );
-    };
-
     return (
         <div className="flex flex-col h-full gap-4 pb-20 md:pb-0">
             {!compact && <div className="flex items-center justify-between shrink-0">
@@ -232,7 +240,16 @@ const TacticsView = ({
                         {/* Substitutes */}
                         <h4 className="text-xs font-bold text-blue-600 dark:text-blue-400 mb-2 uppercase border-b border-blue-100 dark:border-blue-900 pb-1">Yedek Kulübesi (7 Kişi)</h4>
                         <div className="mb-4">
-                            {team.players.slice(11, 18).map(p => <PlayerListItem key={p.id} p={p} />)}
+                            {team.players.slice(11, 18).map(p => 
+                                <PlayerListItem 
+                                    key={p.id} 
+                                    p={p} 
+                                    selectedPlayerId={selectedPlayerId} 
+                                    forcedSubstitutionPlayerId={forcedSubstitutionPlayerId} 
+                                    currentWeek={currentWeek} 
+                                    onPlayerClick={handlePlayerClick} 
+                                />
+                            )}
                         </div>
 
                         {/* Reserves */}
@@ -241,7 +258,16 @@ const TacticsView = ({
                                 <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase border-b border-slate-200 dark:border-slate-700 pb-1">Kadro Dışı (Rezerv)</h4>
                                 <div>
                                     {team.players.slice(18).length > 0 ? (
-                                        team.players.slice(18).map(p => <PlayerListItem key={p.id} p={p} />)
+                                        team.players.slice(18).map(p => 
+                                            <PlayerListItem 
+                                                key={p.id} 
+                                                p={p} 
+                                                selectedPlayerId={selectedPlayerId} 
+                                                forcedSubstitutionPlayerId={forcedSubstitutionPlayerId} 
+                                                currentWeek={currentWeek} 
+                                                onPlayerClick={handlePlayerClick} 
+                                            />
+                                        )
                                     ) : (
                                         <div className="text-xs text-slate-400 italic p-2">Rezerv oyuncu yok.</div>
                                     )}
@@ -254,7 +280,16 @@ const TacticsView = ({
                              <>
                                 <h4 className="text-xs font-bold text-red-600 dark:text-red-400 mb-2 uppercase border-b border-red-200 dark:border-red-900 pb-1 mt-4">Saha İçi</h4>
                                 <div className="mb-4">
-                                    {team.players.slice(0, 11).map(p => <PlayerListItem key={p.id} p={p} />)}
+                                    {team.players.slice(0, 11).map(p => 
+                                        <PlayerListItem 
+                                            key={p.id} 
+                                            p={p} 
+                                            selectedPlayerId={selectedPlayerId} 
+                                            forcedSubstitutionPlayerId={forcedSubstitutionPlayerId} 
+                                            currentWeek={currentWeek} 
+                                            onPlayerClick={handlePlayerClick} 
+                                        />
+                                    )}
                                 </div>
                             </>
                         )}

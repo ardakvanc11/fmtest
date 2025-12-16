@@ -1,6 +1,8 @@
+
 import React, { useState } from 'react';
 import { ManagerProfile, Team, Fixture } from '../types';
 import { calculateForm, calculateManagerPower } from '../utils/gameEngine';
+import { getFormattedDate } from '../utils/calendarAndFixtures';
 import { Home, User, FileText, Heart, Calendar, Star, Feather, AlertTriangle, Clock, Trophy, Wallet, BarChart3, Building2, ArrowRightLeft, TrendingUp, TrendingDown, Power, Check, X, Crown, LogOut } from 'lucide-react';
 import StandingsTable from '../components/shared/StandingsTable';
 import HallOfFameModal from '../modals/HallOfFameModal';
@@ -12,8 +14,11 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
     const [showHallOfFame, setShowHallOfFame] = useState(false);
     
     // Calculate stats
-    const nextMatch = fixtures.find(f => f.week === currentWeek && (f.homeTeamId === myTeamId || f.awayTeamId === myTeamId));
+    // Find the next unplayed match OR the match for the current week if played
+    const nextMatch = fixtures.find(f => f.week === currentWeek && (f.homeTeamId === myTeamId || f.awayTeamId === myTeamId)) || fixtures.find(f => !f.played && (f.homeTeamId === myTeamId || f.awayTeamId === myTeamId));
+    
     const opponent = nextMatch ? teams.find(t => t.id === (nextMatch.homeTeamId === myTeamId ? nextMatch.awayTeamId : nextMatch.homeTeamId)) : null;
+    const nextMatchDateDisplay = nextMatch ? getFormattedDate(nextMatch.date).label : '';
 
     // Match Calendar Logic
     const myFixtures = fixtures
@@ -152,12 +157,20 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                                     </div>
                                 </div>
                             </div>
-                            <h2 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white mb-2">Sonraki Maç</h2>
+                            <h2 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white mb-2 flex justify-between items-end">
+                                <span>Sonraki Maç</span>
+                                <span className="text-xs text-slate-500 font-normal">{nextMatchDateDisplay}</span>
+                            </h2>
                             {opponent ? (
                                 <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg border border-slate-200 dark:border-slate-600 flex items-center justify-between cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition" onClick={() => onTeamClick(opponent.id)}>
                                     <div className="flex items-center gap-3">
                                         {opponent.logo && <img src={opponent.logo} className="w-10 h-10 md:w-12 md:h-12 object-contain" />}
-                                        <span className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">{opponent.name}</span>
+                                        <div className="flex flex-col">
+                                            <span className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">{opponent.name}</span>
+                                            {nextMatch && nextMatch.played && (
+                                                <span className="text-xs text-yellow-600 dark:text-yellow-500 font-bold">Maç Sonu: {nextMatch.homeScore} - {nextMatch.awayScore}</span>
+                                            )}
+                                        </div>
                                     </div>
                                     <span className="text-slate-500 dark:text-slate-400 text-xs md:text-sm font-bold bg-white dark:bg-slate-800 px-2 py-1 rounded">{nextMatch?.homeTeamId === myTeamId ? 'İÇ SAHA' : 'DEPLASMAN'}</span>
                                 </div>
@@ -183,6 +196,7 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                                         const opponentId = isHome ? f.awayTeamId : f.homeTeamId;
                                         const opp = teams.find(t => t.id === opponentId);
                                         const res = getMatchResult(f);
+                                        const dateLabel = getFormattedDate(f.date).label;
                                         
                                         return (
                                             <div key={f.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/30 p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700/50 transition">
@@ -192,7 +206,7 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                                                     </div>
                                                     <div className="flex flex-col">
                                                         <span className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[120px]">{opp?.name}</span>
-                                                        <span className="text-[10px] text-slate-500 dark:text-slate-400">{isHome ? 'İç Saha' : 'Deplasman'}</span>
+                                                        <span className="text-[10px] text-slate-500 dark:text-slate-400">{dateLabel}</span>
                                                     </div>
                                                 </div>
                                                 <div 
@@ -216,6 +230,7 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                                         const isHome = f.homeTeamId === myTeamId;
                                         const opponentId = isHome ? f.awayTeamId : f.homeTeamId;
                                         const opp = teams.find(t => t.id === opponentId);
+                                        const dateLabel = getFormattedDate(f.date).label;
                                         
                                         return (
                                             <div key={f.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/30 p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700/50 transition cursor-pointer" onClick={() => onTeamClick(opponentId)}>
@@ -224,9 +239,12 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                                                         <span className="text-xs font-bold text-slate-600 dark:text-slate-400 block">{f.week}.</span>
                                                         <span className="text-[10px] text-slate-400 dark:text-slate-500 block uppercase">Hf</span>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {opp?.logo && <img src={opp.logo} className="w-5 h-5 object-contain"/>}
-                                                        <span className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[120px]">{opp?.name}</span>
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-2">
+                                                            {opp?.logo && <img src={opp.logo} className="w-4 h-4 object-contain"/>}
+                                                            <span className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[120px]">{opp?.name}</span>
+                                                        </div>
+                                                        <span className="text-[10px] text-slate-500 dark:text-slate-400">{dateLabel}</span>
                                                     </div>
                                                 </div>
                                                 <div className={`text-xs font-bold px-2 py-1 rounded border ${isHome ? 'border-green-600/30 text-green-600 dark:text-green-400' : 'border-red-600/30 text-red-600 dark:text-red-400'}`}>

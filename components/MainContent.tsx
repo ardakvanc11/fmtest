@@ -26,6 +26,7 @@ import PlayerDetailModal from '../modals/PlayerDetailModal';
 import MatchDetailModal from '../modals/MatchDetailModal';
 import MatchResultModal from '../modals/MatchResultModal';
 import HallOfFameModal from '../modals/HallOfFameModal';
+import FixtureDetailPanel from './shared/FixtureDetailPanel';
 
 // Types definition for props
 interface MainContentProps {
@@ -42,6 +43,8 @@ interface MainContentProps {
     setMatchResultData: React.Dispatch<React.SetStateAction<any>>;
     selectedFixtureForDetail: Fixture | null;
     setSelectedFixtureForDetail: React.Dispatch<React.SetStateAction<Fixture | null>>;
+    selectedFixtureInfo: Fixture | null;
+    setSelectedFixtureInfo: React.Dispatch<React.SetStateAction<Fixture | null>>;
     gameOverReason: string | null;
     theme: 'dark' | 'light';
     toggleTheme: () => void;
@@ -83,6 +86,8 @@ const MainContent: React.FC<MainContentProps> = (props) => {
         setMatchResultData,
         selectedFixtureForDetail,
         setSelectedFixtureForDetail,
+        selectedFixtureInfo,
+        setSelectedFixtureInfo,
         gameOverReason,
         theme,
         toggleTheme,
@@ -266,6 +271,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     currentWeek={gameState.currentWeek}
                     onTeamClick={handleShowTeamDetail}
                     onFixtureClick={(f) => setSelectedFixtureForDetail(f)}
+                    onFixtureInfoClick={(f) => setSelectedFixtureInfo(f)}
                 />
             )}
             
@@ -362,6 +368,18 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     fixture={selectedFixtureForDetail} 
                     teams={gameState.teams} 
                     onClose={() => setSelectedFixtureForDetail(null)} 
+                />
+            )}
+
+            {/* NEW: Fixture Info Side Panel */}
+            {selectedFixtureInfo && (
+                <FixtureDetailPanel 
+                    fixture={selectedFixtureInfo}
+                    homeTeam={gameState.teams.find(t => t.id === selectedFixtureInfo.homeTeamId)!}
+                    awayTeam={gameState.teams.find(t => t.id === selectedFixtureInfo.awayTeamId)!}
+                    allFixtures={gameState.fixtures}
+                    onClose={() => setSelectedFixtureInfo(null)}
+                    myTeamId={gameState.myTeamId || ''} // Passed for filtering
                 />
             )}
 

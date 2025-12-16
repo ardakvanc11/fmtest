@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { GameState } from '../types';
-import { getGameDate } from '../utils/gameEngine';
+import { getFormattedDate, isSameDay } from '../utils/calendarAndFixtures';
 import { Home, Users, Briefcase, DollarSign, Calendar, Dumbbell, Smartphone, Save, RotateCcw, X, Menu, ChevronLeft, ChevronRight, PlayCircle, Sun, Moon, Activity } from 'lucide-react';
 
 const NavItem = ({ id, label, icon: Icon, badge, onClick, currentView, isMatchMode }: any) => (
@@ -53,14 +53,17 @@ const Dashboard = ({
     injuredCount?: number
 }) => {
     const myTeam = state.teams.find(t => t.id === state.myTeamId);
-    const { label: dateLabel } = getGameDate(state.currentWeek);
+    const dateInfo = getFormattedDate(state.currentDate);
     
+    // Check if there is a match TODAY for the user
     const currentFixture = state.fixtures.find(f => 
-        f.week === state.currentWeek && 
-        (f.homeTeamId === state.myTeamId || f.awayTeamId === state.myTeamId)
+        isSameDay(f.date, state.currentDate) && 
+        (f.homeTeamId === state.myTeamId || f.awayTeamId === state.myTeamId) &&
+        !f.played
     );
     
-    const canAdvance = currentFixture ? !!currentFixture.played : true;
+    // If there is a match today, user CANNOT advance day without playing/simulating
+    const isMatchDay = !!currentFixture;
     
     // Updated isMatchMode to restrict navigation during active match play, match flow, AND game over
     const isMatchMode = ['match_live', 'match_result', 'interview', 'game_over'].includes(currentView);
@@ -211,11 +214,11 @@ const Dashboard = ({
                             <span>{myTeam?.budget?.toFixed(1)} M€</span>
                         </div>
                         
-                        {/* Date - Icon only on mobile, text on desktop */}
+                        {/* Date */}
                         <div className="flex items-center space-x-2 text-yellow-600 dark:text-yellow-400 font-mono border border-slate-300 dark:border-slate-600 px-2 md:px-3 py-1 rounded bg-slate-100 dark:bg-slate-700 justify-center transition-colors">
                             <Calendar size={16} />
-                            <span className="hidden lg:inline text-sm font-bold uppercase">{dateLabel}</span>
-                            <span className="lg:hidden text-xs font-bold">{state.currentWeek}.Hf</span>
+                            <span className="hidden lg:inline text-sm font-bold uppercase">{dateInfo.label}</span>
+                            <span className="lg:hidden text-xs font-bold">{dateInfo.label}</span>
                         </div>
                         
                         {currentView === 'game_over' ? (
@@ -226,12 +229,12 @@ const Dashboard = ({
                             <button disabled className="bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-400 px-3 py-2 md:px-4 md:py-2 rounded font-bold flex items-center cursor-not-allowed animate-pulse text-xs md:text-base transition-colors whitespace-nowrap">
                                 <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span> <span className="hidden sm:inline">MAÇ GÜNÜ</span><span className="sm:hidden">MAÇ</span>
                             </button>
-                        ) : canAdvance ? (
+                        ) : !isMatchDay ? (
                             <button 
                                 onClick={onNextWeek}
                                 className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 md:px-4 md:py-2 rounded font-bold flex items-center animate-pulse shadow-lg shadow-blue-900/20 dark:shadow-blue-900/50 text-xs md:text-base transition-colors whitespace-nowrap"
                             >
-                                <span className="hidden sm:inline">Sonraki Hafta</span><span className="sm:hidden">İLERİ</span> <ChevronRight size={16} className="ml-1"/>
+                                <span className="hidden sm:inline">Sonraki Gün</span><span className="sm:hidden">İLERİ</span> <ChevronRight size={16} className="ml-1"/>
                             </button>
                         ) : (
                              <button 

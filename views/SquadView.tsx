@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Team, Player } from '../types';
 import PlayerRow from '../components/shared/PlayerRow';
@@ -12,7 +11,11 @@ const SquadView = ({ team, onPlayerClick }: { team: Team, onPlayerClick: (p: Pla
         return [...players].sort((a, b) => {
             let aValue: any = a[sortConfig.key as keyof Player];
             let bValue: any = b[sortConfig.key as keyof Player];
-            if (sortConfig.key === 'stamina') { aValue = a.stats.stamina; bValue = b.stats.stamina; }
+            if (sortConfig.key === 'stamina') { 
+                // Use condition if available, fallback to stat
+                aValue = a.condition !== undefined ? a.condition : a.stats.stamina; 
+                bValue = b.condition !== undefined ? b.condition : b.stats.stamina; 
+            }
             if (sortConfig.key === 'goals') { aValue = a.seasonStats.goals; bValue = b.seasonStats.goals; }
             if (sortConfig.key === 'assists') { aValue = a.seasonStats.assists; bValue = b.seasonStats.assists; }
             if (sortConfig.key === 'rating') { aValue = a.seasonStats.averageRating; bValue = b.seasonStats.averageRating; }

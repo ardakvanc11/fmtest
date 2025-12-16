@@ -1,9 +1,8 @@
 
-
 import { Fixture, Team, NewsItem, Message, Player, MatchEvent, Position } from '../types';
 import { generateId, RIVALRIES } from '../constants';
 import { FAN_NAMES, DERBY_TWEETS_WIN, DERBY_TWEETS_LOSS, FAN_TWEETS_WIN, FAN_TWEETS_LOSS, FAN_TWEETS_DRAW, RESIGNATION_TWEETS, EVENT_TWEETS } from '../data/tweetPool';
-import { getGameDate, isTransferWindowOpen } from './calendarAndFixtures';
+import { isTransferWindowOpen } from './calendarAndFixtures';
 import { fillTemplate } from './helpers';
 
 // --- FAN TWEETS LOGIC ---
@@ -194,6 +193,38 @@ export const generateResignationTweets = (week: number, myTeam: Team): NewsItem[
     return tweets;
 };
 
+// Generates tweets when a STAR player is sold against fans' wishes
+export const generateStarSoldRiotTweets = (week: number, myTeam: Team, soldPlayerName: string): NewsItem[] => {
+    const tweets: NewsItem[] = [];
+    const count = 4; // High volume of angry tweets
+
+    const angryTemplates = [
+        "YAZIKLAR OLSUN! {player} gibi bir değer satılır mı?",
+        "Bu takımın ruhunu sattınız! {player} bizim kırmızı çizgimizdi!",
+        "Kombinemi iptal ediyorum. {player} yoksa ben de yokum.",
+        "Yönetim İSTİFA! {player}'ı satarak şampiyonluğu sattınız.",
+        "Para için {player} harcandı. Bu ihaneti unutmayacağız.",
+        "Hocam {player}'ın gidişine nasıl onay verirsin? Yazık!",
+        "Takımın en iyisini satmak vizyonsuzluktur. Hoşçakal {player}...",
+        "{player} olmadan bu takım küme düşer. Büyük hata yaptınız."
+    ];
+
+    for(let i=0; i<count; i++) {
+        const fan = FAN_NAMES[Math.floor(Math.random() * FAN_NAMES.length)];
+        const template = angryTemplates[Math.floor(Math.random() * angryTemplates.length)];
+        const content = fillTemplate(template, { player: soldPlayerName });
+        
+        tweets.push({
+            id: generateId(),
+            week,
+            type: 'TRANSFER',
+            title: `${fan.name}|${fan.handle}|${myTeam.name}`,
+            content: content
+        });
+    }
+    return tweets;
+};
+
 export const generateWeeklyNews = (week: number, fixtures: Fixture[], teams: Team[], myTeamId?: string | null): NewsItem[] => {
     const socialFeed: NewsItem[] = [];
     
@@ -212,7 +243,10 @@ export const generateWeeklyNews = (week: number, fixtures: Fixture[], teams: Tea
     });
 
     // --- TRANSFER WINDOW FAN REACTIONS ---
-    if (isTransferWindowOpen(week)) {
+    const weekFixtures = fixtures.filter(f => f.week === week);
+    const dateToCheck = weekFixtures.length > 0 ? weekFixtures[0].date : new Date().toISOString();
+
+    if (isTransferWindowOpen(dateToCheck)) {
         
         // 1. Generic Rumors & Demands
         const genericRumors = [
@@ -243,14 +277,44 @@ export const generateWeeklyNews = (week: number, fixtures: Fixture[], teams: Tea
             const myLastFixture = playedFixtures.find(f => f.homeTeamId === myTeamId || f.awayTeamId === myTeamId);
 
             if (myTeam) {
-                const fan = FAN_NAMES[Math.floor(Math.random() * FAN_NAMES.length)];
+                // Logic 4: Don't Sell Star Player (Untouchables Logic)
+                // Identify Top 2 players by skill
+                const starPlayers = [...myTeam.players].sort((a,b) => b.skill - a.skill).slice(0, 2);
                 
+                starPlayers.forEach(star => {
+                    // Probability Adjustment:
+                    // Was 60% daily chance (too high).
+                    // New: 8% chance per player per day.
+                    // With 2 stars, this gives roughly ~15% chance of *a* tweet per day.
+                    // This averages out to 1 tweet every 6-7 days approx.
+                    if (Math.random() < 0.08) {
+                        const fan = FAN_NAMES[Math.floor(Math.random() * FAN_NAMES.length)];
+                        const templates = [
+                            "{player} bizim kırmızı çizgimizdir! Ona gelen teklifleri reddedin.",
+                            "Sakın {player}'ı satmayı aklınızdan geçirmeyin, yakarız buraları!",
+                            "Bu takımın kaptanı ve ruhu {player}'dır. Satılması teklif dahi edilemez.",
+                            "{player} giderse kombine yenilemem, net konuşuyorum.",
+                            "Yönetim aklını başına al, {player} takımda kalmalı."
+                        ];
+                        const template = templates[Math.floor(Math.random() * templates.length)];
+                        
+                        socialFeed.push({
+                            id: generateId(),
+                            week,
+                            type: 'TRANSFER',
+                            title: `${fan.name}|${fan.handle}|${myTeam.name}`,
+                            content: fillTemplate(template, { player: star.name })
+                        });
+                    }
+                });
+
                 // Logic 1: Bad Performance Targeting
                 if (myLastFixture && myLastFixture.stats) {
                     const myRatings = myLastFixture.homeTeamId === myTeamId ? myLastFixture.stats.homeRatings : myLastFixture.stats.awayRatings;
                     // Find a player with bad rating (< 6.0)
                     const badPlayer = myRatings.find(p => p.rating < 6.0);
-                    
+                    const fan = FAN_NAMES[Math.floor(Math.random() * FAN_NAMES.length)];
+
                     if (badPlayer && Math.random() > 0.5) {
                         socialFeed.push({
                             id: generateId(),
@@ -286,21 +350,6 @@ export const generateWeeklyNews = (week: number, fixtures: Fixture[], teams: Tea
                             type: 'TRANSFER',
                             title: `${fan3.name}|${fan3.handle}|${myTeam.name}`,
                             content: "Savunma yol geçen hanı oldu. Yönetim stoper almıyor mu, bizi mi sınıyor?"
-                        });
-                    }
-                }
-
-                // Logic 4: Don't Sell Star Player
-                if (Math.random() > 0.7) {
-                    const starPlayer = [...myTeam.players].sort((a,b) => b.value - a.value)[0];
-                    if (starPlayer) {
-                         const fan4 = FAN_NAMES[Math.floor(Math.random() * FAN_NAMES.length)];
-                         socialFeed.push({
-                            id: generateId(),
-                            week,
-                            type: 'TRANSFER',
-                            title: `${fan4.name}|${fan4.handle}|${myTeam.name}`,
-                            content: `${starPlayer.name} kırmızı çizgimizdir! Ona gelen teklifleri reddedin, takımı sırtlayan o.`
                         });
                     }
                 }

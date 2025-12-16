@@ -2,13 +2,13 @@
 
 import { Player, Team, Position } from '../types';
 import { generatePlayer } from '../constants';
-import { getGameDate } from './calendarAndFixtures';
 import { calculateTeamStrength } from './teamCalculations';
 
-export const generateTransferMarket = (count: number, week: number): Player[] => {
+export const generateTransferMarket = (count: number, dateStr: string): Player[] => {
     const players: Player[] = [];
-    const { month } = getGameDate(week);
-    const priceMultiplier = month === 0 ? 1.5 : 1.0;
+    const date = new Date(dateStr);
+    const month = date.getMonth(); // 0 = Jan, 6 = July
+    const priceMultiplier = month === 0 ? 1.5 : 1.0; // Winter transfer premium
 
     for(let i=0; i<count; i++) {
         // Detailed positions for transfer market

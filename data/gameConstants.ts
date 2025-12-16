@@ -1,4 +1,5 @@
 
+
 export const generateId = () => Math.random().toString(36).substr(2, 9);
 
 export const INJURY_TYPES = [
@@ -25,3 +26,13 @@ export const INJURY_TYPES = [
     { type: 'Aşil Tendonu Zorlanması', minWeeks: 4, maxWeeks: 6, desc: 'Aşil bölgesine aşırı yük binmesi.', probability: 2 },
     { type: 'Aşil Tendonu Kopması', minWeeks: 20, maxWeeks: 30, desc: 'Kariyeri etkileyebilecek ciddi sakatlık.', probability: 1 }
 ];
+
+export const GAME_CALENDAR = {
+    START_DATE: new Date(2025, 6, 1), // 1 July 2025 (Preparation)
+    LEAGUE_START_DATE: new Date(2025, 7, 8), // 8 Aug 2025 (Official Start)
+    SUMMER_TRANSFER_DEADLINE: new Date(2025, 8, 1), // 1 Sept 2025
+    WINTER_TRANSFER_OPEN: new Date(2026, 0, 1), // 1 Jan 2026
+    WINTER_TRANSFER_CLOSE: new Date(2026, 1, 1), // 1 Feb 2026
+    LEAGUE_END_DATE: new Date(2026, 5, 2), // 2 June 2026
+    NEW_SEASON_START: new Date(2026, 6, 1) // 1 July 2026
+};

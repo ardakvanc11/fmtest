@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Team, Player } from '../types';
 import { Activity, Thermometer, History, HeartPulse, AlertTriangle, ShieldCheck, User, Heart, Info } from 'lucide-react';
@@ -9,9 +8,12 @@ const HealthCenterView = ({ team, currentWeek, onPlayerClick }: { team: Team, cu
 
     const injuredPlayers = team.players.filter(p => p.injury && p.injury.weeksRemaining > 0);
     const sortedByRisk = [...team.players].sort((a, b) => {
-        // Calculate risk score: Susceptibility + (100 - Stamina) / 2
-        const riskA = (a.injurySusceptibility || 0) + (100 - a.stats.stamina) / 2;
-        const riskB = (b.injurySusceptibility || 0) + (100 - b.stats.stamina) / 2;
+        // Calculate risk score: Susceptibility + (100 - Condition) / 2
+        // Use `condition` instead of `stats.stamina`
+        const condA = a.condition !== undefined ? a.condition : a.stats.stamina;
+        const condB = b.condition !== undefined ? b.condition : b.stats.stamina;
+        const riskA = (a.injurySusceptibility || 0) + (100 - condA) / 2;
+        const riskB = (b.injurySusceptibility || 0) + (100 - condB) / 2;
         return riskB - riskA;
     });
 
@@ -50,7 +52,10 @@ const HealthCenterView = ({ team, currentWeek, onPlayerClick }: { team: Team, cu
                         <div className="text-center px-4 py-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-100 dark:border-yellow-800">
                             <div className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold">Yüksek Risk</div>
                             <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                                {team.players.filter(p => ((p.injurySusceptibility || 0) + (100-p.stats.stamina)/2) > 70).length}
+                                {team.players.filter(p => {
+                                    const cond = p.condition !== undefined ? p.condition : p.stats.stamina;
+                                    return ((p.injurySusceptibility || 0) + (100 - cond) / 2) > 70;
+                                }).length}
                             </div>
                         </div>
                     </div>
@@ -136,14 +141,14 @@ const HealthCenterView = ({ team, currentWeek, onPlayerClick }: { team: Team, cu
                             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                                 {sortedByRisk.map(p => {
                                     const susceptibility = p.injurySusceptibility || 0;
-                                    const stamina = p.stats.stamina;
-                                    const fatigue = 100 - stamina; // Used for calculation only
+                                    const condition = p.condition !== undefined ? p.condition : p.stats.stamina;
+                                    const fatigue = 100 - condition; 
                                     const riskScore = susceptibility + (fatigue / 2);
                                     
                                     let riskLabel = 'Düşük';
                                     let riskClass = 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30';
                                     
-                                    if (riskScore > 70 || stamina < 40) {
+                                    if (riskScore > 70 || condition < 40) {
                                         riskLabel = 'Çok Yüksek';
                                         riskClass = 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30';
                                     } else if (riskScore > 40) {
@@ -167,8 +172,8 @@ const HealthCenterView = ({ team, currentWeek, onPlayerClick }: { team: Team, cu
                                             </td>
                                             <td className="p-4 text-center">
                                                 <div className="flex items-center justify-center gap-2">
-                                                    <Heart size={20} className={`${getHeartColor(stamina)}`} />
-                                                    <span className={`text-sm font-bold ${stamina < 40 ? 'text-red-600 dark:text-red-400 animate-pulse' : 'text-slate-700 dark:text-slate-300'}`}>{stamina}%</span>
+                                                    <Heart size={20} className={`${getHeartColor(Math.round(condition))}`} />
+                                                    <span className={`text-sm font-bold ${condition < 40 ? 'text-red-600 dark:text-red-400 animate-pulse' : 'text-slate-700 dark:text-slate-300'}`}>{Math.round(condition)}%</span>
                                                 </div>
                                             </td>
                                             <td className="p-4 text-center">
