@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { GameState, Team, Player, Fixture, MatchEvent, MatchStats } from '../types';
 import { FileWarning, LogOut, Trophy, Building2, BarChart3, ArrowRightLeft, Wallet, Clock, TrendingUp, TrendingDown, Crown } from 'lucide-react';
@@ -198,14 +199,13 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                         )}
 
                         <div className="flex justify-center gap-6">
-                            {(gameOverReason?.includes('emekli') || gameOverReason?.includes('feshettin')) && (
-                                <button 
-                                    onClick={() => setShowGameOverHoF(true)} 
-                                    className="px-8 py-4 rounded-xl font-bold text-xl transition-all shadow-lg flex items-center gap-2 bg-yellow-600 text-white hover:bg-yellow-500"
-                                >
-                                    <Crown size={24}/> ONUR TABLOSU
-                                </button>
-                            )}
+                            <button 
+                                onClick={() => setShowGameOverHoF(true)} 
+                                className="px-8 py-4 rounded-xl font-bold text-xl transition-all shadow-lg flex items-center gap-2 bg-yellow-600 text-white hover:bg-yellow-500"
+                            >
+                                <Crown size={24}/> ONUR TABLOSU
+                            </button>
+                            
                             <button 
                                 onClick={handleNewGame} 
                                 className={`px-8 py-4 rounded-xl font-bold text-xl transition-all shadow-lg flex items-center gap-2 ${gameOverReason?.includes('emekli') || gameOverReason?.includes('feshettin') ? 'bg-white text-slate-900 hover:bg-slate-200' : 'bg-white text-red-900 hover:bg-slate-200'}`}

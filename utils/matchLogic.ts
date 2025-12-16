@@ -584,6 +584,24 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
         const updatedPlayers = team.players.map((p, index) => {
             let player = { ...p };
 
+            // Determine if player played (Starter or Subbed In)
+            // Starters are index 0-10. Substitutes are 11+ BUT must have entered.
+            // In MatchSimulation, players are swapped in the array on substitution.
+            // If the array order was preserved from simulation end state, 0-10 are finishers.
+            // BUT processMatchPostGame receives 'teams' from 'gameState' which usually reflects pre-match order unless updated.
+            // To be safe, we check 'index < 11' (Starter) OR 'Sub In Event'.
+            
+            const isStarter = index < 11;
+            // Check for substitution IN event for this player
+            // Description format from MatchSimulation: "OutName 🔄 InName"
+            const subInEvent = teamEvents.find(e => 
+                e.type === 'SUBSTITUTION' && 
+                e.description.includes('🔄') &&
+                e.description.split('🔄')[1].trim() === p.name
+            );
+            const isSub = !isStarter && !!subInEvent;
+            const playedCurrentMatch = isStarter || isSub;
+
             // Calculate Stats for this match
             const goals = teamEvents.filter(e => e.type === 'GOAL' && e.scorer === p.name).length;
             const assists = teamEvents.filter(e => e.type === 'GOAL' && e.assist === p.name).length;
@@ -602,19 +620,20 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
             );
             
             // Update Season Stats
-            player.seasonStats = {
-                ...player.seasonStats,
-                goals: player.seasonStats.goals + goals,
-                assists: player.seasonStats.assists + assists,
-                matchesPlayed: player.seasonStats.matchesPlayed + (index < 11 ? 1 : 0) 
-            };
-            
-            // Only add rating and calculate average if player was in the starting XI (played)
-            if (index < 11) {
-                player.seasonStats.ratings.push(matchRating);
+            // Only update play count/ratings if they actually played
+            if (playedCurrentMatch) {
+                player.seasonStats = {
+                    ...player.seasonStats,
+                    goals: player.seasonStats.goals + goals,
+                    assists: player.seasonStats.assists + assists,
+                    matchesPlayed: player.seasonStats.matchesPlayed + 1,
+                    ratings: [...player.seasonStats.ratings, matchRating]
+                };
                 
                 // DECREASE STAMINA FOR PLAYING A MATCH
-                const staminaDrop = 5; 
+                // Starter loses more than sub
+                // Reduced values for slower decay: Starter 3 (was 5), Sub 1 (was 3)
+                const staminaDrop = isStarter ? 3 : 1; 
                 player.stats.stamina = Math.max(0, player.stats.stamina - staminaDrop);
             } else {
                 // RECOVER STAMINA FOR BENCH/RESERVE (If not injured)
@@ -692,25 +711,53 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
                 moraleChange -= teamMoralePenalty;
                 moraleChange += teamMoraleBonus; 
 
-                if (index < 11) {
+                if (playedCurrentMatch) {
                     // --- PLAYER PLAYED ---
 
-                    // 1. Win Bonus (+2)
+                    // 1. Participation Bonus (Start vs Sub)
+                    if (isStarter) {
+                        moraleChange += 3; // +3 for Starting XI
+                    } else if (isSub) {
+                        moraleChange += 2; // +2 for Coming off bench
+                    }
+
+                    // 2. LONG ABSENCE BONUS Check (+15 Morale)
+                    // Check last 5 TEAM matches. Did this player play in ANY of them?
+                    // If not, they get +15 for returning.
+                    const recentTeamMatches = teamPastFixtures.slice(0, 5);
+                    // Only check if we actually have at least 5 matches of history to verify absence
+                    if (recentTeamMatches.length >= 5) {
+                        let playedInLast5 = false;
+                        for (const fixture of recentTeamMatches) {
+                            const isHomeF = fixture.homeTeamId === team.id;
+                            const ratingsList = isHomeF ? fixture.stats?.homeRatings : fixture.stats?.awayRatings;
+                            if (ratingsList && ratingsList.some(r => r.playerId === p.id)) {
+                                playedInLast5 = true;
+                                break;
+                            }
+                        }
+                        
+                        if (!playedInLast5) {
+                            moraleChange += 15; // Huge boost for returning after long absence
+                        }
+                    }
+
+                    // 3. Win Bonus (+2)
                     if (result === 'WIN') moraleChange += 2;
 
-                    // 2. Goal Bonus (+1 per goal)
+                    // 4. Goal Bonus (+1 per goal)
                     if (goals > 0) moraleChange += goals;
 
-                    // 4. Penalty Bonus (+1 per penalty scored)
+                    // 5. Penalty Bonus (+1 per penalty scored)
                     const penaltyGoals = teamEvents.filter(e => e.type === 'GOAL' && e.scorer === p.name && (e.assist === 'Penaltı' || e.description.toLowerCase().includes('penaltı'))).length;
                     if (penaltyGoals > 0) moraleChange += penaltyGoals;
 
-                    // 5. Clean Sheet (+3 for GK)
+                    // 6. Clean Sheet (+3 for GK)
                     if (p.position === Position.GK && oppGoals === 0) {
                         moraleChange += 3;
                     }
 
-                    // 6. Consecutive Appearances (5 matches = +3) (Changed from +4)
+                    // 7. Consecutive Appearances (5 matches = +3) (Changed from +4)
                     // Needs to have played in previous 4 matches + current match (which is true here)
                     let consecutiveApps = 1;
                     for(let i=0; i<4; i++) {
@@ -724,10 +771,10 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
                     }
                     if (consecutiveApps >= 5) moraleChange += 3; 
 
-                    // 7. High Rating (+1 for > 8.0)
+                    // 8. High Rating (+1 for > 8.0)
                     if (matchRating > 8.0) moraleChange += 1;
 
-                    // 8. MVP (+2)
+                    // 9. MVP (+2)
                     if (mvpId && p.id === mvpId) moraleChange += 2; 
 
                     // --- NEGATIVE FACTORS (SLOWER DECAY) ---
@@ -748,20 +795,8 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
 
                 } else {
                     // --- PLAYER DID NOT PLAY (KADRO DIŞI / YEDEK) ---
-                    // Rule: Morale drops because they didn't play, but with caps.
-                    // < 60 Morale -> Max 1 drop
-                    // < 75 Morale -> Max 2 drop
-                    // >= 75 Morale -> Standard drop (e.g., 3)
-                    
-                    let notPlayingPenalty = 3; // Default penalty for high morale players
-
-                    if (player.morale < 60) {
-                        notPlayingPenalty = 1;
-                    } else if (player.morale < 75) {
-                        notPlayingPenalty = 2;
-                    }
-
-                    moraleChange -= notPlayingPenalty;
+                    // REMOVED PENALTY AS REQUESTED
+                    // No morale penalty for being on bench/reserves
                 }
             }
 

@@ -120,3 +120,22 @@ export const calculateManagerPower = (stats: ManagerStats): number => {
 
     return Math.round(power);
 };
+
+export const calculateManagerSalary = (strength: number): number => {
+    if (strength >= 90) return 2.5;
+    if (strength >= 88) return 2.25;
+    if (strength >= 86) return 2.0;
+    if (strength >= 84) return 1.8;
+    if (strength >= 82) return 1.5;
+    if (strength >= 80) return 1.25;
+    if (strength >= 78) return 1.0;
+    if (strength >= 76) return 0.75;
+    if (strength >= 75) return 0.6;
+    if (strength >= 73) return 0.46;
+    if (strength >= 72) return 0.39;
+    if (strength >= 71) return 0.32;
+    if (strength >= 70) return 0.25;
+    if (strength >= 68) return 0.20;
+    if (strength >= 60) return 0.15; // Covers >= 65 and >= 60 cases
+    return 0.10; // < 60
+};

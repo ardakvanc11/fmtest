@@ -14,7 +14,7 @@ export const TEAM_TEMPLATES = [
         championships: 10, 
         stadium: 'Mağara Arena', 
         capacity: 45000, 
-        fans: 12000000, 
+        fans: 22000000, 
         budget: 15, 
         targetStrength: 84 
     },
@@ -27,7 +27,7 @@ export const TEAM_TEMPLATES = [
         championships: 8, 
         stadium: 'Yumak Stadyumu', 
         capacity: 43000,
-        fans: 8000000, 
+        fans: 18000000, 
         budget: 20, 
         targetStrength: 82 
     },
@@ -40,7 +40,7 @@ export const TEAM_TEMPLATES = [
         championships: 15, 
         stadium: 'Anadolu Arena', 
         capacity: 65000, 
-        fans: 15000000, 
+        fans: 25000000, 
         budget: 12, 
         targetStrength: 81 
     },
@@ -53,7 +53,7 @@ export const TEAM_TEMPLATES = [
         championships: 4, 
         stadium: 'Muz Park',
         capacity: 21000,
-        fans: 3000000, 
+        fans: 6000000, 
         budget: 9, 
         targetStrength: 78 
     },
@@ -79,7 +79,7 @@ export const TEAM_TEMPLATES = [
         championships: 2, 
         stadium: 'Kemik Arena',
         capacity: 41000,
-        fans: 6500000, 
+        fans: 14500000, 
         budget: 13, 
         targetStrength: 80 
     },

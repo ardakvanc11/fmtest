@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, Position, Message } from '../types';
 import { initializeTeams, RIVALRIES } from '../constants';
@@ -15,7 +16,8 @@ import {
     calculateRatingsFromEvents, 
     determineMVP, 
     calculateTeamStrength, 
-    generateResignationTweets 
+    generateResignationTweets,
+    calculateManagerSalary
 } from '../utils/gameEngine';
 import { INITIAL_MESSAGES } from '../data/messagePool';
 
@@ -247,11 +249,21 @@ export const useGameState = () => {
     };
 
     const handleSelectTeam = (id: string) => {
+        const selectedTeam = gameState.teams.find(t => t.id === id);
+        const salary = selectedTeam ? calculateManagerSalary(selectedTeam.strength) : 1.5;
+
         setGameState(prev => ({
             ...prev,
             myTeamId: id,
             isGameStarted: true,
-            manager: prev.manager ? { ...prev.manager, contract: { ...prev.manager.contract, teamName: prev.teams.find(t => t.id === id)?.name || '' } } : null
+            manager: prev.manager ? { 
+                ...prev.manager, 
+                contract: { 
+                    ...prev.manager.contract, 
+                    teamName: selectedTeam?.name || '',
+                    salary: salary
+                } 
+            } : null
         }));
         setViewHistory(['home']);
         setHistoryIndex(0);
