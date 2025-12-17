@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Team } from '../types';
 import TacticsView from './TacticsView';
@@ -11,7 +12,7 @@ const LockerRoomView = ({ team, setTeam, onStartMatch, onSimulateMatch, currentW
         const activeSquad = team.players.slice(0, 18);
         
         // 1. Injury Check
-        const injuredPlayers = activeSquad.filter(p => p.injury && p.injury.weeksRemaining > 0);
+        const injuredPlayers = activeSquad.filter(p => p.injury && p.injury.daysRemaining > 0);
         if (injuredPlayers.length > 0) {
             const names = injuredPlayers.map(p => p.name).join(', ');
             alert(`Kadroda sıkıntılı oyuncu var!\n\nAşağıdaki oyuncular SAKAT ve maç kadrosunda (İlk 11 veya Yedek) bulunamaz:\n${names}\n\nLütfen bu oyuncuları 'Kadro Dışı' bölümüne taşıyın.`);

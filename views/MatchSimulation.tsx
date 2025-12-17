@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Team, MatchEvent, MatchStats, Position, Player, Mentality } from '../types';
 import { simulateMatchStep, getEmptyMatchStats } from '../utils/gameEngine';
@@ -563,7 +562,7 @@ const MatchSimulation = ({
         <div className="h-full flex flex-col relative">
             {/* TACTICS OVERLAY */}
             {isTacticsOpen && (
-                <div className="absolute inset-0 z-50 bg-slate-900 flex flex-col">
+                <div className="absolute inset-0 z-[100] bg-slate-900 flex flex-col">
                     <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800">
                         <div className="flex items-center gap-4">
                             <h2 className="text-xl md:text-2xl font-bold text-white">Canlı Taktik</h2>
@@ -599,7 +598,7 @@ const MatchSimulation = ({
 
             {/* VAR OVERLAY */}
             {isVarActive && (
-                <div className="absolute inset-0 z-40 bg-black/60 flex items-center justify-center backdrop-blur-sm">
+                <div className="absolute inset-0 z-[100] bg-black/60 flex items-center justify-center backdrop-blur-sm">
                     <div className="bg-slate-900 p-8 rounded-xl border-2 border-purple-500 text-center animate-pulse shadow-2xl shadow-purple-900/50">
                         <MonitorPlay size={80} className="text-purple-500 mx-auto mb-6"/>
                         <h2 className="text-4xl font-bold text-white mb-4 tracking-widest">VAR KONTROLÜ</h2>
@@ -610,7 +609,7 @@ const MatchSimulation = ({
 
             {/* PENALTY OVERLAY */}
             {isPenaltyActive && (
-                <div className="absolute inset-0 z-40 bg-black/70 flex items-center justify-center backdrop-blur-sm">
+                <div className="absolute inset-0 z-[100] bg-black/70 flex items-center justify-center backdrop-blur-sm">
                     <div className="bg-slate-900 p-10 rounded-xl border-4 border-green-600 text-center shadow-2xl shadow-green-900/50 animate-in zoom-in duration-300 flex flex-col items-center">
                         <div className="flex justify-center mb-6">
                             <Target size={100} className="text-green-500 animate-pulse"/>

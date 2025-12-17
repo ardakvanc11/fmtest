@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { X, Trophy, Medal, Crown } from 'lucide-react';
 import { ManagerProfile } from '../types';
@@ -39,7 +38,7 @@ const HallOfFameModal: React.FC<HallOfFameModalProps> = ({ manager, onClose }) =
     const userEntry = allManagers[userIndex];
 
     return (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-md overflow-hidden">
+        <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 backdrop-blur-md overflow-hidden">
             <div className="bg-slate-900 w-full max-w-5xl h-[90vh] rounded-2xl border-2 border-yellow-600/50 flex flex-col shadow-2xl relative overflow-hidden">
                 {/* Background Pattern */}
                 <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-yellow-500 via-transparent to-transparent pointer-events-none"></div>

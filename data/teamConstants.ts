@@ -1,7 +1,10 @@
 
+
+
 import { Team, Position, Mentality, PassingStyle, Tempo, Width, CreativeFreedom, FinalThird, Crossing, DefensiveLine, Tackling, PressingFocus, TimeWasting, TacticStyle, AttackStyle, PressingStyle } from '../types';
 import { generateId } from './gameConstants';
 import { generatePlayer } from './playerConstants';
+import { calculateRawTeamStrength } from '../utils/teamCalculations';
 
 // User Defined Teams with provided Imgur Logos and Stadium Capacities
 export const TEAM_TEMPLATES = [
@@ -28,7 +31,7 @@ export const TEAM_TEMPLATES = [
         stadium: 'Yumak Stadyumu', 
         capacity: 43000,
         fans: 18000000, 
-        budget: 20, 
+        budget: 211, 
         targetStrength: 82 
     },
     { 
@@ -48,6 +51,7 @@ export const TEAM_TEMPLATES = [
         name: 'Maymunspor', 
         logo: 'https://i.imgur.com/kvhASjK.png',
         jersey: 'https://imgur.com/jfH3kal.png',
+        // jerseyGK: undefined, // No GK Overlay provided
         colors: ['bg-purple-800', 'text-white'], 
         championships: 4, 
         stadium: 'Muz Park',
@@ -83,39 +87,39 @@ export const TEAM_TEMPLATES = [
         targetStrength: 80 
     },
     { 
-        name: 'Boğaspor', // Eski Bulgariaspor
+        name: 'Bulgariaspor', 
         logo: 'https://i.imgur.com/RuCGNuc.png',
         jersey: 'https://imgur.com/eHAW2Fg.png',
-        jerseyGK: 'https://imgur.com/Nz7hWFC.png', 
-        colors: ['bg-red-700', 'text-black'], // Red for Bull
+        jerseyGK: 'https://imgur.com/Nz7hWFC.png', // GK Overlay
+        colors: ['bg-green-600', 'text-black'], 
         championships: 0, 
-        stadium: 'Matador Park',
+        stadium: 'Tuna Park',
         capacity: 16500,
         fans: 500000, 
         budget: 5, 
         targetStrength: 75 
     },
     { 
-        name: 'Baykuşspor', // Eski Bedirspor
+        name: 'Bedirspor', 
         logo: 'https://i.imgur.com/pPchTUI.png',
         jersey: 'https://imgur.com/bdI85Wq.png',
-        jerseyGK: 'https://imgur.com/eT3Qn69.png',
-        colors: ['bg-slate-700', 'text-white'], 
+        jerseyGK: 'https://imgur.com/eT3Qn69.png', // GK Overlay
+        colors: ['bg-purple-900', 'text-white'], 
         championships: 0, 
-        stadium: 'Gece Stadyumu',
+        stadium: 'Bedir Stadı',
         capacity: 25000,
         fans: 850000, 
         budget: 6, 
         targetStrength: 73 
     },
     { 
-        name: 'Yunusspor', // Eski Yakhubspor
+        name: 'Yakhubspor', 
         logo: 'https://i.imgur.com/vcN5VhI.png',
         jersey: 'https://imgur.com/k64QPcT.png',
-        jerseyGK: 'https://imgur.com/H2oygfo.png',
-        colors: ['bg-cyan-500', 'text-white'], 
+        jerseyGK: 'https://imgur.com/H2oygfo.png', // GK Overlay
+        colors: ['bg-orange-500', 'text-black'], 
         championships: 0, 
-        stadium: 'Okyanus Arena',
+        stadium: 'Çöl Fırtınası',
         capacity: 19500,
         fans: 750000, 
         budget: 6, 
@@ -128,20 +132,20 @@ export const TEAM_TEMPLATES = [
         jerseyGK: 'https://imgur.com/G73BOHq.png', // GK Overlay
         colors: ['bg-orange-400', 'text-white'], 
         championships: 0, 
-        stadium: 'Pati Park',
+        stadium: 'Liman Arena',
         capacity: 18000,
         fans: 1200000, 
         budget: 7, 
         targetStrength: 74 
     },
     { 
-        name: 'Zürafagücü', // Eski Uzunoğullarıspor
+        name: 'Uzunoğullarıspor', 
         logo: 'https://i.imgur.com/S4TVTee.png',
         jersey: 'https://imgur.com/BOyr0e6.png',
-        jerseyGK: 'https://imgur.com/wAOAVng.png', 
-        colors: ['bg-yellow-400', 'text-orange-900'], 
+        jerseyGK: 'https://imgur.com/wAOAVng.png', // GK Overlay
+        colors: ['bg-black', 'text-white'], 
         championships: 0, 
-        stadium: 'Savana Stadı',
+        stadium: 'Kule Stadı',
         capacity: 9500,
         fans: 200000, 
         budget: 4, 
@@ -154,23 +158,23 @@ export const TEAM_TEMPLATES = [
         jerseyGK: 'https://imgur.com/rhp2PXq.png', // GK Overlay
         colors: ['bg-red-900', 'text-blue-400'], 
         championships: 0, 
-        stadium: 'Karadeniz Arena',
+        stadium: 'Deniz Kenarı',
         capacity: 22000,
         fans: 2000000, 
-        budget: 5, 
+        budget: 114, 
         targetStrength: 70 
     },
     { 
-        name: 'Kartalspor', // Eski Osurukspor
+        name: 'Osurukspor', 
         logo: 'https://i.imgur.com/Iz505sK.png',
         jersey: 'https://imgur.com/eqUzVTA.png',
-        jerseyGK: 'https://imgur.com/ZjPlTwJ.png', 
-        colors: ['bg-black', 'text-white'], 
+        jerseyGK: 'https://imgur.com/ZjPlTwJ.png', // GK Overlay
+        colors: ['bg-green-500', 'text-white'], 
         championships: 0, 
-        stadium: 'Yüksek Tepe',
+        stadium: 'Rüzgar Vadisi',
         capacity: 14500,
         fans: 300000, 
-        budget: 3, 
+        budget: 324, 
         targetStrength: 67 
     },
     { 
@@ -200,20 +204,20 @@ export const TEAM_TEMPLATES = [
         targetStrength: 68 
     },
     { 
-        name: 'Aston Karakoçan', // Koç (Ram) - Animal based
+        name: 'Aston Karakoçan', 
         logo: 'https://i.imgur.com/sw63G9H.png',
         jersey: 'https://imgur.com/z3S5RuL.png',
         jerseyGK: 'https://imgur.com/HXvBipD.png', // GK Overlay
         colors: ['bg-indigo-900', 'text-blue-400'], 
         championships: 0, 
-        stadium: 'Dağlık Stadı',
+        stadium: 'Şehir Stadı',
         capacity: 29000,
         fans: 1600000, 
         budget: 8, 
         targetStrength: 75 
     },
     { 
-        name: 'Küheylanspor', // At (Horse) - Animal based
+        name: 'Küheylanspor', 
         logo: 'https://i.imgur.com/WG9bJgB.png',
         jersey: 'https://imgur.com/QDHs7Sy.png',
         jerseyGK: 'https://imgur.com/r4F2Ykh.png', // GK Overlay
@@ -226,13 +230,13 @@ export const TEAM_TEMPLATES = [
         targetStrength: 72 
     },
     { 
-        name: 'Timsahspor', // Eski İslamspor
+        name: 'İslamspor', 
         logo: 'https://i.imgur.com/JROZfTX.png',
         jersey: 'https://imgur.com/g5voy0X.png',
-        jerseyGK: 'https://imgur.com/W71pkOG.png', 
-        colors: ['bg-green-600', 'text-white'], 
+        jerseyGK: 'https://imgur.com/W71pkOG.png', // GK Overlay
+        colors: ['bg-green-500', 'text-green-900'], 
         championships: 0, 
-        stadium: 'Bataklık Arena',
+        stadium: 'Barış Parkı',
         capacity: 33100,
         fans: 1950000, 
         budget: 8, 
@@ -246,7 +250,7 @@ export const RIVALRIES = [
     ['Kedispor', 'Eşşekboğanspor FK'],
     ['Eşşekboğanspor FK', 'Ayıboğanspor SK'],
     ['Kedispor', 'Köpekspor'],
-    ['Baykuşspor', 'Yunusspor']
+    ['Bedirspor', 'Yakhubspor']
 ];
 
 export const initializeTeams = (): Team[] => {
@@ -306,6 +310,15 @@ export const initializeTeams = (): Team[] => {
             ...reserves
         ];
 
+        // --- NEW CALCULATIONS FOR WEIGHTED STRENGTH ---
+        const rawStrength = calculateRawTeamStrength(players);
+        const strengthDelta = tmpl.targetStrength - rawStrength;
+
+        // --- INITIAL WAGE BUDGET CALCULATION ---
+        // Calculate total player value to estimate base wages
+        const totalValue = players.reduce((sum, p) => sum + p.value, 0);
+        const estimatedWages = totalValue * 0.005 * 52; // Same formula as FinanceView
+
         return {
             id: teamId,
             name: tmpl.name,
@@ -317,7 +330,18 @@ export const initializeTeams = (): Team[] => {
             stadiumName: tmpl.stadium,
             stadiumCapacity: tmpl.capacity,
             budget: tmpl.budget,
+            wageBudget: Number((estimatedWages * 1.1).toFixed(1)), // Initial Wage Budget: Cost + 10% Room
             players,
+            // --- INITIAL FINANCIAL RECORDS ---
+            financialRecords: {
+                income: {
+                    transfers: 0, tv: 0, merch: 0, loca: 0, gate: 0, sponsor: 0
+                },
+                expense: {
+                    wages: 0, transfers: 0, staff: 0, maint: 0, academy: 0, debt: 0,
+                    matchDay: 0, travel: 0, scouting: 0, admin: 0, bonus: 0, fines: 0
+                }
+            },
             formation: '4-4-2',
             mentality: Mentality.BALANCED,
             passing: PassingStyle.MIXED,
@@ -336,7 +360,9 @@ export const initializeTeams = (): Team[] => {
             pressingStyle: PressingStyle.BALANCED,
 
             stats: { played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, points: 0 },
-            strength: tmpl.targetStrength, 
+            strength: tmpl.targetStrength, // Visible (GTÜ)
+            rawStrength: rawStrength,      // Calculated (THG)
+            strengthDelta: strengthDelta,  // Fixed Delta (Δ)
             morale: 70 
         };
     });

@@ -1,10 +1,9 @@
 
-
 import React, { useState } from 'react';
 import { Team, MatchStats, MatchEvent } from '../types';
-import { MonitorPlay, Syringe, Disc, Users, BarChart2, Star, RefreshCw } from 'lucide-react';
+import { MonitorPlay, Syringe, Disc, Users, BarChart2, Star, RefreshCw, X } from 'lucide-react';
 
-const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, events, onProceed }: {homeTeam: Team, awayTeam: Team, homeScore: number, awayScore: number, stats: MatchStats, events: MatchEvent[], onProceed: () => void }) => {
+const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, events, onProceed, onSkip }: {homeTeam: Team, awayTeam: Team, homeScore: number, awayScore: number, stats: MatchStats, events: MatchEvent[], onProceed: () => void, onSkip?: () => void }) => {
     const [statsTab, setStatsTab] = useState<'STATS' | 'RATINGS'>('STATS');
 
     // Calculate Half Time Score
@@ -66,7 +65,7 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
                     return (
                         <div key={i} className="flex justify-between items-center text-sm p-1.5 hover:bg-slate-700/50 rounded transition">
                              <div className="flex items-center gap-2">
-                                 <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white ${getPosBadgeColor(p.position)}`}>
+                                 <div className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold text-white ${getPosBadgeColor(p.position)}`}>
                                      {p.position}
                                  </div>
                                  <span className="text-slate-200 font-medium truncate max-w-[120px]">{p.name}</span>
@@ -85,8 +84,29 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
     );
 
     return (
-        <div className="fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center p-4 overflow-y-auto">
-             <div className="text-center mb-6 animate-in zoom-in duration-500 w-full max-w-4xl mt-10">
+        <div 
+            className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center p-4 overflow-y-auto cursor-pointer"
+            onClick={onSkip} // Backdrop click skips interview
+            title="Kapatmak için tıklayın (-3 Medya Güveni)"
+        >
+             {/* Close Button Top Right */}
+             {onSkip && (
+                 <button 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onSkip();
+                    }}
+                    className="absolute top-6 right-6 p-2 bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white rounded-full transition-all border border-slate-600 z-[110]"
+                    title="Toplantıya Katılma (-3 Medya Güveni)"
+                 >
+                     <X size={28} />
+                 </button>
+             )}
+
+             <div 
+                className="text-center mb-6 animate-in zoom-in duration-500 w-full max-w-4xl mt-10 cursor-default"
+                onClick={(e) => e.stopPropagation()} // Stop propagation to prevent closing when clicking content
+             >
                  <div className="text-6xl font-mono font-bold text-white mb-4 bg-slate-900 px-8 py-4 rounded-xl border border-slate-700 shadow-2xl flex items-center justify-center gap-8">
                      <div className="flex flex-col items-center">
                         <img src={homeTeam.logo} className="w-20 h-20 object-contain mb-2"/>
@@ -260,9 +280,18 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
                  </div>
              </div>
              
-             <button onClick={onProceed} className="bg-white text-black px-8 py-4 rounded-lg font-bold text-xl hover:scale-105 transition mb-8 shadow-xl z-50">
-                 BASIN TOPLANTISINA GEÇ
-             </button>
+             {/* Only Proceed Button - Skip is now via Backdrop/X */}
+             <div className="flex justify-center mb-8 shadow-xl z-50 animate-in fade-in slide-in-from-bottom-2">
+                 <button 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onProceed();
+                    }} 
+                    className="bg-white text-black px-8 py-4 rounded-lg font-bold text-xl hover:scale-105 transition hover:bg-green-400"
+                 >
+                     BASIN TOPLANTISINA GEÇ
+                 </button>
+             </div>
         </div>
     );
 };

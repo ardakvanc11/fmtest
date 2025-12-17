@@ -1,9 +1,8 @@
 
-
 import React, { useState } from 'react';
 import { GameState } from '../types';
 import { getFormattedDate, isSameDay } from '../utils/calendarAndFixtures';
-import { Home, Users, Briefcase, DollarSign, Calendar, Dumbbell, Smartphone, Save, RotateCcw, X, Menu, ChevronLeft, ChevronRight, PlayCircle, Sun, Moon, Activity } from 'lucide-react';
+import { Home, Users, Briefcase, DollarSign, Calendar, Dumbbell, Smartphone, Save, RotateCcw, X, Menu, ChevronLeft, ChevronRight, PlayCircle, Sun, Moon, Activity, PieChart } from 'lucide-react';
 
 const NavItem = ({ id, label, icon: Icon, badge, onClick, currentView, isMatchMode }: any) => (
     <button 
@@ -67,6 +66,9 @@ const Dashboard = ({
     
     // Updated isMatchMode to restrict navigation during active match play, match flow, AND game over
     const isMatchMode = ['match_live', 'match_result', 'interview', 'game_over'].includes(currentView);
+    
+    // Specifically check for live match view to hide sidebar
+    const isMatchLive = currentView === 'match_live';
 
     // Calculate unread messages
     const unreadMessagesCount = state.messages.filter(m => !m.read).length;
@@ -85,100 +87,105 @@ const Dashboard = ({
     return (
         <div className="flex h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-sans relative overflow-hidden transition-colors duration-300">
             {/* Mobile Sidebar Overlay */}
-            {mobileMenuOpen && (
+            {mobileMenuOpen && !isMatchLive && (
                 <div className="fixed inset-0 bg-black/80 z-40 md:hidden backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
             )}
 
-            {/* Sidebar */}
-            <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 shrink-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                    <img
-                        src="https://imgur.com/Ghz4FsD.png"
-                        alt="HLM 26 Logo"
-                        className="h-10 w-auto object-contain"
-                    />
+            {/* Sidebar - Conditionally Rendered based on isMatchLive */}
+            {!isMatchLive && (
+                <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 shrink-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                    <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                        <img
+                            src="https://imgur.com/Ghz4FsD.png"
+                            alt="HLM 26 Logo"
+                            className="h-10 w-auto object-contain"
+                        />
+                        </div>
+                        <button className="md:hidden text-slate-400 p-2" onClick={() => setMobileMenuOpen(false)}><X size={24}/></button>
                     </div>
-                    <button className="md:hidden text-slate-400 p-2" onClick={() => setMobileMenuOpen(false)}><X size={24}/></button>
-                </div>
-                <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-                    <NavItem id="home" label="Genel Bakış" icon={Home} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
-                    <NavItem id="social" label="Sosyal Medya" icon={Smartphone} badge={unreadMessagesCount} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
-                    <NavItem id="squad" label="Kadro" icon={Users} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
-                    <NavItem id="tactics" label="Taktik & 11" icon={Briefcase} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
-                    <NavItem id="health_center" label="Sağlık Merkezi" icon={Activity} badge={injuredCount} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
-                    <NavItem id="transfer" label="Transfer" icon={DollarSign} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
-                    <NavItem id="fixtures" label="Fikstür" icon={Calendar} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
-                    <NavItem id="training" label="Antrenman" icon={Dumbbell} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
-                </nav>
+                    <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+                        <NavItem id="home" label="Genel Bakış" icon={Home} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
+                        <NavItem id="social" label="Sosyal Medya" icon={Smartphone} badge={unreadMessagesCount} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
+                        <NavItem id="squad" label="Kadro" icon={Users} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
+                        <NavItem id="tactics" label="Taktik" icon={Briefcase} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
+                        <NavItem id="health_center" label="Sağlık Merkezi" icon={Activity} badge={injuredCount} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
+                        <NavItem id="transfer" label="Transfer Merkezi" icon={DollarSign} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
+                        <NavItem id="finance" label="Finans" icon={PieChart} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
+                        <NavItem id="fixtures" label="Fikstür" icon={Calendar} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
+                        <NavItem id="training" label="Antrenman" icon={Dumbbell} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
+                    </nav>
 
-                {/* Footer Notification */}
-                {notification && (
-                    <div className={`p-2 text-center text-xs font-bold animate-in fade-in slide-in-from-bottom-2 ${notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
-                        {notification.message}
-                    </div>
-                )}
+                    {/* Footer Notification */}
+                    {notification && (
+                        <div className={`p-2 text-center text-xs font-bold animate-in fade-in slide-in-from-bottom-2 ${notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                            {notification.message}
+                        </div>
+                    )}
 
-                <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-center gap-4">
-                     <button 
-                        onClick={toggleTheme}
-                        className="flex items-center justify-center w-10 h-10 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 hover:text-black dark:hover:text-white transition-all shadow-lg"
-                        title={theme === 'dark' ? "Aydınlık Mod" : "Karanlık Mod"}
-                    >
-                        {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-                    </button>
-                    <button 
-                        disabled={isMatchMode} 
-                        onClick={() => {
-                            onSave();
-                            setNotification({ message: "Oyun başarılı bir şekilde kaydedildi", type: 'success' });
-                            setTimeout(() => setNotification(null), 3000);
-                        }} 
-                        title="Oyunu Kaydet"
-                        className="flex items-center justify-center w-10 h-10 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 hover:text-black dark:hover:text-white transition-all shadow-lg disabled:opacity-50"
-                    >
-                        <Save size={20} />
-                    </button>
-                    <button 
-                        disabled={isMatchMode} 
-                        onClick={() => {
-                            if(confirmNewGame) {
-                                onNewGame();
-                                setConfirmNewGame(false);
-                                setNotification(null);
-                                setMobileMenuOpen(false);
-                            } else {
-                                setConfirmNewGame(true);
-                                setNotification({ message: "Emin Misiniz? Yeni Oyuna başlamak için tekrar tıklayın", type: 'error' });
-                                setTimeout(() => {
+                    <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-center gap-4">
+                        <button 
+                            onClick={toggleTheme}
+                            className="flex items-center justify-center w-10 h-10 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 hover:text-black dark:hover:text-white transition-all shadow-lg"
+                            title={theme === 'dark' ? "Aydınlık Mod" : "Karanlık Mod"}
+                        >
+                            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                        </button>
+                        <button 
+                            disabled={isMatchMode} 
+                            onClick={() => {
+                                onSave();
+                                setNotification({ message: "Oyun başarılı bir şekilde kaydedildi", type: 'success' });
+                                setTimeout(() => setNotification(null), 3000);
+                            }} 
+                            title="Oyunu Kaydet"
+                            className="flex items-center justify-center w-10 h-10 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 hover:text-black dark:hover:text-white transition-all shadow-lg disabled:opacity-50"
+                        >
+                            <Save size={20} />
+                        </button>
+                        <button 
+                            disabled={isMatchMode} 
+                            onClick={() => {
+                                if(confirmNewGame) {
+                                    onNewGame();
                                     setConfirmNewGame(false);
                                     setNotification(null);
-                                }, 3000);
-                            }
-                        }} 
-                        title={confirmNewGame ? "Onaylamak için tekrar tıkla" : "Yeni Oyun"}
-                        className={`flex items-center justify-center w-10 h-10 rounded-full transition-all shadow-lg disabled:opacity-50 ${
-                            confirmNewGame 
-                            ? 'bg-red-600 text-white animate-pulse' 
-                            : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 hover:text-red-800 dark:hover:text-red-200'
-                        }`}
-                    >
-                        <RotateCcw size={20} /> 
-                    </button>
+                                    setMobileMenuOpen(false);
+                                } else {
+                                    setConfirmNewGame(true);
+                                    setNotification({ message: "Emin Misiniz? Yeni Oyuna başlamak için tekrar tıklayın", type: 'error' });
+                                    setTimeout(() => {
+                                        setConfirmNewGame(false);
+                                        setNotification(null);
+                                    }, 3000);
+                                }
+                            }} 
+                            title={confirmNewGame ? "Onaylamak için tekrar tıkla" : "Yeni Oyun"}
+                            className={`flex items-center justify-center w-10 h-10 rounded-full transition-all shadow-lg disabled:opacity-50 ${
+                                confirmNewGame 
+                                ? 'bg-red-600 text-white animate-pulse' 
+                                : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 hover:text-red-800 dark:hover:text-red-200'
+                            }`}
+                        >
+                            <RotateCcw size={20} /> 
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden w-full">
                 {/* HEADER - RESPONSIVE */}
                 <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-3 md:px-6 shadow-sm z-10 shrink-0 transition-colors duration-300">
                     <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
-                        {/* Hamburger */}
-                        <button className="md:hidden text-slate-600 dark:text-slate-200 hover:text-black dark:hover:text-white p-2" onClick={() => setMobileMenuOpen(true)}>
-                            <Menu size={24} />
-                        </button>
+                        {/* Hamburger - Hidden if match is live */}
+                        {!isMatchLive && (
+                            <button className="md:hidden text-slate-600 dark:text-slate-200 hover:text-black dark:hover:text-white p-2" onClick={() => setMobileMenuOpen(true)}>
+                                <Menu size={24} />
+                            </button>
+                        )}
                         
-                        {/* History Nav - Hidden on mobile to save space */}
+                        {/* History Nav - Hidden on mobile to save space, and disabled during live match */}
                         <div className="hidden md:flex items-center space-x-1 mr-2">
                              <button
                                  onClick={onBack}

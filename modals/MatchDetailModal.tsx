@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Fixture, Team, MatchEvent } from '../types';
 import { X, Star, Users, BarChart2, Disc, Syringe, MonitorPlay, RefreshCw } from 'lucide-react';
@@ -93,7 +92,7 @@ const MatchDetailModal = ({ fixture, teams, onClose }: { fixture: Fixture, teams
     );
 
     return (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
              <div 
                 className="relative w-full max-w-3xl bg-slate-900 rounded-xl border border-slate-700 shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in duration-300"
                 onClick={(e) => e.stopPropagation()}

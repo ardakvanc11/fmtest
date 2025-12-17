@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { Player, Position } from '../../types';
 import { FACE_ASSETS } from '../../constants';
@@ -14,18 +12,14 @@ const PlayerFace: React.FC<PlayerFaceProps> = ({ player, className = "w-full h-f
     const isGK = player.position === Position.GK;
 
     // 1. Base Shirt Logic
-    // If GK: Always use the generic GK shirt asset as the base.
-    // If Outfield: Use team jersey if available, else generic outfield.
     const baseShirtUrl = isGK 
         ? FACE_ASSETS.shirt.gk 
         : (player.jersey || FACE_ASSETS.shirt.outfield);
 
     // 2. GK Overlay Logic
-    // If GK: The `player.jersey` property now holds the *overlay* URL (logo/sponsor) provided in initialization.
-    // If Outfield: No overlay (the base shirt is the full kit).
     const gkOverlayUrl = isGK ? player.jersey : null;
 
-    // Use player.face data if available, otherwise fallback to defaults (for backward compatibility or safety)
+    // Use player.face data if available, otherwise fallback to defaults
     const face = player.face || {
         skin: FACE_ASSETS.skin[0],
         eyes: FACE_ASSETS.eyes[0],
@@ -34,41 +28,41 @@ const PlayerFace: React.FC<PlayerFaceProps> = ({ player, className = "w-full h-f
     };
 
     return (
-        <div className={`relative overflow-hidden bg-slate-200 rounded-lg ${className}`}>
-            {/* 1. Skin (Base) - Z: 10 */}
-            <img src={face.skin} alt="Skin" className="absolute inset-0 w-full h-full object-cover z-10" />
+        <div className={`relative overflow-hidden bg-slate-200 rounded-lg ${className} isolate`}>
+            {/* 1. Skin (Base) */}
+            <img src={face.skin} alt="Skin" className="absolute inset-0 w-full h-full object-cover" style={{ zIndex: 1 }} />
             
-            {/* 2. Tattoo (Optional) - Z: 15 */}
+            {/* 2. Tattoo (Optional) */}
             {face.tattoo && (
-                <img src={face.tattoo} alt="Tattoo" className="absolute inset-0 w-full h-full object-cover z-15" style={{ zIndex: 15 }} />
+                <img src={face.tattoo} alt="Tattoo" className="absolute inset-0 w-full h-full object-cover" style={{ zIndex: 2 }} />
             )}
 
-            {/* 3. Freckles (Optional) - Z: 16 */}
+            {/* 3. Freckles (Optional) */}
             {face.freckles && (
-                <img src={face.freckles} alt="Freckles" className="absolute inset-0 w-full h-full object-cover z-16" style={{ zIndex: 16 }} />
+                <img src={face.freckles} alt="Freckles" className="absolute inset-0 w-full h-full object-cover" style={{ zIndex: 3 }} />
             )}
 
-            {/* 4. Eyes - Z: 20 */}
-            <img src={face.eyes} alt="Eyes" className="absolute inset-0 w-full h-full object-cover z-20" />
+            {/* 4. Eyes */}
+            <img src={face.eyes} alt="Eyes" className="absolute inset-0 w-full h-full object-cover" style={{ zIndex: 4 }} />
             
-            {/* 5. Brows - Z: 30 */}
-            <img src={face.brows} alt="Brows" className="absolute inset-0 w-full h-full object-cover z-30" />
+            {/* 5. Brows */}
+            <img src={face.brows} alt="Brows" className="absolute inset-0 w-full h-full object-cover" style={{ zIndex: 5 }} />
             
-            {/* 6. Beard (Optional) - Z: 35 - Usually sits on chin/jaw */}
+            {/* 6. Beard (Optional) */}
             {face.beard && (
-                <img src={face.beard} alt="Beard" className="absolute inset-0 w-full h-full object-cover z-35" style={{ zIndex: 35 }} />
+                <img src={face.beard} alt="Beard" className="absolute inset-0 w-full h-full object-cover" style={{ zIndex: 6 }} />
             )}
 
-            {/* 7. Base Shirt (Sits on neck) - Z: 40 */}
-            <img src={baseShirtUrl} alt="Shirt Base" className="absolute inset-0 w-full h-full object-cover z-40" />
+            {/* 7. Base Shirt */}
+            <img src={baseShirtUrl} alt="Shirt Base" className="absolute inset-0 w-full h-full object-cover" style={{ zIndex: 7 }} />
 
-            {/* 7.5 GK Overlay (Logos/Sponsors on top of GK shirt) - Z: 41 */}
+            {/* 8. GK Overlay */}
             {gkOverlayUrl && (
-                <img src={gkOverlayUrl} alt="GK Overlay" className="absolute inset-0 w-full h-full object-cover z-41" style={{ zIndex: 41 }} />
+                <img src={gkOverlayUrl} alt="GK Overlay" className="absolute inset-0 w-full h-full object-cover" style={{ zIndex: 8 }} />
             )}
 
-            {/* 8. Hair (Topmost) - Z: 50 */}
-            <img src={face.hair} alt="Hair" className="absolute inset-0 w-full h-full object-cover z-50" />
+            {/* 9. Hair (Topmost local layer) */}
+            <img src={face.hair} alt="Hair" className="absolute inset-0 w-full h-full object-cover" style={{ zIndex: 9 }} />
         </div>
     );
 };

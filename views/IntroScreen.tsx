@@ -16,10 +16,10 @@ const IntroScreen = ({ onStart }: { onStart: (name: string, year: string, countr
                         className="w-32 h-32 object-contain drop-shadow-2xl filter brightness-110"
                     />
                 </div>
-                <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-red-600 mb-2 tracking-tighter uppercase">
+                <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-red-600 mb-2 tracking-tighter uppercase font-teko">
                     SÜPER TOTO
                 </h1>
-                <h2 className="text-2xl font-light text-white mb-8 tracking-[0.2em] uppercase">Hayvanlar Ligi</h2>
+                <h2 className="text-3xl font-bold text-white mb-8 tracking-[0.1em] uppercase font-teko">Hayvanlar Ligi</h2>
                 
                 <div className="space-y-4 text-left">
                     <div>
@@ -59,12 +59,12 @@ const IntroScreen = ({ onStart }: { onStart: (name: string, year: string, countr
                     <button 
                         onClick={() => name && year && country && onStart(name, year, country)}
                         disabled={!name || !year || !country}
-                        className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg transition transform hover:scale-105 mt-6 shadow-lg shadow-green-900/50"
+                        className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg transition transform hover:scale-105 mt-6 shadow-lg shadow-green-900/50 uppercase tracking-wide"
                     >
-                        KARİYERE BAŞLA
+                        Kariyere Başla
                     </button>
                 </div>
-                <p className="mt-6 text-slate-500 text-xs">BETA v3.1.0 (High Recovery Mode)</p>
+                <p className="mt-6 text-slate-500 text-xs">v3.2.0 (STHL Sürümü)</p>
             </div>
         </div>
     );

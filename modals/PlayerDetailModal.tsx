@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { Player } from '../types';
 import { X, Heart } from 'lucide-react';
@@ -18,8 +16,8 @@ const PlayerDetailModal = ({ player, onClose }: { player: Player, onClose: () =>
     const currentCondition = player.condition !== undefined ? player.condition : player.stats.stamina;
 
     return (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 w-full max-w-2xl overflow-hidden shadow-2xl">
+        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in duration-200">
                 <div className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-start">
                     <div className="flex gap-6 w-full">
                         {/* Player Face Container */}

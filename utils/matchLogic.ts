@@ -1,4 +1,6 @@
 
+
+
 import { Team, Player, MatchEvent, MatchStats, Position, Tackling, PlayerPerformance, Fixture } from '../types';
 import { INJURY_TYPES, RIVALRIES } from '../constants';
 import { MATCH_INFO_MESSAGES } from '../data/infoPool';
@@ -8,8 +10,6 @@ import { calculateRating, determineMVP, calculateRatingsFromEvents } from './rat
 import { fillTemplate, pick } from './helpers';
 
 // Used for instant simulation generation where we don't have events yet
-// Uses the new calculateRating function with dummy "0" events but relies on the internal
-// granular stats simulation of that function to produce the rating.
 export const generateRandomPlayerRatings = (players: Player[], teamGoals: number, goalsConceded: number, isWinner: boolean, isDraw: boolean): PlayerPerformance[] => {
     const lineup = [...players].slice(0, 11); 
     
@@ -18,10 +18,6 @@ export const generateRandomPlayerRatings = (players: Player[], teamGoals: number
         if (isWinner) result = 'WIN';
         else if (isDraw) result = 'DRAW';
 
-        // Goals are distributed randomly in full simulation, here we just pass 0 for individual goals
-        // unless we want to simulate scorers. For quick sim ratings, we rely on the base logic + result.
-        // We assume 0 cards and 0 individual goals for this quick generation to let the internal
-        // variance logic handle the distribution.
         const rating = calculateRating(
             p.position,
             p.skill,
@@ -32,7 +28,7 @@ export const generateRandomPlayerRatings = (players: Player[], teamGoals: number
             goalsConceded,
             result,
             90, // minutes played
-            0   // bonus (can't determine winner accurately here)
+            0   // bonus
         );
 
         return {
@@ -45,7 +41,6 @@ export const generateRandomPlayerRatings = (players: Player[], teamGoals: number
         };
     });
 
-    // Apply strict team limits
     const poorPerformers = ratings.filter(r => r.rating < 5.5);
     if (poorPerformers.length > 2) {
         poorPerformers.sort((a, b) => a.rating - b.rating);
@@ -60,14 +55,12 @@ export const generateRandomPlayerRatings = (players: Player[], teamGoals: number
 };
 
 export const generateMatchStats = (homePlayers: Player[], awayPlayers: Player[], hScore: number, aScore: number): MatchStats => {
-    // Initial ratings using the new logic
     const homeRatings = generateRandomPlayerRatings(homePlayers, hScore, aScore, hScore > aScore, hScore === aScore);
     const awayRatings = generateRandomPlayerRatings(awayPlayers, aScore, hScore, aScore > hScore, hScore === aScore);
 
     const hStr = calculateTeamStrength({ players: homePlayers, morale: 50 } as any);
     const aStr = calculateTeamStrength({ players: awayPlayers, morale: 50 } as any);
 
-    // Calculate Possession based on strength difference
     let homePossession = 50 + ((hStr - aStr) / 2);
     homePossession = Math.min(80, Math.max(20, homePossession + (Math.random() * 10 - 5)));
     
@@ -130,9 +123,18 @@ export const getEmptyMatchStats = (): MatchStats => ({
     homeRatings: [], awayRatings: []
 });
 
-// New Helper: Generate Synthetic Events for Background Matches
+export const getWeightedInjury = () => {
+    const totalWeight = INJURY_TYPES.reduce((sum, item) => sum + item.probability, 0);
+    let random = Math.random() * totalWeight;
+    
+    for (const injury of INJURY_TYPES) {
+        if (random < injury.probability) return injury;
+        random -= injury.probability;
+    }
+    return INJURY_TYPES[0];
+};
+
 export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: number, awayScore: number, stats: MatchStats, events: MatchEvent[] } => {
-    // 1. Determine Score
     const homeStr = calculateTeamStrength(home) + 5; 
     const awayStr = calculateTeamStrength(away);
     const luckHome = Math.random() * 20;
@@ -148,7 +150,6 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
     else if (diff < -5) { homeScore = Math.floor(Math.random() * 2); awayScore = Math.floor(Math.random() * 3) + 1; }
     else { homeScore = Math.floor(Math.random() * 3); awayScore = Math.floor(Math.random() * 3); }
 
-    // 2. Generate Events (Goals, Cards) to populate stats
     const events: MatchEvent[] = [];
 
     const generateEventsForTeam = (team: Team, score: number, isHome: boolean) => {
@@ -157,10 +158,9 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
         const mids = xi.filter(p => [Position.OS, Position.OOS].includes(p.position));
         const defs = xi.filter(p => [Position.STP, Position.SLB, Position.SGB].includes(p.position));
         
-        // Goals
-        // Scorers weighted by position
-        const scorerPool = [...fwds, ...fwds, ...fwds, ...mids, ...mids, ...defs];
+        const scorerPool = [...fwds, ...fwds, ...fwds, ...mids, ...mids, ...xi];
         
+        // Goals
         for(let i=0; i<score; i++) {
             const scorer = scorerPool.length > 0 ? scorerPool[Math.floor(Math.random() * scorerPool.length)] : xi[0];
             let assist = xi[Math.floor(Math.random() * xi.length)];
@@ -179,7 +179,7 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
             });
         }
 
-        // Yellow Cards (Random 0-3 per team)
+        // Yellow Cards
         const yellowCount = Math.floor(Math.random() * 4);
         for(let i=0; i<yellowCount; i++) {
             const sinner = xi[Math.floor(Math.random() * xi.length)];
@@ -192,7 +192,7 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
             });
         }
 
-        // Red Cards (Low chance)
+        // Red Cards
         if(Math.random() < 0.05) {
             const sinner = xi[Math.floor(Math.random() * xi.length)];
             events.push({
@@ -203,18 +203,29 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
                 playerId: sinner.id
             });
         }
+
+        // --- ADDED: INJURY LOGIC FOR BACKGROUND SIM ---
+        // 25% chance per team per match to have an injury (Approx 1 injury every 2 games)
+        if (Math.random() < 0.25) {
+            const victim = xi[Math.floor(Math.random() * xi.length)];
+            const injuryType = getWeightedInjury();
+            events.push({
+                minute: Math.floor(Math.random() * 90) + 1,
+                type: 'INJURY',
+                description: `Sakatlık: ${injuryType.type}`,
+                teamName: team.name,
+                playerId: victim.id
+            });
+        }
     };
 
     generateEventsForTeam(home, homeScore, true);
     generateEventsForTeam(away, awayScore, false);
 
-    // Sort events
     events.sort((a,b) => a.minute - b.minute);
 
-    // 3. Generate Stats
     const stats = generateMatchStats(home.players, away.players, homeScore, awayScore);
     
-    // 4. Overwrite Random Stats with Actual Event Data for better accuracy in MVP calculation
     const { homeRatings, awayRatings } = calculateRatingsFromEvents(home, away, events, homeScore, awayScore);
     const mvpInfo = determineMVP(homeRatings, awayRatings);
     
@@ -230,22 +241,9 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
     return { homeScore, awayScore, stats, events };
 };
 
-// Deprecated wrapper kept for compatibility if needed, but simulateBackgroundMatch is preferred
 export const simulateMatchInstant = (home: Team, away: Team): { homeScore: number, awayScore: number, stats: MatchStats } => {
     const res = simulateBackgroundMatch(home, away);
     return { homeScore: res.homeScore, awayScore: res.awayScore, stats: res.stats };
-};
-
-// Helper function to get injury based on weighted probability
-export const getWeightedInjury = () => {
-    const totalWeight = INJURY_TYPES.reduce((sum, item) => sum + item.probability, 0);
-    let random = Math.random() * totalWeight;
-    
-    for (const injury of INJURY_TYPES) {
-        if (random < injury.probability) return injury;
-        random -= injury.probability;
-    }
-    return INJURY_TYPES[0];
 };
 
 export const simulateMatchStep = (
@@ -255,19 +253,14 @@ export const simulateMatchStep = (
     currentScore: {h:number, a:number},
     existingEvents: MatchEvent[] = []
 ): MatchEvent | null => {
-    // Frequency: Events happen in ~55% of minutes
     if (Math.random() > 0.55) return null; 
 
-    // --- RED CARD LOGIC ---
     const homeReds = existingEvents.filter(e => e.type === 'CARD_RED' && e.teamName === home.name).length;
     const awayReds = existingEvents.filter(e => e.type === 'CARD_RED' && e.teamName === away.name).length;
 
-    // Apply strength calculations with penalties for red cards
-    // Base strength
     let homeStr = calculateTeamStrength(home) + 5;
     let awayStr = calculateTeamStrength(away);
 
-    // Strength Penalty: 15% reduction per red card
     if (homeReds > 0) homeStr *= (1 - (homeReds * 0.15));
     if (awayReds > 0) awayStr *= (1 - (awayReds * 0.15));
 
@@ -275,7 +268,6 @@ export const simulateMatchStep = (
     const homeDominance = homeStr / total;
     const eventRoll = Math.random();
 
-    // --- OFFENSIVE DOMINANCE FACTOR ---
     let offensiveDominance = homeDominance;
     if (homeDominance > 0.55) {
         offensiveDominance = Math.min(0.90, homeDominance + 0.15);
@@ -283,16 +275,13 @@ export const simulateMatchStep = (
         offensiveDominance = Math.max(0.10, homeDominance - 0.15);
     }
 
-    // Check Aggression Settings
     const isHomeAggressive = home.tackling === Tackling.AGGRESSIVE;
     const isAwayAggressive = away.tackling === Tackling.AGGRESSIVE;
     const isAggressiveMatch = isHomeAggressive || isAwayAggressive;
 
-    // Filter players who are already sent off to avoid events for them
     const sentOffPlayers = new Set(existingEvents.filter(e => e.type === 'CARD_RED').map(e => e.playerId));
 
-    // --- NEW: WEIGHTED PLAYER SELECTION FOR INJURIES ---
-    // UPDATED: Allows healthy players to be injured, but increases risk for tired/susceptible players
+    // --- ROBUST INJURY SELECTION ---
     const getPlayerForInjury = (team: Team): Player => {
         const xi = team.players.slice(0, 11).filter(p => !sentOffPlayers.has(p.id));
         if (xi.length === 0) return team.players[0];
@@ -300,28 +289,18 @@ export const simulateMatchStep = (
         const weightedPool: Player[] = [];
         
         xi.forEach(p => {
-            // Determine current condition (Use dynamic condition if available, else stat as fallback)
             const currentCondition = p.condition !== undefined ? p.condition : p.stats.stamina;
-            
-            // Base weight: Every player has a baseline chance (e.g., 15 tickets)
             let weight = 15; 
             
-            // 1. Susceptibility Factor (0-100)
-            // A player with 80 susceptibility adds ~16 tickets.
+            // Susceptibility weighting
             weight += (p.injurySusceptibility || 10) / 5;
+            
+            // CRITICAL: Low condition players (< 50%) get massively increased weight
+            // This aligns with the "3% risk" requirement logic by making them highly likely to be the victim if an injury event triggers.
+            if (currentCondition < 50) weight += 200; // Was 40, increased significantly to prioritize exhausted players
+            else if (currentCondition < 70) weight += 15; 
+            else if (currentCondition < 90) weight += 5;  
 
-            // 2. Fatigue Factor
-            // If condition is perfect (100), no added risk.
-            // If condition is 50, added risk.
-            if (currentCondition < 50) {
-                weight += 40; // Massive risk for exhausted players
-            } else if (currentCondition < 70) {
-                weight += 15; // Moderate risk
-            } else if (currentCondition < 90) {
-                weight += 5;  // Slight risk
-            }
-
-            // Add player to pool 'weight' times
             const entries = Math.max(1, Math.floor(weight));
             for(let i=0; i<entries; i++) {
                 weightedPool.push(p);
@@ -355,25 +334,27 @@ export const simulateMatchStep = (
         return { scorer, assist };
     };
 
-    /* 
-       DISTRIBUTION PLAN (Cumulative)
-    */
-
-    let currentGoalProb = 0.05; // Base
+    let currentGoalProb = 0.05; 
     const maxReds = Math.max(homeReds, awayReds);
     if (maxReds === 1) currentGoalProb = 0.06;
     else if (maxReds === 2) currentGoalProb = 0.08;
     else if (maxReds >= 3) currentGoalProb = 0.12;
 
-    // --- DYNAMIC INJURY PROBABILITY ---
-    // Count how many players have < 50 condition (critical fatigue)
     const homeExhausted = home.players.slice(0, 11).filter(p => (p.condition !== undefined ? p.condition : p.stats.stamina) < 50).length;
     const awayExhausted = away.players.slice(0, 11).filter(p => (p.condition !== undefined ? p.condition : p.stats.stamina) < 50).length;
     const totalExhausted = homeExhausted + awayExhausted;
     
-    // Base 1.2% chance per minute (High frequency)
-    // + 0.2% per exhausted player
-    const calculatedInjuryProb = 0.012 + (totalExhausted * 0.002);
+    // INCREASED INJURY PROBABILITY FOR LIVE MATCH
+    // Base 0.01 per minute.
+    // Requirement: Players < 50% condition raise risk to ~3% for that player.
+    // We achieve this by increasing the GLOBAL injury event probability based on how many exhausted players are on pitch.
+    // If 1 exhausted player: Prob increases by 0.03.
+    // If 0 exhausted players: Prob stays base 0.01.
+    // We iterate to sum up risk.
+    const baseInjuryProb = 0.01;
+    const exhaustedRiskAdder = 0.025; // Adds ~2.5% risk per exhausted player per check roughly
+    
+    const calculatedInjuryProb = baseInjuryProb + (totalExhausted * exhaustedRiskAdder);
 
     const PROB_GOAL = currentGoalProb;
     const PROB_INJURY = calculatedInjuryProb;
@@ -391,7 +372,6 @@ export const simulateMatchStep = (
     const T_CORNER = T_OFFSIDE + PROB_CORNER;
     const T_MISS = T_CORNER + PROB_MISS;
 
-    // 1. GOAL (Dynamic %)
     if (eventRoll < T_GOAL) { 
         const isHome = Math.random() < offensiveDominance;
         const activeTeam = isHome ? home : away;
@@ -415,26 +395,29 @@ export const simulateMatchStep = (
             playerId: d.scorer.id 
         };
     } 
-    // 2. INJURY (Weighted Random)
     else if (eventRoll < T_INJURY) {
-        // Decide which team gets injured. 
-        const isHomeInj = Math.random() < 0.5; // Randomize which team first
-        const activeTeam = isHomeInj ? home : away;
-        const opponentIsAggressive = isHomeInj ? isAwayAggressive : isHomeAggressive;
+        // If we hit injury event, we select team then player.
+        // We need to bias selection towards the exhausted player if they exist.
         
-        // USE WEIGHTED SELECTOR (Allows full stamina players to get injured too)
+        let activeTeam = null;
+        
+        // If home has exhausted players and away doesn't, bias home.
+        if (homeExhausted > 0 && awayExhausted === 0) activeTeam = home;
+        else if (awayExhausted > 0 && homeExhausted === 0) activeTeam = away;
+        else activeTeam = Math.random() < 0.5 ? home : away;
+
+        const opponentTeam = activeTeam.id === home.id ? away : home;
+        const opponentIsAggressive = opponentTeam.tackling === Tackling.AGGRESSIVE;
+        
         const player = getPlayerForInjury(activeTeam);
-        
-        // Use weighted injury selection
         const injuryType = getWeightedInjury();
         
         let desc = `${player.name} (${activeTeam.name}) acı içinde yerde!`;
         const currentCond = player.condition !== undefined ? player.condition : player.stats.stamina;
         
-        if (currentCond < 40) {
+        if (currentCond < 50) {
             desc += " Yorgunluk nedeniyle kas sakatlığı yaşadı.";
         } else {
-            // Random reason for healthy/normal players
             const reasons = [
                 opponentIsAggressive ? 'Rakibin sert müdahalesi!' : 'Ters bastı.',
                 'İkili mücadelede darbe aldı.',
@@ -453,7 +436,6 @@ export const simulateMatchStep = (
             playerId: player.id
         };
     }
-    // 3. FOULS & CARDS (Variable %)
     else if (eventRoll < T_FOUL) {
         const isHomeFoul = Math.random() > homeDominance;
         const foulingTeam = isHomeFoul ? home : away;
@@ -506,7 +488,6 @@ export const simulateMatchStep = (
              return { minute, description: text, type: 'FOUL', teamName: foulingTeam.name };
         }
     }
-    // 4. SAVE (7%)
     else if (eventRoll < T_SAVE) {
          const isHomeSave = Math.random() > offensiveDominance; 
          const savingTeam = isHomeSave ? away : home; 
@@ -521,21 +502,18 @@ export const simulateMatchStep = (
          const text = fillTemplate(pick(SAVE_TEXTS), { keeper: keeper.name, defender: defender.name, attacker: attacker.name });
          return { minute, description: text, type: 'SAVE', teamName: savingTeam.name };
     }
-    // 5. OFFSIDE (10%)
     else if (eventRoll < T_OFFSIDE) {
          const activeTeam = Math.random() < offensiveDominance ? home : away;
          const player = getPlayer(activeTeam);
          const text = fillTemplate(pick(OFFSIDE_TEXTS), { player: player.name });
          return { minute, description: text, type: 'OFFSIDE', teamName: activeTeam.name };
     }
-    // 6. CORNER (13%)
     else if (eventRoll < T_CORNER) {
         const activeTeam = Math.random() < offensiveDominance ? home : away;
         const player = getPlayer(activeTeam);
         const text = fillTemplate(pick(CORNER_TEXTS), { player: player.name, team: activeTeam.name });
         return { minute, description: text, type: 'CORNER', teamName: activeTeam.name };
     }
-    // 7. MISS (15%)
     else if (eventRoll < T_MISS) {
         const activeTeam = Math.random() < offensiveDominance ? home : away;
         const defenderTeam = activeTeam.id === home.id ? away : home;
@@ -551,7 +529,6 @@ export const simulateMatchStep = (
             playerId: player.id 
         };
     }
-    // 8. INFO (Remainder)
     else {
         const activeTeam = Math.random() < homeDominance ? home : away;
         const opponentTeam = activeTeam.id === home.id ? away : home;

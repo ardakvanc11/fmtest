@@ -1,3 +1,6 @@
+
+
+
 import { Team, Player, Fixture, MatchEvent, MatchStats, Position, Message } from '../types';
 import { generateId, generatePlayer, INJURY_TYPES, RIVALRIES } from '../constants';
 import { FAN_NAMES, DERBY_TWEETS_WIN, DERBY_TWEETS_LOSS, FAN_TWEETS_WIN, FAN_TWEETS_LOSS, FAN_TWEETS_DRAW } from '../data/tweetPool';
@@ -211,40 +214,44 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
             if (player.hasInjectionForNextMatch) {
                 player.hasInjectionForNextMatch = false;
                 if (Math.random() < 0.3 && player.injury) {
-                    player.injury.weeksRemaining += 4;
+                    // Riskli iğne sonucu sakatlık 30 gün uzar
+                    player.injury.daysRemaining += 30;
                 }
             }
 
             const injuryEvent = teamEvents.find(e => e.type === 'INJURY' && e.playerId === p.id);
             let justGotInjured = false;
-            let newInjuryWeeks = 0;
+            let newInjuryDays = 0;
 
             if (injuryEvent) {
-                const injuryType = getWeightedInjury(); // Use getWeightedInjury for more variation
-                const duration = Math.floor(Math.random() * (injuryType.maxWeeks - injuryType.minWeeks + 1)) + injuryType.minWeeks;
+                const injuryType = getWeightedInjury(); 
+                // Calculate random duration in DAYS based on minDays and maxDays
+                const durationDays = Math.floor(Math.random() * (injuryType.maxDays - injuryType.minDays + 1)) + injuryType.minDays;
+                
                 player.injury = {
                     type: injuryType.type,
-                    weeksRemaining: duration,
+                    daysRemaining: durationDays,
                     description: injuryType.desc
                 };
+                
+                // RULE: If injured, condition immediately drops to 0.
+                player.condition = 0;
                 
                 if (!player.injuryHistory) player.injuryHistory = [];
                 player.injuryHistory.push({
                     type: injuryType.type,
                     week: currentWeek,
-                    duration: duration
+                    durationDays: durationDays
                 });
 
                 justGotInjured = true;
-                newInjuryWeeks = duration;
+                newInjuryDays = durationDays;
             }
 
-            if (!justGotInjured && player.injury) {
-                player.injury.weeksRemaining -= 1;
-                if (player.injury.weeksRemaining <= 0) {
-                    player.injury = undefined;
-                }
-            }
+            // Decrement existing injuries (Usually handled in Daily Update, but safe to check here)
+            // Note: We primarily handle this in handleNextDay now. Removing decrement here to avoid double counting if match day counts as a day.
+            // Leaving it commented out or removed for logic consistency.
+            // if (!justGotInjured && player.injury) { ... } 
 
             // --- MORALE CALCULATIONS ---
             
@@ -252,10 +259,9 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
             const currentlyInjured = !!player.injury; 
 
             if (justGotInjured) {
-                if (newInjuryWeeks < 3) moraleChange -= 5;
-                else if (newInjuryWeeks < 6) moraleChange -= 7;
-                else if (newInjuryWeeks < 12) moraleChange -= 12;
-                else moraleChange -= 18;
+                if (newInjuryDays < 14) moraleChange -= 5;
+                else if (newInjuryDays < 45) moraleChange -= 10;
+                else moraleChange -= 20;
             }
 
             if (!currentlyInjured) {

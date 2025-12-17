@@ -1,4 +1,5 @@
 
+// ... (imports remain the same) ...
 import { useState, useEffect } from 'react';
 import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, Position, Message } from '../types';
 import { initializeTeams, RIVALRIES, GAME_CALENDAR } from '../constants';
@@ -15,6 +16,9 @@ import {
     calculateRatingsFromEvents, 
     determineMVP, 
     calculateTeamStrength, 
+    recalculateTeamStrength, 
+    calculateRawTeamStrength, // ADDED: Need this for manual recalculation
+    calculateTransferStrengthImpact, // ADDED: New logic import
     generateResignationTweets,
     calculateManagerSalary,
     generateStarSoldRiotTweets 
@@ -62,7 +66,7 @@ export const useGameState = () => {
 
         if (view === 'health_center') {
             const t = gameState.teams.find(t => t.id === gameState.myTeamId);
-            const currentInjured = t ? t.players.filter(p => p.injury && p.injury.weeksRemaining > 0).length : 0;
+            const currentInjured = t ? t.players.filter(p => p.injury && p.injury.daysRemaining > 0).length : 0;
             setGameState(prev => ({ ...prev, lastSeenInjuryCount: currentInjured }));
         }
 
@@ -134,6 +138,27 @@ export const useGameState = () => {
                     if (typeof parsed.manager.stats.domesticCups === 'undefined') parsed.manager.stats.domesticCups = 0;
                     if (typeof parsed.manager.stats.europeanCups === 'undefined') parsed.manager.stats.europeanCups = 0;
                     if (typeof parsed.manager.stats.careerEarnings === 'undefined') parsed.manager.stats.careerEarnings = 0;
+                    // Initialize monthly trackers if missing in old save
+                    if (typeof parsed.manager.stats.transferSpendThisMonth === 'undefined') parsed.manager.stats.transferSpendThisMonth = 0;
+                    if (typeof parsed.manager.stats.transferIncomeThisMonth === 'undefined') parsed.manager.stats.transferIncomeThisMonth = 0;
+                }
+
+                // Check for missing media trust in older saves
+                if (parsed.manager && parsed.manager.trust) {
+                    if (typeof parsed.manager.trust.media === 'undefined') parsed.manager.trust.media = 50;
+                }
+
+                // Initialize financialRecords for older saves
+                if (parsed.teams) {
+                    parsed.teams = parsed.teams.map((t: any) => {
+                        if (!t.financialRecords) {
+                            t.financialRecords = {
+                                income: { transfers: 0, tv: 0, merch: 0, loca: 0, gate: 0, sponsor: 0 },
+                                expense: { wages: 0, transfers: 0, staff: 0, maint: 0, academy: 0, debt: 0, matchDay: 0, travel: 0, scouting: 0, admin: 0, bonus: 0, fines: 0 }
+                            };
+                        }
+                        return t;
+                    });
                 }
 
                 setGameState(parsed);
@@ -173,7 +198,8 @@ export const useGameState = () => {
     const handleStart = (name: string, year: string, country: string) => {
         const teams = initializeTeams();
         const fixtures = generateFixtures(teams);
-        const transferList = generateTransferMarket(10, GAME_CALENDAR.START_DATE.toISOString());
+        // CHANGED: Increased from 10 to 500 players
+        const transferList = generateTransferMarket(500, GAME_CALENDAR.START_DATE.toISOString());
         const news = generateWeeklyNews(1, fixtures, teams);
 
         const birthYear = parseInt(year) || 1980;
@@ -200,12 +226,14 @@ export const useGameState = () => {
                     playersBought: 0, 
                     playersSold: 0, 
                     moneySpent: 0, 
-                    moneyEarned: 0, 
+                    moneyEarned: 0,
+                    transferSpendThisMonth: 0, // NEW
+                    transferIncomeThisMonth: 0, // NEW
                     recordTransferFee: 0,
                     careerEarnings: 0
                 },
                 contract: { salary: 1.5, expires: 2028, teamName: '' },
-                trust: { board: 50, fans: 50, players: 50, referees: 50 },
+                trust: { board: 50, fans: 50, players: 50, referees: 50, media: 50 }, // Initial Media Trust
                 playerRelations: [],
                 history: []
             },
@@ -216,7 +244,7 @@ export const useGameState = () => {
             fixtures,
             messages: INITIAL_MESSAGES,
             isGameStarted: false,
-            transferList,
+            transferList: [],
             trainingPerformed: false,
             news,
             playTime: 0,
@@ -283,7 +311,10 @@ export const useGameState = () => {
     };
 
     const handleNextDay = () => {
+        const currentDateObj = new Date(gameState.currentDate);
         const nextDate = addDays(gameState.currentDate, 1);
+        const nextDateObj = new Date(nextDate);
+
         let updatedTeams = [...gameState.teams];
         let updatedFixtures = [...gameState.fixtures];
         const allEventsForToday: MatchEvent[] = [];
@@ -318,6 +349,50 @@ export const useGameState = () => {
             updatedTeams = processMatchPostGame(updatedTeams, allEventsForToday, gameState.currentWeek, updatedFixtures);
         }
 
+        // --- DAILY FINANCIAL UPDATES (INCOME & EXPENSE ACCRUAL) ---
+        // Apply only to user's team for now to save performance, but structural support is there
+        if (gameState.myTeamId) {
+            const teamIndex = updatedTeams.findIndex(t => t.id === gameState.myTeamId);
+            if (teamIndex !== -1) {
+                const userTeam = updatedTeams[teamIndex];
+                const financials = { ...userTeam.financialRecords };
+                
+                // 1. Calculate Daily Sponsor Income
+                const fanFactor = userTeam.fanBase / 1000000;
+                const totalMonthlySponsorValue = ((userTeam.championships * 2) + (fanFactor * 0.5)) / 12;
+                const dailySponsor = totalMonthlySponsorValue / 30; // Approx daily
+                
+                // 2. Calculate Daily Wages
+                const totalSquadValue = userTeam.players.reduce((acc, p) => acc + p.value, 0);
+                const annualWages = totalSquadValue * 0.005 * 52;
+                const dailyWages = annualWages / 365;
+
+                // 3. Other Daily Expenses (Staff, Maint, etc)
+                // Approx monthly overheads derived from FinanceView logic
+                const monthlyOverhead = (dailyWages * 0.15) + 0.05 + 0.15 + ((userTeam.stadiumCapacity / 100000) * 0.5) + (userTeam.strength/100 * 0.4) + 0.1;
+                const dailyOverhead = monthlyOverhead / 30;
+
+                // Update Accumulators (İstatistikler için giderleri tutmaya devam ediyoruz)
+                financials.income.sponsor += dailySponsor;
+                financials.expense.wages += dailyWages;
+                financials.expense.staff += (dailyWages * 0.15); 
+                // Spread other overheads roughly
+                financials.expense.maint += ((userTeam.stadiumCapacity / 100000) * 0.5) / 30;
+                financials.expense.academy += (userTeam.strength/100 * 0.4) / 30;
+                financials.expense.admin += 0.05 / 30;
+
+                // --- GÜNCELLEME: Kullanıcı isteği üzerine günlük para eklenmesi kaldırıldı ---
+                // Eski: const dailyBudgetUpdate = dailySponsor;
+                // updatedTeams[teamIndex].budget += dailyBudgetUpdate;
+                
+                updatedTeams[teamIndex] = {
+                    ...userTeam,
+                    budget: userTeam.budget, // Değişiklik: Bütçe sabit kalır (sadece maç/transfer ile değişir)
+                    financialRecords: financials
+                };
+            }
+        }
+
         updatedTeams = updatedTeams.map(team => {
              const playedFixtures = updatedFixtures.filter(f => f.played && (f.homeTeamId === team.id || f.awayTeamId === team.id));
              let played=0, won=0, drawn=0, lost=0, gf=0, ga=0, points=0;
@@ -343,51 +418,73 @@ export const useGameState = () => {
             players: t.players.map(p => {
                 const newP = { ...p };
                 
-                // 1. Existing Injuries Healing
+                // 1. Existing Injuries Healing - UPDATED to DAILY Logic
                 if (newP.injury) {
-                    if (Math.random() < 0.15) { 
-                        newP.injury.weeksRemaining -= 1;
-                        if (newP.injury.weeksRemaining <= 0) newP.injury = undefined;
+                    // RULE: While injured, condition is strictly 0%.
+                    newP.condition = 0;
+                    
+                    newP.injury.daysRemaining -= 1; // Decrease by 1 day every day
+                    if (newP.injury.daysRemaining <= 0) {
+                        // Healed.
+                        // Store the original duration (from history) to use for recovery speed calc.
+                        const history = newP.injuryHistory || [];
+                        const lastRecord = history[history.length - 1];
+                        newP.lastInjuryDurationDays = lastRecord ? lastRecord.durationDays : 14; // Default 14 if missing
+                        newP.injury = undefined; // Fully healed
                     }
                 }
                 
                 // 2. Random Daily Injury Risk (0.1% Base + Susceptibility)
                 if (!newP.injury) {
-                    // Risk: %0.1 (0.001) Base + Susceptibility Influence
-                    // Susceptibility 0 -> %0.1
-                    // Susceptibility 100 -> %0.6
                     const baseRisk = 0.001; 
                     const susceptibilityRisk = (newP.injurySusceptibility || 0) * 0.00005;
                     const totalDailyRisk = baseRisk + susceptibilityRisk;
 
                     if (Math.random() < totalDailyRisk) { 
                         const injuryType = getWeightedInjury();
-                        const duration = Math.floor(Math.random() * (injuryType.maxWeeks - injuryType.minWeeks + 1)) + injuryType.minWeeks;
+                        const durationDays = Math.floor(Math.random() * (injuryType.maxDays - injuryType.minDays + 1)) + injuryType.minDays;
                         
                         newP.injury = {
                             type: injuryType.type,
-                            weeksRemaining: duration,
+                            daysRemaining: durationDays,
                             description: "Antrenmanda talihsiz bir sakatlık yaşadı."
                         };
+                        newP.condition = 0; // Immediate 0 condition
                         
                         if (!newP.injuryHistory) newP.injuryHistory = [];
                         newP.injuryHistory.push({
                             type: injuryType.type,
                             week: gameState.currentWeek,
-                            duration: duration
+                            durationDays: durationDays
                         });
                     }
                 }
 
                 // 3. Condition Recovery Logic (If not injured)
                 if (!newP.injury) {
-                    // İstenilen özellik: Ertesi gün kondisyon %50-55 artmalı.
-                    // Temel 50 puan artış + Dayanıklılık özelliğinin %5'i (max 5 puan) = Toplam 50-55 arası artış
-                    let recoveryAmount = 50 + (newP.stats.stamina * 0.05); 
+                    let recoveryAmount = 0;
+                    const baseRecovery = newP.stats.stamina / 4;
+                    let durationMultiplier = 1.0;
+                    
+                    const lastDur = newP.lastInjuryDurationDays || 0;
+                    
+                    if (lastDur > 0) {
+                        if (lastDur <= 10) {
+                            durationMultiplier = 1.35; // Short injury, fast recovery
+                        } else if (lastDur >= 56) {
+                            durationMultiplier = 0.45; // Long injury, very slow
+                        } else if (lastDur >= 28) {
+                            durationMultiplier = 0.7; // Medium injury, slow
+                        }
+                    }
                     
                     if (gameState.trainingPerformed) {
-                        recoveryAmount *= 0.8; 
+                        durationMultiplier *= 0.8; 
+                    } else {
+                        durationMultiplier *= 1.1; 
                     }
+
+                    recoveryAmount = baseRecovery * durationMultiplier;
                     
                     newP.condition = Math.min(100, (newP.condition || 0) + recoveryAmount);
                 }
@@ -413,6 +510,12 @@ export const useGameState = () => {
         if (updatedManager) {
             updatedManager = { ...updatedManager };
             updatedManager.stats.careerEarnings += (updatedManager.contract.salary / 365);
+
+            // --- CHECK FOR NEW MONTH: RESET MONTHLY TRANSFER TRACKERS ---
+            if (currentDateObj.getMonth() !== nextDateObj.getMonth()) {
+                updatedManager.stats.transferSpendThisMonth = 0;
+                updatedManager.stats.transferIncomeThisMonth = 0;
+            }
         }
 
         let newWeek = gameState.currentWeek;
@@ -421,6 +524,23 @@ export const useGameState = () => {
         if (allPlayed) newWeek++;
 
         const filteredNews = [...dailyNews, ...gameState.news].slice(0, 30);
+
+        if (checkGameOver(updatedManager)) {
+            setGameState(prev => ({
+                ...prev,
+                currentDate: nextDate,
+                currentWeek: newWeek,
+                teams: updatedTeams,
+                fixtures: updatedFixtures,
+                news: filteredNews,
+                manager: updatedManager,
+                transferList: newTransferList,
+                trainingPerformed: false,
+            }));
+            setViewHistory(['game_over']);
+            setHistoryIndex(0);
+            return; 
+        }
 
         setGameState(prev => ({
             ...prev,
@@ -442,9 +562,11 @@ export const useGameState = () => {
         const myTeam = gameState.teams.find(t => t.id === gameState.myTeamId)!;
         const trainedTeam = applyTraining(myTeam, type);
         
+        const recalculatedTeam = recalculateTeamStrength(trainedTeam);
+
         setGameState(prev => ({
             ...prev,
-            teams: prev.teams.map(t => t.id === trainedTeam.id ? trainedTeam : t),
+            teams: prev.teams.map(t => t.id === recalculatedTeam.id ? recalculatedTeam : t),
             trainingPerformed: true
         }));
     };
@@ -496,29 +618,78 @@ export const useGameState = () => {
         
         const processedTeams = processMatchPostGame(gameState.teams, events, gameState.currentWeek, updatedFixtures);
 
-        const teamsWithUpdatedStats = processedTeams.map(team => {
+        const updatedManager = { ...gameState.manager! };
+        updatedManager.stats.matchesManaged++;
+        updatedManager.stats.goalsFor += myScore;
+        updatedManager.stats.goalsAgainst += oppScore;
+        
+        // --- MATCH FINANCIALS (GATE & MATCHDAY EXPENSES) ---
+        let teamsWithBudget = processedTeams;
+        
+        if (isHome) {
+            // Find user team in processedTeams
+            const userTeamIndex = processedTeams.findIndex(t => t.id === myTeamId);
+            if (userTeamIndex !== -1) {
+                const userTeam = processedTeams[userTeamIndex];
+                const financials = { ...userTeam.financialRecords };
+                
+                const fanMillions = userTeam.fanBase / 1000000;
+                const gateReceipts = fanMillions * 0.01944444; 
+                const locaIncome = gateReceipts * 0.45;
+                const matchDayExpense = 0.15 / 4; // Approx weekly/match share
+
+                financials.income.gate += gateReceipts;
+                financials.income.loca += locaIncome;
+                financials.expense.matchDay += matchDayExpense;
+
+                // Removed updating userTeam.budget to keep it static as requested
+                // Only updating stats
+                // const netMatchIncome = gateReceipts + locaIncome - matchDayExpense;
+
+                processedTeams[userTeamIndex] = {
+                    ...userTeam,
+                    budget: userTeam.budget, // KEEP BUDGET STATIC
+                    financialRecords: financials
+                };
+            }
+            teamsWithBudget = processedTeams;
+        } else {
+            // Away game expense
+            const userTeamIndex = processedTeams.findIndex(t => t.id === myTeamId);
+            if (userTeamIndex !== -1) {
+                const userTeam = processedTeams[userTeamIndex];
+                const financials = { ...userTeam.financialRecords };
+                const travelExpense = 0.1 / 4; // Approx per match travel
+
+                financials.expense.travel += travelExpense;
+                
+                processedTeams[userTeamIndex] = {
+                    ...userTeam,
+                    budget: userTeam.budget, // KEEP BUDGET STATIC
+                    financialRecords: financials
+                };
+            }
+            teamsWithBudget = processedTeams;
+        }
+
+        const teamsWithUpdatedStats = teamsWithBudget.map(team => {
              const teamFixtures = updatedFixtures.filter(f => f.played && (f.homeTeamId === team.id || f.awayTeamId === team.id));
              let played=0, won=0, drawn=0, lost=0, gf=0, ga=0, points=0;
              
              teamFixtures.forEach(f => {
                  played++;
-                 const isHome = f.homeTeamId === team.id;
-                 const myScore = isHome ? f.homeScore! : f.awayScore!;
-                 const oppScore = isHome ? f.awayScore! : f.homeScore!;
-                 gf += myScore; ga += oppScore;
-                 if(myScore > oppScore) { won++; points += 3; }
-                 else if(myScore === oppScore) { drawn++; points += 1; }
+                 const isHomeFix = f.homeTeamId === team.id;
+                 const tMyScore = isHomeFix ? f.homeScore! : f.awayScore!;
+                 const tOppScore = isHomeFix ? f.awayScore! : f.homeScore!;
+                 gf += tMyScore; ga += tOppScore;
+                 if(tMyScore > tOppScore) { won++; points += 3; }
+                 else if(tMyScore === tOppScore) { drawn++; points += 1; }
                  else lost++;
              });
              
              const newStats = { played, won, drawn, lost, gf, ga, points };
              return { ...team, stats: newStats };
         });
-
-        const updatedManager = { ...gameState.manager! };
-        updatedManager.stats.matchesManaged++;
-        updatedManager.stats.goalsFor += myScore;
-        updatedManager.stats.goalsAgainst += oppScore;
         
         if (res === 'WIN') {
             updatedManager.trust.board = Math.min(100, updatedManager.trust.board + 2);
@@ -591,13 +762,29 @@ export const useGameState = () => {
         if (myTeam.budget >= player.value) {
             const newTransferList = gameState.transferList.filter(p => p.id !== player.id);
             const newPlayer = { ...player, teamId: myTeam.id, jersey: myTeam.jersey };
-            const updatedTeam = { 
+            const financials = { ...myTeam.financialRecords };
+            
+            // Financial Update
+            financials.expense.transfers += player.value;
+
+            let updatedTeam = { 
                 ...myTeam, 
                 budget: myTeam.budget - player.value,
-                players: [...myTeam.players, newPlayer]
+                players: [...myTeam.players, newPlayer],
+                financialRecords: financials
             };
+
+            const impact = calculateTransferStrengthImpact(myTeam.strength, player.skill, true);
+            const newVisibleStrength = Math.min(100, Math.max(0, myTeam.strength + impact));
+            updatedTeam.strength = Number(newVisibleStrength.toFixed(1));
+
+            const newRawStrength = calculateRawTeamStrength(updatedTeam.players);
+            updatedTeam.rawStrength = newRawStrength;
+            updatedTeam.strengthDelta = updatedTeam.strength - newRawStrength;
+
             const updatedManager = { ...gameState.manager! };
             updatedManager.stats.moneySpent += player.value;
+            updatedManager.stats.transferSpendThisMonth += player.value; // Add to monthly
             updatedManager.stats.playersBought++;
             if (player.value > updatedManager.stats.recordTransferFee) {
                 updatedManager.stats.recordTransferFee = player.value;
@@ -624,14 +811,28 @@ export const useGameState = () => {
             return;
         }
 
-        const updatedTeam = {
+        const financials = { ...myTeam.financialRecords };
+        // Financial Update
+        financials.income.transfers += player.value;
+
+        let updatedTeam = {
             ...myTeam,
             budget: myTeam.budget + player.value,
-            players: myTeam.players.filter(p => p.id !== player.id)
+            players: myTeam.players.filter(p => p.id !== player.id),
+            financialRecords: financials
         };
+
+        const impact = calculateTransferStrengthImpact(myTeam.strength, player.skill, false);
+        const newVisibleStrength = Math.min(100, Math.max(0, myTeam.strength + impact));
+        updatedTeam.strength = Number(newVisibleStrength.toFixed(1));
+
+        const newRawStrength = calculateRawTeamStrength(updatedTeam.players);
+        updatedTeam.rawStrength = newRawStrength;
+        updatedTeam.strengthDelta = updatedTeam.strength - newRawStrength;
 
         const updatedManager = { ...gameState.manager! };
         updatedManager.stats.moneyEarned += player.value;
+        updatedManager.stats.transferIncomeThisMonth += player.value; // Add to monthly
         updatedManager.stats.playersSold++;
 
         const sortedPlayers = [...myTeam.players].sort((a, b) => b.skill - a.skill);
@@ -661,6 +862,21 @@ export const useGameState = () => {
     };
 
     const handleMessageReply = (msgId: number, optIndex: number) => {
+    };
+
+    const handleSkipInterview = () => {
+        if (!gameState.manager) return;
+        
+        const newManager = { ...gameState.manager };
+        newManager.trust.media = Math.max(0, newManager.trust.media - 3);
+        
+        setGameState(prev => ({
+            ...prev,
+            manager: newManager
+        }));
+        
+        navigateTo('home');
+        setMatchResultData(null);
     };
 
     const handleInterviewComplete = (effect: any, relatedPlayerId?: string) => {
@@ -693,6 +909,8 @@ export const useGameState = () => {
             if (effect.trustUpdate.fans) trust.fans = Math.max(0, Math.min(100, trust.fans + effect.trustUpdate.fans));
             if (effect.trustUpdate.players) trust.players = Math.max(0, Math.min(100, trust.players + effect.trustUpdate.players));
             if (effect.trustUpdate.referees) trust.referees = Math.max(0, Math.min(100, trust.referees + effect.trustUpdate.referees));
+            if (effect.trustUpdate.media) trust.media = Math.max(0, Math.min(100, (trust.media || 50) + effect.trustUpdate.media));
+            
             newGameState.manager = { ...newGameState.manager, trust };
         }
 
@@ -704,7 +922,7 @@ export const useGameState = () => {
     };
 
     const myTeam = gameState.teams.find(t => t.id === gameState.myTeamId);
-    const injuredBadgeCount = myTeam ? myTeam.players.filter(p => p.injury && p.injury.weeksRemaining > 0).length - gameState.lastSeenInjuryCount : 0;
+    const injuredBadgeCount = myTeam ? myTeam.players.filter(p => p.injury && p.injury.daysRemaining > 0).length - gameState.lastSeenInjuryCount : 0;
 
     return {
         gameState,
@@ -741,6 +959,7 @@ export const useGameState = () => {
         handleSellPlayer,
         handleMessageReply,
         handleInterviewComplete,
+        handleSkipInterview, 
         handleRetire,
         handleTerminateContract,
         myTeam,

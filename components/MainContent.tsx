@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { GameState, Team, Player, Fixture, MatchEvent, MatchStats } from '../types';
 import { FileWarning, LogOut, Trophy, Building2, BarChart3, ArrowRightLeft, Wallet, Clock, TrendingUp, TrendingDown, Crown } from 'lucide-react';
@@ -11,6 +10,7 @@ import SquadView from '../views/SquadView';
 import TacticsView from '../views/TacticsView';
 import FixturesView from '../views/FixturesView';
 import TransferView from '../views/TransferView';
+import FinanceView from '../views/FinanceView';
 import SocialMediaView from '../views/SocialMediaView';
 import TrainingView from '../views/TrainingView';
 import TeamDetailView from '../views/TeamDetailView';
@@ -64,6 +64,7 @@ interface MainContentProps {
     handleSellPlayer: (player: Player) => void;
     handleMessageReply: (msgId: number, optIndex: number) => void;
     handleInterviewComplete: (effect: any, relatedPlayerId?: string) => void;
+    handleSkipInterview: () => void; 
     handleRetire: () => void;
     handleTerminateContract: () => void;
     myTeam?: Team;
@@ -107,6 +108,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
         handleSellPlayer,
         handleMessageReply,
         handleInterviewComplete,
+        handleSkipInterview, 
         handleRetire,
         handleTerminateContract,
         myTeam,
@@ -125,6 +127,25 @@ const MainContent: React.FC<MainContentProps> = (props) => {
 
     // State for showing Hall of Fame inside Game Over screen
     const [showGameOverHoF, setShowGameOverHoF] = useState(false);
+
+    // Function to handle budget updates from Finance View
+    const handleBudgetUpdate = (newTransferBudget: number, newWageBudget: number) => {
+        if (!myTeam) return;
+        
+        const updatedTeam = { 
+            ...myTeam, 
+            budget: newTransferBudget,
+            wageBudget: newWageBudget // Explicitly save the wage budget allocation
+        };
+        
+        setGameState(prev => ({
+            ...prev,
+            teams: prev.teams.map(t => t.id === myTeam.id ? updatedTeam : t)
+        }));
+        
+        // Optional: Provide feedback
+        alert("Bütçe dağılımı başarıyla güncellendi!"); 
+    };
 
     if (currentView === 'intro') return <IntroScreen onStart={handleStart} />;
     
@@ -287,6 +308,17 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                 />
             )}
 
+            {currentView === 'finance' && myTeam && (
+                <FinanceView 
+                    team={myTeam} 
+                    manager={gameState.manager!}
+                    onUpdateBudget={handleBudgetUpdate}
+                    fixtures={gameState.fixtures}
+                    currentWeek={gameState.currentWeek}
+                    currentDate={gameState.currentDate} // Passed Current Date
+                />
+            )}
+
             {currentView === 'social' && (
                 <SocialMediaView 
                     news={gameState.news} 
@@ -391,6 +423,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     awayScore={matchResultData.awayScore}
                     stats={matchResultData.stats}
                     events={matchResultData.events}
+                    onSkip={handleSkipInterview} // Pass handler
                     onProceed={() => {
                         let result: 'WIN'|'LOSS'|'DRAW' = 'DRAW';
                         const isHome = matchResultData.homeTeam.id === gameState.myTeamId;

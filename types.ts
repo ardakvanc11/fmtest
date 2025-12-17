@@ -128,14 +128,14 @@ export interface PlayerStats {
 
 export interface Injury {
     type: string; 
-    weeksRemaining: number;
+    daysRemaining: number; // Changed from weeksRemaining to daysRemaining
     description: string;
 }
 
 export interface PastInjury {
     type: string;
     week: number;
-    duration: number;
+    durationDays: number; // Changed from duration (weeks) to durationDays
 }
 
 export interface PlayerFaceData {
@@ -169,6 +169,32 @@ export interface Player {
     hasInjectionForNextMatch?: boolean; 
     injurySusceptibility: number; // 0-100 (Higher is worse)
     injuryHistory: PastInjury[];
+    lastInjuryDurationDays?: number; // Used to calculate recovery speed after injury
+}
+
+export interface FinancialRecords {
+    income: {
+        transfers: number;
+        tv: number;
+        merch: number;
+        loca: number;
+        gate: number;
+        sponsor: number;
+    };
+    expense: {
+        wages: number;
+        transfers: number;
+        staff: number;
+        maint: number;
+        academy: number;
+        debt: number;
+        matchDay: number;
+        travel: number;
+        scouting: number;
+        admin: number;
+        bonus: number;
+        fines: number;
+    };
 }
 
 export interface Team {
@@ -182,8 +208,12 @@ export interface Team {
     stadiumName: string;
     stadiumCapacity: number; // NEW: Added stadium capacity
     budget: number; 
+    wageBudget?: number; // NEW: Explicit Wage Budget Allocation to prevent reset bugs
     players: Player[]; 
     
+    // --- FINANCIALS ---
+    financialRecords: FinancialRecords; // Cumulative Season Data
+
     // --- TACTICS ---
     formation: string; 
     mentality: Mentality;
@@ -212,7 +242,9 @@ export interface Team {
         ga: number;
         points: number;
     };
-    strength: number; 
+    strength: number; // Visible Strength (GTÜ)
+    rawStrength?: number; // Calculated Strength (THG) - Hidden base
+    strengthDelta?: number; // The constant difference (Delta)
     morale: number; 
 }
 
@@ -307,6 +339,7 @@ export interface InterviewOption {
             fans?: number;
             players?: number;
             referees?: number;
+            media?: number; // NEW: Media trust
         };
     };
 }
@@ -340,8 +373,13 @@ export interface ManagerStats {
     
     playersBought: number;
     playersSold: number;
-    moneySpent: number;
-    moneyEarned: number;
+    moneySpent: number; // Total Cumulative
+    moneyEarned: number; // Total Cumulative
+    
+    // NEW: Monthly Trackers
+    transferSpendThisMonth: number;
+    transferIncomeThisMonth: number;
+
     recordTransferFee: number;
     careerEarnings: number; // NEW: Personal money earned by manager
 }
@@ -362,6 +400,7 @@ export interface ManagerProfile {
         fans: number; 
         players: number; 
         referees: number; 
+        media: number; // NEW: Media trust
     };
     playerRelations: { playerId: string; name: string; value: number }[]; 
     history: string[]; 

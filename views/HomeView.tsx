@@ -1,4 +1,6 @@
 
+
+
 import React, { useState } from 'react';
 import { ManagerProfile, Team, Fixture } from '../types';
 import { calculateForm, calculateManagerPower } from '../utils/gameEngine';
@@ -551,6 +553,11 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                              <div>
                                 <div className="flex justify-between mb-1"><span className="text-slate-500 dark:text-slate-400">Hakemler Birliği</span><span className="font-bold">{manager.trust.referees}%</span></div>
                                 <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className="h-full bg-red-500" style={{width: `${manager.trust.referees}%`}}/></div>
+                            </div>
+                            {/* Added Media Trust Bar */}
+                            <div>
+                                <div className="flex justify-between mb-1"><span className="text-slate-500 dark:text-slate-400">Medya</span><span className="font-bold">{manager.trust.media || 50}%</span></div>
+                                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className="h-full bg-purple-500" style={{width: `${manager.trust.media || 50}%`}}/></div>
                             </div>
                         </div>
                     </div>

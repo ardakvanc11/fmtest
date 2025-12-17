@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Team, Player, Mentality, Tempo, TimeWasting, PassingStyle, Width, CreativeFreedom, FinalThird, Crossing, DefensiveLine, Tackling, PressingFocus } from '../types';
 import PitchVisual from '../components/shared/PitchVisual';
@@ -7,12 +8,12 @@ import { Syringe, Ban } from 'lucide-react';
 interface PlayerListItemProps {
     p: Player;
     selectedPlayerId: string | null;
-    forcedSubstitutionPlayerId: string | null | undefined;
+    forcedSubstitutionPlayerId?: string | null;
     currentWeek?: number;
     onPlayerClick: (p: Player) => void;
 }
 
-const PlayerListItem = ({ p, selectedPlayerId, forcedSubstitutionPlayerId, currentWeek, onPlayerClick }: PlayerListItemProps) => {
+const PlayerListItem: React.FC<PlayerListItemProps> = ({ p, selectedPlayerId, forcedSubstitutionPlayerId, currentWeek, onPlayerClick }) => {
     const isSuspended = p.suspendedUntilWeek && currentWeek && p.suspendedUntilWeek > currentWeek;
     const isForcedInjury = forcedSubstitutionPlayerId === p.id;
     
@@ -40,7 +41,7 @@ const PlayerListItem = ({ p, selectedPlayerId, forcedSubstitutionPlayerId, curre
                     </span>
                     <span className="text-[10px] text-slate-500 dark:text-slate-400">
                         {p.age} Yaş 
-                        {p.injury ? ` • ${p.injury.weeksRemaining} Hf Sakat` : ''}
+                        {p.injury ? ` • ${p.injury.daysRemaining} Gün Sakat` : ''}
                         {isForcedInjury ? ' • SAKATLANDI!' : ''}
                         {isSuspended ? ' • CEZALI' : ''}
                     </span>
@@ -163,13 +164,13 @@ const TacticsView = ({
                     }
 
                     // 2. Injury Check
-                    if (isTargetActive && p1.injury && p1.injury.weeksRemaining > 0) {
-                         alert(`UYARI: ${p1.name} sakat (${p1.injury.weeksRemaining} hafta). Kadroya alamazsınız.`);
+                    if (isTargetActive && p1.injury && p1.injury.daysRemaining > 0) {
+                         alert(`UYARI: ${p1.name} sakat (${p1.injury.daysRemaining} gün). Kadroya alamazsınız.`);
                          setSelectedPlayerId(null);
                          return;
                     }
-                    if (isSourceActive && p2.injury && p2.injury.weeksRemaining > 0) {
-                         alert(`UYARI: ${p2.name} sakat (${p2.injury.weeksRemaining} hafta). Kadroya alamazsınız.`);
+                    if (isSourceActive && p2.injury && p2.injury.daysRemaining > 0) {
+                         alert(`UYARI: ${p2.name} sakat (${p2.injury.daysRemaining} gün). Kadroya alamazsınız.`);
                          setSelectedPlayerId(null);
                          return;
                     }

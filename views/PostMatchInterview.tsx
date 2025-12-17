@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useEffect } from 'react';
 import { Mic } from 'lucide-react';
 import { MatchEvent, Team } from '../types';
@@ -14,6 +16,7 @@ interface QuestionOption {
             fans?: number;
             players?: number;
             referees?: number;
+            media?: number; // Added Media
         };
     };
 }
