@@ -1,4 +1,3 @@
-
 import { Position, PlayerStats, Player, PlayerFaceData } from '../types';
 import { FACE_ASSETS } from './uiConstants';
 import { generateId } from './gameConstants';
@@ -364,121 +363,135 @@ export const generateStats = (position: Position, skill: number): PlayerStats =>
     const base = skill;
     const getStat = (multiplier: number, variance = 8) => {
         let val = Math.floor(base * multiplier) + getRandomInt(-variance, variance);
-        return Math.min(99, Math.max(20, val));
+        return Math.min(99, Math.max(1, val));
     };
 
-    let stats: PlayerStats;
+    // Helper for role-based weights
+    const getWeightedStat = (bias: 'TECHNICAL' | 'MENTAL' | 'PHYSICAL' | 'DEFENSIVE' | 'ATTACKING' | 'GENERIC', weight: number = 1.0) => {
+        // Base value for the stat
+        let val = base * weight;
+        
+        // Add some random noise
+        val += getRandomInt(-10, 10);
 
+        return Math.min(99, Math.max(1, Math.floor(val)));
+    };
+
+    let stats: Partial<PlayerStats> = {};
+
+    // 1. PHYSICAL (Common for most but slightly biased by position)
+    stats.agility = getWeightedStat('PHYSICAL', 0.95);
+    stats.stamina = getWeightedStat('PHYSICAL', 1.0);
+    stats.balance = getWeightedStat('PHYSICAL', 0.9);
+    stats.physical = getWeightedStat('PHYSICAL', 0.95);
+    stats.pace = getWeightedStat('PHYSICAL', 1.0);
+    stats.acceleration = getWeightedStat('PHYSICAL', 1.0);
+    stats.naturalFitness = getWeightedStat('PHYSICAL', 0.9);
+    stats.jumping = getWeightedStat('PHYSICAL', 0.85);
+
+    // 2. MENTAL (Generic Distribution)
+    stats.aggression = getWeightedStat('MENTAL', 0.8);
+    stats.bravery = getWeightedStat('MENTAL', 0.85);
+    stats.workRate = getWeightedStat('MENTAL', 0.95);
+    stats.decisions = getWeightedStat('MENTAL', 1.0);
+    stats.determination = getWeightedStat('MENTAL', 1.05);
+    stats.concentration = getWeightedStat('MENTAL', 0.95);
+    stats.leadership = getWeightedStat('MENTAL', 0.5); // Very rare to have high leadership
+    stats.anticipation = getWeightedStat('MENTAL', 1.0);
+    stats.flair = getWeightedStat('MENTAL', 0.7);
+    stats.positioning = getWeightedStat('MENTAL', 0.95);
+    stats.composure = getWeightedStat('MENTAL', 0.9);
+    stats.teamwork = getWeightedStat('MENTAL', 1.0);
+    stats.offTheBall = getWeightedStat('MENTAL', 0.9);
+    stats.vision = getWeightedStat('MENTAL', 0.85);
+
+    // 3. TECHNICAL (Position Biased)
+    stats.firstTouch = getWeightedStat('TECHNICAL', 0.95);
+    stats.technique = getWeightedStat('TECHNICAL', 0.95);
+    stats.passing = getWeightedStat('TECHNICAL', 0.9);
+    stats.dribbling = getWeightedStat('TECHNICAL', 0.8);
+    stats.heading = getWeightedStat('TECHNICAL', 0.8);
+    stats.finishing = getWeightedStat('TECHNICAL', 0.5);
+    stats.longShots = getWeightedStat('TECHNICAL', 0.5);
+    stats.marking = getWeightedStat('TECHNICAL', 0.5);
+    stats.tackling = getWeightedStat('TECHNICAL', 0.5);
+    stats.crossing = getWeightedStat('TECHNICAL', 0.5);
+    stats.corners = getWeightedStat('TECHNICAL', 0.4);
+    stats.freeKick = getWeightedStat('TECHNICAL', 0.4);
+    stats.penalty = getWeightedStat('TECHNICAL', 0.6);
+    stats.longThrows = getWeightedStat('TECHNICAL', 0.2);
+
+    // --- POSITION BIASING ---
     switch (position) {
-        case Position.SNT: // Santrafor
-            stats = {
-                pace: getStat(1.0),
-                shooting: getStat(1.1), 
-                passing: getStat(0.8),
-                dribbling: getStat(0.95),
-                defending: getStat(0.3, 5), 
-                physical: getStat(0.85),
-                finishing: getStat(1.15, 5), 
-                heading: getStat(0.9),
-                corners: getStat(0.6),
-                stamina: getStat(0.9)
-            };
+        case Position.SNT:
+            stats.finishing = getWeightedStat('ATTACKING', 1.2);
+            stats.offTheBall = getWeightedStat('ATTACKING', 1.15);
+            stats.composure = getWeightedStat('ATTACKING', 1.1);
+            stats.heading = getWeightedStat('ATTACKING', 1.1);
+            stats.acceleration = getWeightedStat('PHYSICAL', 1.1);
+            stats.jumping = getWeightedStat('PHYSICAL', 1.1);
             break;
-        case Position.SLK: // Sol Kanat
-        case Position.SGK: // Sağ Kanat
-            stats = {
-                pace: getStat(1.1), // Daha hızlı
-                shooting: getStat(0.95), 
-                passing: getStat(0.9),
-                dribbling: getStat(1.1), // Daha iyi top süren
-                defending: getStat(0.5), 
-                physical: getStat(0.8),
-                finishing: getStat(0.85), 
-                heading: getStat(0.6),
-                corners: getStat(1.0), // Korner kullanabilir
-                stamina: getStat(1.0)
-            };
+        case Position.SLK:
+        case Position.SGK:
+            stats.pace = getWeightedStat('PHYSICAL', 1.25);
+            stats.acceleration = getWeightedStat('PHYSICAL', 1.25);
+            stats.dribbling = getWeightedStat('TECHNICAL', 1.2);
+            stats.crossing = getWeightedStat('TECHNICAL', 1.15);
+            stats.flair = getWeightedStat('MENTAL', 1.2);
+            stats.agility = getWeightedStat('PHYSICAL', 1.2);
             break;
-        case Position.OOS: // Ofansif Orta Saha
-            stats = {
-                pace: getStat(0.9),
-                shooting: getStat(0.95),
-                passing: getStat(1.15), // Mükemmel pasör
-                dribbling: getStat(1.05),
-                defending: getStat(0.6),
-                physical: getStat(0.75),
-                finishing: getStat(0.9),
-                heading: getStat(0.6),
-                corners: getStat(1.1), 
-                stamina: getStat(0.95)
-            };
+        case Position.OOS:
+            stats.vision = getWeightedStat('MENTAL', 1.25);
+            stats.passing = getWeightedStat('TECHNICAL', 1.2);
+            stats.technique = getWeightedStat('TECHNICAL', 1.2);
+            stats.firstTouch = getWeightedStat('TECHNICAL', 1.15);
+            stats.flair = getWeightedStat('MENTAL', 1.3);
+            stats.decisions = getWeightedStat('MENTAL', 1.1);
             break;
-        case Position.OS: // Merkez Orta Saha
-            stats = {
-                pace: getStat(0.85),
-                shooting: getStat(0.8),
-                passing: getStat(1.1), 
-                dribbling: getStat(0.9),
-                defending: getStat(0.8), // Dengeli
-                physical: getStat(0.85),
-                finishing: getStat(0.7),
-                heading: getStat(0.7),
-                corners: getStat(0.9), 
-                stamina: getStat(1.1) // Yüksek dayanıklılık
-            };
+        case Position.OS:
+            stats.workRate = getWeightedStat('MENTAL', 1.25);
+            stats.stamina = getWeightedStat('PHYSICAL', 1.2);
+            stats.passing = getWeightedStat('TECHNICAL', 1.15);
+            stats.teamwork = getWeightedStat('MENTAL', 1.15);
+            stats.decisions = getWeightedStat('MENTAL', 1.1);
+            stats.anticipation = getWeightedStat('MENTAL', 1.1);
             break;
-        case Position.SLB: // Sol Bek
-        case Position.SGB: // Sağ Bek
-            stats = {
-                pace: getStat(1.0),
-                shooting: getStat(0.5),
-                passing: getStat(0.8),
-                dribbling: getStat(0.8),
-                defending: getStat(0.95), 
-                physical: getStat(0.9),
-                finishing: getStat(0.4),
-                heading: getStat(0.8), 
-                corners: getStat(0.5),
-                stamina: getStat(1.05)
-            };
+        case Position.SLB:
+        case Position.SGB:
+            stats.pace = getWeightedStat('PHYSICAL', 1.15);
+            stats.stamina = getWeightedStat('PHYSICAL', 1.15);
+            stats.tackling = getWeightedStat('DEFENSIVE', 1.1);
+            stats.marking = getWeightedStat('DEFENSIVE', 1.05);
+            stats.crossing = getWeightedStat('TECHNICAL', 1.1);
+            stats.workRate = getWeightedStat('MENTAL', 1.1);
             break;
-        case Position.STP: // Stoper
-            stats = {
-                pace: getStat(0.7),
-                shooting: getStat(0.3),
-                passing: getStat(0.6),
-                dribbling: getStat(0.5),
-                defending: getStat(1.2), // En iyi defans
-                physical: getStat(1.15), // En güçlü
-                finishing: getStat(0.2),
-                heading: getStat(1.2), // İyi kafa topu
-                corners: getStat(0.2),
-                stamina: getStat(0.9)
-            };
+        case Position.STP:
+            stats.tackling = getWeightedStat('DEFENSIVE', 1.25);
+            stats.marking = getWeightedStat('DEFENSIVE', 1.25);
+            stats.physical = getWeightedStat('PHYSICAL', 1.2);
+            stats.jumping = getWeightedStat('PHYSICAL', 1.2);
+            stats.heading = getWeightedStat('TECHNICAL', 1.15);
+            stats.positioning = getWeightedStat('MENTAL', 1.2);
+            stats.bravery = getWeightedStat('MENTAL', 1.15);
             break;
         case Position.GK:
-            stats = {
-                pace: getStat(0.5),
-                shooting: getStat(0.2),
-                passing: getStat(0.7),
-                dribbling: getStat(0.3),
-                defending: getStat(0.9), 
-                physical: getStat(0.9),
-                finishing: getStat(0.1),
-                heading: getStat(0.5),
-                corners: getStat(0.2),
-                stamina: getStat(0.8)
-            };
+            // Generic GKs get higher "defensive" tech stats used as reflexes/handling/etc
+            stats.anticipation = getWeightedStat('MENTAL', 1.15);
+            stats.concentration = getWeightedStat('MENTAL', 1.2);
+            stats.agility = getWeightedStat('PHYSICAL', 1.2);
+            stats.positioning = getWeightedStat('MENTAL', 1.1);
+            stats.bravery = getWeightedStat('MENTAL', 1.2);
+            // Handling-like techs
+            stats.firstTouch = getWeightedStat('TECHNICAL', 1.1);
+            stats.passing = getWeightedStat('TECHNICAL', 0.8);
             break;
-        default:
-            stats = {
-                pace: getStat(1), shooting: getStat(1), passing: getStat(1),
-                dribbling: getStat(1), defending: getStat(1), physical: getStat(1),
-                finishing: getStat(1), heading: getStat(1), corners: getStat(1),
-                stamina: getStat(1)
-            };
     }
-    return stats;
+
+    // Set legacy fields for engine compatibility
+    stats.shooting = stats.finishing;
+    stats.defending = Math.floor(((stats.marking || 50) + (stats.tackling || 50)) / 2);
+
+    return stats as PlayerStats;
 };
 
 // --- UPDATED DETAILED VALUE CALCULATION ---
@@ -788,10 +801,17 @@ export const generatePlayer = (position: Position, targetSkill: number, teamId: 
     // Calculate Injury Susceptibility (0-100)
     let baseSusceptibility = getRandomInt(1, 20);
     if (age > 28) baseSusceptibility += (age - 28) * 2;
+    // Update to use new physical stat
     if (stats.physical < 60) baseSusceptibility += 10;
     if (Math.random() < 0.1) baseSusceptibility += 30;
 
     const injurySusceptibility = Math.min(100, Math.max(1, baseSusceptibility));
+
+    // NEW PLAYER DATA
+    const height = position === Position.GK ? getRandomInt(185, 205) : getRandomInt(170, 198);
+    const footRoll = Math.random();
+    const preferredFoot = footRoll < 0.75 ? 'Sağ' : footRoll < 0.95 ? 'Sol' : 'Her İkisi';
+    const contractExpiry = 2025 + getRandomInt(1, 5);
 
     return {
         id: generateId(),
@@ -800,11 +820,13 @@ export const generatePlayer = (position: Position, targetSkill: number, teamId: 
         secondaryPosition,
         skill,
         stats,
-        // Fix: Added missing yellowCards and redCards properties to satisfy PlayerSeasonStats interface
         seasonStats: { goals: 0, assists: 0, yellowCards: 0, redCards: 0, ratings: [], averageRating: 0, matchesPlayed: 0 }, 
         face: faceData,
         jersey,
         age,
+        height,
+        preferredFoot,
+        contractExpiry,
         value,
         nationality: nation,
         teamId,

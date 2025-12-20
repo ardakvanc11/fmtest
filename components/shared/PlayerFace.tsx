@@ -38,7 +38,7 @@ const PlayerFace: React.FC<PlayerFaceProps> = ({ player, className = "w-full h-f
     };
 
     return (
-        <div className={`relative overflow-hidden bg-slate-200 rounded-lg ${className} isolate`}>
+        <div className={`relative overflow-hidden bg-slate-200 ${className} isolate`}>
             {/* 1. Skin (Base) */}
             <img src={fixUrl(face.skin)} alt="Skin" className="absolute inset-0 w-full h-full object-cover" style={{ zIndex: 1 }} />
             

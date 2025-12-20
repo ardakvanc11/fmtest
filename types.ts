@@ -1,4 +1,3 @@
-
 export enum Position {
     GK = 'GK',
     SLB = 'SLB', // Sol Bek
@@ -115,16 +114,51 @@ export interface PlayerSeasonStats {
 }
 
 export interface PlayerStats {
-    pace: number;      
-    shooting: number;  
-    passing: number;   
-    dribbling: number; 
-    defending: number; 
-    physical: number;  
-    finishing: number; 
-    heading: number;   
-    corners: number;   
-    stamina: number;   
+    // TEKNİK
+    finishing: number;      // Bitiricilik
+    dribbling: number;      // Dripling
+    firstTouch: number;     // İlk Kontrol
+    heading: number;        // Kafa Vuruşu
+    corners: number;        // Korner
+    marking: number;        // Markaj
+    crossing: number;       // Orta Yapma
+    passing: number;        // Pas
+    penalty: number;        // Penaltı Kullanma
+    freeKick: number;       // Serbest Vuruş
+    technique: number;      // Teknik
+    tackling: number;       // Top Kapma
+    longShots: number;      // Uzaktan Şut
+    longThrows: number;     // Uzun Taç
+
+    // ZİHİNSEL
+    aggression: number;     // Agresiflik
+    bravery: number;        // Cesaret
+    workRate: number;       // Çalışkanlık
+    decisions: number;      // Karar Alma
+    determination: number;  // Kararlılık
+    concentration: number;  // Konsantrasyon
+    leadership: number;     // Liderlik
+    anticipation: number;   // Önsezi
+    flair: number;          // Özel Yetenek
+    positioning: number;    // Pozisyon Alma
+    composure: number;      // Soğukkanlılık
+    teamwork: number;       // Takım Oyunu
+    offTheBall: number;     // Topsuz Alan
+    vision: number;         // Vizyon
+
+    // FİZİKSEL
+    agility: number;        // Çeviklik
+    stamina: number;        // Dayanıklılık
+    balance: number;        // Denge
+    physical: number;       // Güç
+    pace: number;           // Hız
+    acceleration: number;   // Hızlanma
+    naturalFitness: number; // Vücut Zindeliği
+    jumping: number;        // Zıplama
+    
+    // Legacy support (to avoid breaking engine immediately)
+    shooting?: number;
+    defending?: number;
 }
 
 export interface Injury {
@@ -160,6 +194,9 @@ export interface Player {
     face: PlayerFaceData; // NEW: Layered face data
     jersey?: string; // NEW: Specific jersey URL for the player
     age: number;
+    height: number; // YENİ
+    preferredFoot: string; // YENİ
+    contractExpiry: number; // YENİ (Yıl)
     value: number; 
     nationality: string;
     teamId: string;

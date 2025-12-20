@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { GameState, Team, Player, Fixture, MatchEvent, MatchStats } from '../types';
 import { FileWarning, LogOut, Trophy, Building2, BarChart3, ArrowRightLeft, Wallet, Clock, TrendingUp, TrendingDown, Crown } from 'lucide-react';
@@ -374,7 +373,8 @@ const MainContent: React.FC<MainContentProps> = (props) => {
             {currentView === 'player_detail' && selectedPlayerForDetail && (
                 <PlayerDetailView 
                     player={selectedPlayerForDetail} 
-                    onClose={() => goBack()} 
+                    onClose={() => goBack()}
+                    myTeamId={gameState.myTeamId!} // Pass current User Team ID
                 />
             )}
 

@@ -1,5 +1,3 @@
-
-
 import { Player, Team, Position } from '../types';
 import { generatePlayer } from '../constants';
 import { calculateTeamStrength } from './teamCalculations';
@@ -48,20 +46,30 @@ export const applyTraining = (team: Team, type: 'ATTACK' | 'DEFENSE' | 'PHYSICAL
         let morale = p.morale;
 
         if (type === 'ATTACK') {
-            stats.shooting = Math.min(99, stats.shooting + 1);
             stats.finishing = Math.min(99, stats.finishing + 1);
+            stats.technique = Math.min(99, stats.technique + 1);
             stats.passing = Math.min(99, stats.passing + 1);
+            stats.offTheBall = Math.min(99, stats.offTheBall + 1);
+            stats.vision = Math.min(99, stats.vision + 1);
             if(Math.random() > 0.8) skill = Math.min(99, skill + 1);
         } else if (type === 'DEFENSE') {
-            stats.defending = Math.min(99, stats.defending + 1);
+            stats.tackling = Math.min(99, stats.tackling + 1);
+            stats.marking = Math.min(99, stats.marking + 1);
+            stats.positioning = Math.min(99, stats.positioning + 1);
             stats.heading = Math.min(99, stats.heading + 1);
-            stats.physical = Math.min(99, stats.physical + 1);
+            stats.bravery = Math.min(99, stats.bravery + 1);
             if(Math.random() > 0.8) skill = Math.min(99, skill + 1);
         } else if (type === 'PHYSICAL') {
             stats.pace = Math.min(99, stats.pace + 1);
+            stats.acceleration = Math.min(99, stats.acceleration + 1);
             stats.stamina = Math.min(99, stats.stamina + 1);
+            stats.physical = Math.min(99, stats.physical + 1);
             morale = Math.min(100, morale + 5); // Physical training boosts morale/team spirit
         }
+
+        // Sync legacy fields
+        stats.shooting = stats.finishing;
+        stats.defending = Math.floor((stats.marking + stats.tackling) / 2);
 
         return { ...p, stats, skill, morale };
     });
