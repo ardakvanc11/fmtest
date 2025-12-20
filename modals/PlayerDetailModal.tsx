@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Player } from '../types';
 import { X, Heart } from 'lucide-react';
@@ -20,9 +21,9 @@ const PlayerDetailModal = ({ player, onClose }: { player: Player, onClose: () =>
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in duration-200">
                 <div className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-start">
                     <div className="flex gap-6 w-full">
-                        {/* Player Face Container */}
-                        <div className="w-24 h-24 shrink-0 rounded-lg shadow-lg border-2 border-slate-300 dark:border-slate-600 bg-slate-200">
-                            <PlayerFace player={player} />
+                        {/* Player Face Container - UPDATED TO ROUNDED-FULL */}
+                        <div className="w-24 h-24 shrink-0 rounded-full overflow-hidden shadow-lg border-4 border-white dark:border-slate-600 bg-slate-200">
+                            <PlayerFace player={player} className="scale-110 translate-y-1"/>
                         </div>
                         
                         <div className="flex-1">

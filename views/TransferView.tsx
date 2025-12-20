@@ -1,8 +1,7 @@
-
-
 import React, { useState } from 'react';
 import { Player, Team } from '../types';
 import { Lock, ChevronLeft, ChevronRight, ArrowUpDown, Filter } from 'lucide-react';
+import PlayerFace from '../components/shared/PlayerFace';
 
 const TransferView = ({ transferList, team, budget, isWindowOpen, onBuy, onSell, onPlayerClick }: { transferList: Player[], team: Team, budget: number, isWindowOpen: boolean, onBuy: (p: Player) => void, onSell: (p: Player) => void, onPlayerClick: (p: Player) => void }) => {
     const [tab, setTab] = useState<'BUY' | 'SELL'>('BUY');
@@ -110,6 +109,10 @@ const TransferView = ({ transferList, team, budget, isWindowOpen, onBuy, onSell,
                  {currentPlayers.map(p => (
                      <div key={p.id} className="bg-white dark:bg-slate-800 p-3 md:p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between shadow-sm hover:shadow-md transition group">
                          <div className="flex items-center gap-4 cursor-pointer flex-1" onClick={() => onPlayerClick(p)}>
+                              {/* Small Face Preview */}
+                              <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-300 dark:border-slate-600 bg-slate-200 shrink-0 hidden sm:block">
+                                  <PlayerFace player={p} />
+                              </div>
                               <div className={`w-10 h-10 rounded flex items-center justify-center text-xs font-bold text-white shadow-sm shrink-0 ${getPosBadgeColor(p.position)}`}>{p.position}</div>
                               <div className="min-w-0">
                                   <div className="font-bold text-slate-900 dark:text-white truncate group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">{p.name}</div>

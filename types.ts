@@ -1,5 +1,4 @@
 
-
 export enum Position {
     GK = 'GK',
     SLB = 'SLB', // Sol Bek
@@ -108,6 +107,8 @@ export enum PressingStyle {
 export interface PlayerSeasonStats {
     goals: number;
     assists: number;
+    yellowCards: number; // YENI
+    redCards: number;    // YENI
     ratings: number[]; // Store history to calc average
     averageRating: number;
     matchesPlayed: number;
@@ -197,6 +198,19 @@ export interface FinancialRecords {
     };
 }
 
+export interface HistoricalRanking {
+    year: string;
+    rank: number;
+}
+
+export interface TransferRecord {
+    date: string; // Formatted date string e.g. "12 Tem"
+    playerName: string;
+    type: 'BOUGHT' | 'SOLD';
+    counterparty: string; // "From X" or "To X"
+    price: string; // Display string "12.5 M€"
+}
+
 export interface Team {
     id: string;
     name: string;
@@ -204,15 +218,20 @@ export interface Team {
     logo?: string;
     jersey?: string; // NEW: Base jersey URL for the team
     championships: number; // CHANGED: Replaced stars with championships
+    domesticCups?: number; // NEW: Türkiye Kupası Sayısı
+    superCups?: number; // NEW: Süper Kupa Sayısı
+    europeanCups?: number; // NEW: Avrupa Kupası Sayısı
     fanBase: number; 
     stadiumName: string;
     stadiumCapacity: number; // NEW: Added stadium capacity
     budget: number; 
     wageBudget?: number; // NEW: Explicit Wage Budget Allocation to prevent reset bugs
     players: Player[]; 
+    reputation: number; // NEW: Dynamic reputation value (base 1-5)
     
     // --- FINANCIALS ---
     financialRecords: FinancialRecords; // Cumulative Season Data
+    transferHistory: TransferRecord[]; // NEW: Real transfer logs
 
     // --- TACTICS ---
     formation: string; 
@@ -246,6 +265,7 @@ export interface Team {
     rawStrength?: number; // Calculated Strength (THG) - Hidden base
     strengthDelta?: number; // The constant difference (Delta)
     morale: number; 
+    leagueHistory?: HistoricalRanking[]; // NEW: Historical rankings
 }
 
 export interface MatchEvent {

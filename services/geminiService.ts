@@ -3,17 +3,11 @@ import { GoogleGenAI } from "@google/genai";
 import { Team, Player, TacticStyle, InterviewQuestion, InterviewOption, HalftimeTalkOption, MatchEvent, MatchStats } from '../types';
 import { INTERVIEW_TEMPLATES } from '../data/questionsPool';
 
-let ai: GoogleGenAI | null = null;
 let apiBackoffUntil = 0; // Timestamp until which API calls are suspended
-
-if (process.env.API_KEY) {
-    ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-}
 
 // Helper to handle API errors and trigger backoff
 const handleApiError = (error: any, fallback: any) => {
     console.warn("Gemini API Error or Rate Limit:", error);
-    // If error is 429 or related to quota
     const errStr = error.toString();
     if (errStr.includes('429') || errStr.includes('quota') || errStr.includes('RESOURCE_EXHAUSTED')) {
         console.warn("Rate limit hit. Pausing AI features for 60 seconds.");
@@ -23,10 +17,15 @@ const handleApiError = (error: any, fallback: any) => {
 };
 
 const isApiBlocked = () => {
-    if (!ai) return true;
+    if (!process.env.API_KEY) return true;
     if (Date.now() < apiBackoffUntil) return true;
     return false;
 }
+
+const getAI = () => {
+    if (!process.env.API_KEY) return null;
+    return new GoogleGenAI({ apiKey: process.env.API_KEY });
+};
 
 export const getAssistantAdvice = async (
     myTeam: Team, 
@@ -34,12 +33,14 @@ export const getAssistantAdvice = async (
     currentTactic: string
 ): Promise<string> => {
     const fallback = "Rakip analiz raporlarına şu an ulaşamıyorum hocam, kendi oyunumuzu oynayalım.";
-    if (isApiBlocked()) return fallback;
+    const ai = getAI();
+    if (!ai || isApiBlocked()) return fallback;
 
     const prompt = `
-        Sen bir futbol menajerlik oyununda "Yardımcı Antrenörsün".
+        Sen bir football manager oyununda "Assistant Manager" (Yardımcı Antrenör) rolündesin.
         Aşağıdaki bilgilere dayanarak baş menajere maçı kazanmak için kısa, öz ve motive edici taktiksel tavsiyeler ver.
 
+        Lig: Süper Toto Hayvanlar Ligi
         Bizim Takım: ${myTeam.name} (Güç: ${Math.round(myTeam.strength)})
         Rakip: ${opponent.name} (Güç: ${Math.round(opponent.strength)})
         Mevcut Taktiğimiz: ${currentTactic}
@@ -51,8 +52,8 @@ export const getAssistantAdvice = async (
     `;
 
     try {
-        const response = await ai!.models.generateContent({
-            model: 'gemini-2.5-flash',
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
             contents: prompt,
         });
         return response.text || "Takım maça hazır hocam, çıkıp oynayalım!";
@@ -70,16 +71,14 @@ export const getMatchCommentary = async (
     event: string,
     eventType?: string
 ): Promise<string> => {
-    // OPTIMIZATION: Don't waste AI quota on mundane events.
-    // Only fetch AI commentary for Goals, VAR, Red Cards, and Injuries.
     const interestingEvents = ['GOAL', 'VAR', 'CARD_RED', 'INJURY'];
     if (eventType && !interestingEvents.includes(eventType)) {
         return event;
     }
 
-    if (isApiBlocked()) return event;
+    const ai = getAI();
+    if (!ai || isApiBlocked()) return event;
 
-    // Use a very fast prompt for simulated commentary
     const prompt = `
         Futbol spikeri gibi konuş. Çok kısa tek bir cümle kur.
         Dakika: ${minute}
@@ -91,32 +90,29 @@ export const getMatchCommentary = async (
     `;
 
     try {
-        const response = await ai!.models.generateContent({
-             model: 'gemini-2.5-flash',
+        const response = await ai.models.generateContent({
+             model: 'gemini-3-flash-preview',
              contents: prompt,
              config: {
-                 thinkingConfig: { thinkingBudget: 0 } // Fast response
+                 thinkingConfig: { thinkingBudget: 0 }
              }
         });
         return response.text || event;
     } catch (e) {
-        // Silent fail for commentary to keep flow moving
         return handleApiError(e, event);
     }
 };
 
 export const getOpponentStatement = async (
     opponentName: string,
-    result: 'WIN' | 'LOSS' | 'DRAW', // Result from OUR perspective
+    result: 'WIN' | 'LOSS' | 'DRAW', 
     myScore: number,
     opponentScore: number
 ): Promise<{text: string, mood: 'ANGRY' | 'HAPPY' | 'NEUTRAL'}> => {
     
-    // Opponent perspective
     const opponentResult = result === 'WIN' ? 'LOSS' : result === 'LOSS' ? 'WIN' : 'DRAW';
     const scoreDiff = opponentScore - myScore;
 
-    // Strict logic templates to ensure realism and fallback
     const getTemplate = () => {
         if (opponentResult === 'WIN') {
             if (scoreDiff >= 3) return { text: "Bugün sahadaki tek takım bizdik, hak edilmiş bir zafer.", mood: 'HAPPY' };
@@ -131,7 +127,8 @@ export const getOpponentStatement = async (
         }
     };
 
-    if (isApiBlocked()) return getTemplate() as any;
+    const ai = getAI();
+    if (!ai || isApiBlocked()) return getTemplate() as any;
 
     const prompt = `
         Sen rakip takımın (${opponentName}) teknik direktörüsün.
@@ -146,12 +143,11 @@ export const getOpponentStatement = async (
     `;
 
     try {
-        const response = await ai!.models.generateContent({
-            model: 'gemini-2.5-flash',
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
             contents: prompt
         });
         const text = response.text || "";
-        // Simple mood detection fallback
         let mood = opponentResult === 'WIN' ? 'HAPPY' : opponentResult === 'LOSS' ? 'ANGRY' : 'NEUTRAL';
         return { text, mood: mood as any };
     } catch (e) {
@@ -173,15 +169,11 @@ export const getPressQuestion = async (
     ctx: InterviewContext
 ): Promise<InterviewQuestion> => {
     
-    // 1. ANALYZE CONTEXT LOCALLY
     const myEvents = ctx.events.filter(e => e.teamName === ctx.myTeamName);
     const goals = myEvents.filter(e => e.type === 'GOAL');
     const redCards = myEvents.filter(e => e.type === 'CARD_RED');
-    
-    // Find standout players (Good/Bad)
     const scorerNames = goals.map(g => g.scorer).filter(Boolean) as string[];
     
-    // Create specific scenario buckets
     const scenarios = [];
     if (scorerNames.length > 0) scenarios.push('SCORER');
     if (redCards.length > 0) scenarios.push('RED_CARD');
@@ -190,19 +182,15 @@ export const getPressQuestion = async (
     if (ctx.result === 'LOSS') scenarios.push('LOSS');
     scenarios.push('GENERAL');
 
-    // Pick a scenario
     let selectedScenario = scenarios[0];
     if (scenarios.includes('RED_CARD')) selectedScenario = 'RED_CARD';
     else if (scenarios.includes('SCORER') && Math.random() > 0.4) selectedScenario = 'SCORER';
     else if (scenarios.includes('HEAVY_LOSS')) selectedScenario = 'HEAVY_LOSS';
     else if (ctx.result !== 'DRAW') selectedScenario = ctx.result;
 
-    // Fallback selection logic
     const getLocalQuestion = () => {
         const pool = INTERVIEW_TEMPLATES[selectedScenario] || INTERVIEW_TEMPLATES['GENERAL'];
         const randomItem = pool[Math.floor(Math.random() * pool.length)];
-        
-        // Simple interpolation for {player} placeholder
         let questionText = randomItem.q;
         if(scorerNames.length > 0) {
             questionText = questionText.replace('{player}', scorerNames[0]);
@@ -217,9 +205,9 @@ export const getPressQuestion = async (
         };
     };
 
-    if (isApiBlocked()) return getLocalQuestion();
+    const ai = getAI();
+    if (!ai || isApiBlocked()) return getLocalQuestion();
 
-    // AI Generation with Context
     try {
         const prompt = `
             Futbol maçı sonrası basın toplantısındasın.
@@ -233,15 +221,14 @@ export const getPressQuestion = async (
             
             Sadece soruyu yaz.
         `;
-        const response = await ai!.models.generateContent({
-             model: 'gemini-2.5-flash',
+        const response = await ai.models.generateContent({
+             model: 'gemini-3-flash-preview',
              contents: prompt
         });
         
         const aiQuestion = response.text;
         if (!aiQuestion) return getLocalQuestion();
 
-        // If AI generates a question, we map it to Generic Options but try to flavor them slightly
         let aiOptions: InterviewOption[] = [];
         if (ctx.result === 'WIN') {
             aiOptions = [
@@ -275,20 +262,19 @@ export const getPressQuestion = async (
 };
 
 export const getHalftimeTalks = (scoreDiff: number): HalftimeTalkOption[] => {
-    // Halftime talks are static templates, safe from API limits
-    if (scoreDiff > 0) { // Winning
+    if (scoreDiff > 0) { 
         return [
             { id: '1', text: "Harikasınız çocuklar! Aynı disiplinle devam edin, rehavete kapılmak yok!", style: 'MOTIVATIONAL', effectDesc: "Takım odaklanır." },
             { id: '2', text: "Maç daha bitmedi! Daha fazla gol istiyorum, ezin onları!", style: 'AGGRESSIVE', effectDesc: "Hücum gücü artar, defans riske girer." },
             { id: '3', text: "Sakin kalın, topu ayağınızda tutun ve skoru koruyun.", style: 'CALM', effectDesc: "Kondisyon korunur." }
         ];
-    } else if (scoreDiff < 0) { // Losing
+    } else if (scoreDiff < 0) { 
         return [
             { id: '1', text: "Bu futbol size yakışmıyor! Kendinize gelin, sahaya çıkın ve savaşın!", style: 'AGGRESSIVE', effectDesc: "Takım hırslanır." },
             { id: '2', text: "Henüz hiçbir şey bitmedi. Bir gol maçı çevirir. Size inanıyorum.", style: 'MOTIVATIONAL', effectDesc: "Moral yükselir." },
             { id: '3', text: "Taktiklere sadık kalın, panik yapmayın. Fırsatlar gelecek.", style: 'CALM', effectDesc: "Organizasyon düzelir." }
         ];
-    } else { // Draw
+    } else { 
         return [
             { id: '1', text: "Bu maçı kazanabiliriz! Biraz daha baskı yaparsak gol gelecek!", style: 'MOTIVATIONAL', effectDesc: "Hücum isteği artar." },
             { id: '2', text: "Risk almayın, kontrollü oynayın. Hata yapan kaybeder.", style: 'CALM', effectDesc: "Savunma güvenliği artar." },

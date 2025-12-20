@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { GameState, Team, Player, Fixture, MatchEvent, MatchStats } from '../types';
 import { FileWarning, LogOut, Trophy, Building2, BarChart3, ArrowRightLeft, Wallet, Clock, TrendingUp, TrendingDown, Crown } from 'lucide-react';
@@ -14,6 +15,7 @@ import FinanceView from '../views/FinanceView';
 import SocialMediaView from '../views/SocialMediaView';
 import TrainingView from '../views/TrainingView';
 import TeamDetailView from '../views/TeamDetailView';
+import PlayerDetailView from '../views/PlayerDetailView'; // NEW VIEW
 import MatchPreview from '../views/MatchPreview';
 import LockerRoomView from '../views/LockerRoomView';
 import MatchSimulation from '../views/MatchSimulation';
@@ -22,7 +24,6 @@ import HealthCenterView from '../views/HealthCenterView';
 
 // Layouts & Modals
 import Dashboard from '../layout/Dashboard';
-import PlayerDetailModal from '../modals/PlayerDetailModal';
 import MatchDetailModal from '../modals/MatchDetailModal';
 import MatchResultModal from '../modals/MatchResultModal';
 import HallOfFameModal from '../modals/HallOfFameModal';
@@ -60,6 +61,7 @@ interface MainContentProps {
     handleMatchFinish: (hScore: number, aScore: number, events: MatchEvent[], stats: MatchStats) => void;
     handleFastSimulate: () => void;
     handleShowTeamDetail: (teamId: string) => void;
+    handleShowPlayerDetail: (player: Player) => void; // NEW HANDLER
     handleBuyPlayer: (player: Player) => void;
     handleSellPlayer: (player: Player) => void;
     handleMessageReply: (msgId: number, optIndex: number) => void;
@@ -104,6 +106,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
         handleMatchFinish,
         handleFastSimulate,
         handleShowTeamDetail,
+        handleShowPlayerDetail, // NEW
         handleBuyPlayer,
         handleSellPlayer,
         handleMessageReply,
@@ -260,7 +263,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
             )}
             
             {currentView === 'squad' && myTeam && (
-                <SquadView team={myTeam} onPlayerClick={(p) => setSelectedPlayerForDetail(p)} />
+                <SquadView team={myTeam} onPlayerClick={handleShowPlayerDetail} />
             )}
 
             {currentView === 'tactics' && myTeam && (
@@ -280,7 +283,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                 <HealthCenterView 
                     team={myTeam} 
                     currentWeek={gameState.currentWeek} 
-                    onPlayerClick={(p) => setSelectedPlayerForDetail(p)}
+                    onPlayerClick={handleShowPlayerDetail}
                 />
             )}
 
@@ -304,7 +307,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     isWindowOpen={isTransferWindowOpen}
                     onBuy={handleBuyPlayer}
                     onSell={handleSellPlayer}
-                    onPlayerClick={(p) => setSelectedPlayerForDetail(p)}
+                    onPlayerClick={handleShowPlayerDetail}
                 />
             )}
 
@@ -340,11 +343,38 @@ const MainContent: React.FC<MainContentProps> = (props) => {
             {currentView === 'team_detail' && selectedTeamForDetail && (
                 <TeamDetailView 
                     team={selectedTeamForDetail} 
+                    allTeams={gameState.teams}
+                    fixtures={gameState.fixtures}
+                    currentDate={gameState.currentDate}
+                    manager={gameState.manager!}
                     onClose={() => {
                         setSelectedTeamForDetail(null);
                         goBack();
                     }}
-                    onPlayerClick={(p) => setSelectedPlayerForDetail(p)} 
+                    onPlayerClick={handleShowPlayerDetail} 
+                    onTeamClick={handleShowTeamDetail}
+                />
+            )}
+
+            {/* USER TEAM DETAIL VIEW */}
+            {currentView === 'my_team_detail' && myTeam && (
+                <TeamDetailView 
+                    team={myTeam} 
+                    allTeams={gameState.teams}
+                    fixtures={gameState.fixtures}
+                    currentDate={gameState.currentDate}
+                    manager={gameState.manager!}
+                    onClose={() => goBack()}
+                    onPlayerClick={handleShowPlayerDetail} 
+                    onTeamClick={handleShowTeamDetail}
+                />
+            )}
+
+            {/* NEW FULL PAGE PLAYER DETAIL VIEW */}
+            {currentView === 'player_detail' && selectedPlayerForDetail && (
+                <PlayerDetailView 
+                    player={selectedPlayerForDetail} 
+                    onClose={() => goBack()} 
                 />
             )}
 
@@ -387,13 +417,6 @@ const MainContent: React.FC<MainContentProps> = (props) => {
             )}
 
             {/* Modals and Overlays */}
-            
-            {selectedPlayerForDetail && (
-                <PlayerDetailModal 
-                    player={selectedPlayerForDetail} 
-                    onClose={() => setSelectedPlayerForDetail(null)} 
-                />
-            )}
             
             {selectedFixtureForDetail && (
                 <MatchDetailModal 

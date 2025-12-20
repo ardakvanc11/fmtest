@@ -1,6 +1,5 @@
 
-
-import { Team, Position, Fixture, BettingOdds, ManagerStats, Player } from '../types';
+import { Team, Position, Fixture, BettingOdds, ManagerStats, Player, ManagerProfile } from '../types';
 
 // --- CONSTANTS FOR WEIGHTED CALCULATIONS ---
 
@@ -61,49 +60,37 @@ export const calculateRawTeamStrength = (players: Player[]): number => {
                 pool.splice(idx, 1); // Remove from pool
             }
         }
-        // If we can't find specific position, we will handle them as reserves later
-        // But for "Starters" logic in a rigid system, we take what we have.
-        // To prevent crash if no GK, we just take best remaining.
         return found;
     };
 
-    // Pick 11 Starters precisely
     starters.push(...pickBest(Position.GK, 1));
     starters.push(...pickBest(Position.SLB, 1));
     starters.push(...pickBest(Position.SGB, 1));
     starters.push(...pickBest(Position.STP, 2));
     starters.push(...pickBest(Position.SLK, 1));
     starters.push(...pickBest(Position.SGK, 1));
-    starters.push(...pickBest(Position.OS, 1)); // Try OS first
-    starters.push(...pickBest(Position.OOS, 1)); // Try OOS next
+    starters.push(...pickBest(Position.OS, 1)); 
+    starters.push(...pickBest(Position.OOS, 1)); 
     
-    // Fill remaining starter slots from best remaining MID/FWD if OS/OOS distinct not found
-    // Or simpler: Just prioritize specific roles.
-    // Let's ensure we get 2 Central Mids (OS or OOS) total if we missed above.
     const currentMids = starters.filter(p => p.position === Position.OS || p.position === Position.OOS).length;
     if (currentMids < 2) {
-        // Find best remaining mid
         const midIdx = pool.findIndex(p => p.position === Position.OS || p.position === Position.OOS);
         if (midIdx !== -1) { starters.push(pool[midIdx]); pool.splice(midIdx, 1); }
     }
 
     starters.push(...pickBest(Position.SNT, 2));
 
-    // If we still don't have 11 starters (due to missing positions), fill with best remaining
     while (starters.length < 11 && pool.length > 0) {
         starters.push(pool.shift()!);
     }
 
-    // 3. Identify Key Reserves (Next best 7 players)
     const keyReserves: Player[] = [];
     for (let i = 0; i < 7; i++) {
         if (pool.length > 0) keyReserves.push(pool.shift()!);
     }
 
-    // 4. Identify Rotation (Everyone else)
     const rotation = [...pool];
 
-    // 5. Calculate Weighted Average
     let totalContribution = 0;
     let totalWeight = 0;
 
@@ -122,73 +109,42 @@ export const calculateRawTeamStrength = (players: Player[]): number => {
 
     if (totalWeight === 0) return 0;
 
-    // Round to 1 decimal place
     const thg = totalContribution / totalWeight;
     return Math.round(thg * 10) / 10;
 };
 
-/**
- * Calculates the immediate impact on Visible Team Strength based on a transfer.
- * Uses the logic: Reference Strength = Visible Strength - 4.
- */
 export const calculateTransferStrengthImpact = (currentVisibleStrength: number, playerSkill: number, isBuying: boolean): number => {
-    // Kural: Takım gücü referansı, görünen gücün 4 puan eksiğidir.
-    // Örnek: Güç 82 ise referans 78'dir.
     const referenceStrength = currentVisibleStrength - 4;
 
     if (isBuying) {
-        // OYUNCU ALIMI
         if (playerSkill > referenceStrength) {
-            // Referansın üzerinde oyuncu alındı -> Güç Artar
-            // Fark ne kadar büyükse artış o kadar fazla olur
             const diff = playerSkill - referenceStrength;
-            // Örn: Ref 78, Oyuncu 85 (Fark 7) -> 0.3 + (7 * 0.05) = +0.65 güç
             return 0.3 + (diff * 0.05);
         } else {
-            // Referansın altında oyuncu alındı -> Güç Artmaz (veya ihmal edilebilir)
             return 0;
         }
     } else {
-        // OYUNCU SATIŞI
         if (playerSkill < referenceStrength) {
-            // Referansın altında oyuncu satıldı -> Güç Az Düşer
             return -0.1;
         } else {
-            // Referansın üzerinde oyuncu satıldı -> Güç Daha Fazla Düşer
             const diff = playerSkill - referenceStrength;
-            // Örn: Ref 78, Oyuncu 82 (Fark 4) -> -(0.4 + (4 * 0.1)) = -0.8 güç
             return -(0.4 + (diff * 0.1));
         }
     }
 };
 
-/**
- * Updates a team's strength after a roster change.
- * Applies the "Never Drop" rule using Strength Delta.
- */
 export const recalculateTeamStrength = (team: Team): Team => {
-    // 1. Calculate New Raw Strength (THG)
     const newRawStrength = calculateRawTeamStrength(team.players);
-    
-    // 2. Calculate Potential Visible Strength
-    // If delta is missing (e.g. legacy data), default to 0
     const delta = team.strengthDelta !== undefined ? team.strengthDelta : 0;
     const potentialVisible = Math.round((newRawStrength + delta) * 10) / 10;
-
-    // 3. Apply "Never Drop" Rule
-    // Visible Strength (GTÜ) only updates if the new potential > current
-    // Note: Use a small epsilon for float comparison safety or just direct
     const currentVisible = team.strength;
     
     let finalVisible = currentVisible;
     if (potentialVisible > currentVisible) {
         finalVisible = potentialVisible;
     }
-
-    // Ensure it's rounded neatly
     finalVisible = Math.round(finalVisible); 
 
-    // Update Team Object
     return {
         ...team,
         rawStrength: newRawStrength,
@@ -196,10 +152,6 @@ export const recalculateTeamStrength = (team: Team): Team => {
     };
 };
 
-/**
- * Compatibility wrapper for legacy code if needed, but we mostly use recalculateTeamStrength now.
- * Returns the VISIBLE strength.
- */
 export const calculateTeamStrength = (team: Team): number => {
     return team.strength;
 };
@@ -220,59 +172,46 @@ export const calculateForm = (teamId: string, fixtures: Fixture[]): string[] => 
 };
 
 export const calculateOdds = (home: Team, away: Team): BettingOdds => {
-    // Uses Visible Strength for odds calculation
-    const hStr = home.strength + 5; // Home advantage
+    const hStr = home.strength + 5; 
     const aStr = away.strength;
     
     if (hStr + aStr === 0) return { home: 1, draw: 1, away: 1 };
 
     const total = hStr + aStr;
-    
     const strengthRatio = Math.min(hStr, aStr) / Math.max(hStr, aStr); 
     const dProb = 0.15 + (0.15 * strengthRatio);
-
     const remainingProb = 1 - dProb;
-    
     const hProb = (hStr / total) * remainingProb;
     const aProb = (aStr / total) * remainingProb;
 
     const margin = 1.12;
-
     const fmt = (p: number) => {
         const val = margin / p;
         return Number(Math.max(1.01, val).toFixed(2));
     };
 
-    return {
-        home: fmt(hProb),
-        draw: fmt(dProb),
-        away: fmt(aProb)
-    };
+    return { home: fmt(hProb), draw: fmt(dProb), away: fmt(aProb) };
 };
 
 export const calculateManagerPower = (stats: ManagerStats): number => {
     let power = 50; 
-
     const leagueBase = 3;
     const leagueMultipliers = [1.50, 1.20, 1.00, 0.80, 0.60, 0.45, 0.35, 0.25];
     for (let i = 0; i < stats.leagueTitles; i++) {
         const mult = i < 7 ? leagueMultipliers[i] : 0.25;
         power += (leagueBase * mult);
     }
-
     const cupBase = 1;
     const cupMultipliers = [1.50, 1.20, 1.00, 0.80, 0.60, 0.45, 0.35, 0.25];
     for (let i = 0; i < stats.domesticCups; i++) {
         const mult = i < 7 ? cupMultipliers[i] : 0.25;
         power += (cupBase * mult);
     }
-
     const euroValues = [9, 3, 2, 1]; 
     for (let i = 0; i < stats.europeanCups; i++) {
         if (i < 3) power += euroValues[i];
         else power += 1;
     }
-
     return Math.round(power);
 };
 
@@ -293,4 +232,116 @@ export const calculateManagerSalary = (strength: number): number => {
     if (strength >= 68) return 0.20;
     if (strength >= 60) return 0.15; 
     return 0.10; 
+};
+
+/**
+ * NEW: Applies reputation changes based on season-end performance.
+ */
+export const applySeasonEndReputationUpdates = (teams: Team[]): Team[] => {
+    // 1. Sort teams to get final league positions
+    const standings = [...teams].sort((a, b) => {
+        if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points;
+        return (b.stats.gf - b.stats.ga) - (a.stats.gf - a.stats.ga);
+    });
+
+    return teams.map(team => {
+        const rank = standings.findIndex(t => t.id === team.id) + 1;
+        const isRelegated = rank >= 16; // Bottom 3 in 18-team league
+        const strength = team.strength;
+        let repChange = 0;
+
+        // Rule 1: Strength > 80 cases
+        if (strength > 80) {
+            if (rank > 10) repChange -= 0.1;
+            if (isRelegated) repChange -= 1.0;
+        }
+
+        // Rule 2: Strength > 75 cases
+        if (strength > 75) {
+            if (rank > 15) repChange -= 0.1;
+        }
+
+        // Rule 3: Strength < 80 and Relegated
+        if (strength < 80 && isRelegated) {
+            repChange -= 0.3;
+        }
+
+        // Rule 4: Strength 74-80 and Top 3
+        if (strength >= 74 && strength <= 80 && rank <= 3) {
+            repChange += 0.1;
+        }
+
+        // Rule 5: Strength 70-74 and Top 5
+        if (strength >= 70 && strength < 74 && rank <= 5) {
+            repChange += 0.1;
+        }
+
+        // Rule 6: Strength 60-70 and Top 5
+        if (strength >= 60 && strength < 70 && rank <= 5) {
+            repChange += 0.1;
+        }
+
+        const newRep = Number((team.reputation + repChange).toFixed(1));
+        // Clamp reputation between 0.1 and 5.0
+        const finalRep = Math.min(5.0, Math.max(0.1, newRep));
+
+        return { ...team, reputation: finalRep };
+    });
+};
+
+/**
+ * Calculates Team Reputation stars based on championships and strength.
+ * UPDATED: Now fallback/multiplier logic if needed, but primarily displays team.reputation.
+ */
+export const calculateTeamReputation = (team: Team): number => {
+    return team.reputation || 1;
+};
+
+export const calculateMonthlyNetFlow = (team: Team, fixtures: Fixture[], currentDate: string, manager?: ManagerProfile): number => {
+    const dateObj = new Date(currentDate);
+    const currentMonth = dateObj.getMonth();
+    const currentYear = dateObj.getFullYear();
+    const dayOfMonth = dateObj.getDate();
+    const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    const strengthFactor = team.strength / 100;
+    const fanFactor = team.fanBase / 1000000;
+
+    const totalMonthlySponsorValue = ((team.championships * 2) + (fanFactor * 0.5)) / 12;
+    const inc_Sponsor = (totalMonthlySponsorValue / daysInCurrentMonth) * dayOfMonth;
+
+    const merchSeed = team.id.charCodeAt(0) + currentMonth + currentYear;
+    const merchFluctuation = 0.8 + ((merchSeed % 40) / 100);
+    const starPlayerBonus = team.players.filter(p => p.skill >= 86).length * 0.2;
+    const inc_Merch = ((fanFactor * 0.8) / 12) * merchFluctuation * (team.strength > 80 ? 1.2 : 1.0) + starPlayerBonus;
+    const inc_Trade = inc_Merch * 0.2;
+
+    const playedThisMonth = fixtures.filter(f => 
+        f.played && (f.homeTeamId === team.id || f.awayTeamId === team.id) &&
+        new Date(f.date).getMonth() === currentMonth
+    );
+    const inc_TV = playedThisMonth.length * (0.20 + (strengthFactor * 0.10));
+
+    const homePlayedThisMonth = fixtures.filter(f => 
+        f.homeTeamId === team.id && f.played &&
+        new Date(f.date).getMonth() === currentMonth
+    );
+    const inc_Gate = homePlayedThisMonth.length * (fanFactor * 0.01944444);
+    const inc_Loca = inc_Gate * 0.45;
+
+    const inc_Transfers = manager && manager.contract.teamName === team.name ? (manager.stats.transferIncomeThisMonth || 0) : 0;
+
+    const totalIncome = inc_Sponsor + inc_Merch + inc_Trade + inc_TV + inc_Gate + inc_Loca + inc_Transfers;
+
+    const totalSquadValue = team.players.reduce((acc, p) => acc + p.value, 0);
+    const monthlyWages = (totalSquadValue * 0.005 * 52) / 12;
+    const exp_Staff = monthlyWages * 0.15;
+    const exp_Stadium = (team.stadiumCapacity / 100000) * 0.5;
+    const exp_Academy = strengthFactor * 0.4;
+    const exp_Debt = (totalSquadValue * 0.4) / 60;
+    const exp_Transfers = manager && manager.contract.teamName === team.name ? (manager.stats.transferSpendThisMonth || 0) : 0;
+
+    const totalExpense = monthlyWages + exp_Staff + exp_Stadium + exp_Academy + exp_Debt + exp_Transfers + 0.35; 
+
+    return totalIncome - totalExpense;
 };

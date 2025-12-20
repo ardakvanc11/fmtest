@@ -1,3 +1,4 @@
+
 import { Position, PlayerStats, Player, PlayerFaceData } from '../types';
 import { FACE_ASSETS } from './uiConstants';
 import { generateId } from './gameConstants';
@@ -799,7 +800,8 @@ export const generatePlayer = (position: Position, targetSkill: number, teamId: 
         secondaryPosition,
         skill,
         stats,
-        seasonStats: { goals: 0, assists: 0, ratings: [], averageRating: 0, matchesPlayed: 0 }, 
+        // Fix: Added missing yellowCards and redCards properties to satisfy PlayerSeasonStats interface
+        seasonStats: { goals: 0, assists: 0, yellowCards: 0, redCards: 0, ratings: [], averageRating: 0, matchesPlayed: 0 }, 
         face: faceData,
         jersey,
         age,

@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect } from 'react';
 import { Team, ManagerProfile, Fixture } from '../types';
 import { Wallet, TrendingUp, TrendingDown, DollarSign, Users, Building2, PieChart, Landmark, CreditCard, PiggyBank, ArrowRightLeft, Briefcase, Scale, AlertTriangle, CheckCircle, Save, AlertCircle, ArrowUpRight, ArrowDownRight, Coins, Calendar, ArrowUpDown } from 'lucide-react';
@@ -47,7 +45,7 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
 
     // GELİRLER (Monthly - Used in Overview)
     
-    // 1. SPONSOR INCOME (Accrues Daily)
+    // 1. SPONSOR INCOME (AccruES Daily)
     // Full monthly deal value
     const totalMonthlySponsorValue = ((team.championships * 2) + (fanFactor * 0.5)) / 12;
     // Current amount accrued this month (Day 1 = small, Day 30 = full)
@@ -289,7 +287,8 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
         { id: 'SPONSORS', label: 'Sponsorlar', icon: Briefcase }
     ];
 
-    const RenderMoneyRow = ({ label, amount, type }: { label: string, amount: number, type: 'inc' | 'exp' }) => (
+    // Added optional key to props type to satisfy assignment checking in maps
+    const RenderMoneyRow = ({ label, amount, type }: { label: string, amount: number, type: 'inc' | 'exp', key?: any }) => (
         <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-700/50 last:border-0 text-sm">
             <span className="text-slate-600 dark:text-slate-400">{label}</span>
             <span className={`font-mono font-bold ${type === 'inc' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -564,7 +563,7 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
                                                 -{formatMoney(item.lastMonth)}
                                             </td>
                                             <td className={`p-4 text-right font-mono font-bold text-slate-900 dark:text-white ${expenseSortConfig.key === 'season' ? 'bg-yellow-50/50 dark:bg-yellow-900/10' : ''}`}>
-                                                -{formatMoney(item.season)}
+                                                {formatMoney(item.season)}
                                             </td>
                                         </tr>
                                     ))}
@@ -707,7 +706,7 @@ const TicketIcon = (props: any) => (
 );
 
 const TrophyIcon = (props: any) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55-.47.98-.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
 );
 
 export default FinanceView;

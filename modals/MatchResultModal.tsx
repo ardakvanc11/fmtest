@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import { Team, MatchStats, MatchEvent } from '../types';
 import { MonitorPlay, Syringe, Disc, Users, BarChart2, Star, RefreshCw, X } from 'lucide-react';
+import PlayerFace from '../components/shared/PlayerFace';
 
 const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, events, onProceed, onSkip }: {homeTeam: Team, awayTeam: Team, homeScore: number, awayScore: number, stats: MatchStats, events: MatchEvent[], onProceed: () => void, onSkip?: () => void }) => {
     const [statsTab, setStatsTab] = useState<'STATS' | 'RATINGS'>('STATS');
@@ -50,7 +50,7 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
         return 'bg-red-600';
     };
 
-    const renderPlayerRatings = (ratings: any[], teamName: string) => (
+    const renderPlayerRatings = (ratings: any[], teamName: string, team: Team) => (
         <div className="mb-6 last:mb-0">
             <div className="text-sm font-bold text-slate-400 uppercase mb-2 border-b border-slate-700 pb-1 flex justify-between">
                 <span>{teamName}</span>
@@ -62,9 +62,17 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
                     const goalCount = events.filter(e => e.type === 'GOAL' && e.scorer === p.name).length;
                     const assistCount = events.filter(e => e.type === 'GOAL' && e.assist === p.name).length;
                     
+                    const playerObj = team.players.find(pl => pl.id === p.playerId);
+
                     return (
                         <div key={i} className="flex justify-between items-center text-sm p-1.5 hover:bg-slate-700/50 rounded transition">
                              <div className="flex items-center gap-2">
+                                 {/* Small Face Preview */}
+                                 {playerObj && (
+                                     <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-600 bg-slate-800 shrink-0 hidden sm:block">
+                                         <PlayerFace player={playerObj} />
+                                     </div>
+                                 )}
                                  <div className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold text-white ${getPosBadgeColor(p.position)}`}>
                                      {p.position}
                                  </div>
@@ -270,8 +278,8 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
                                 </div>
                             ) : (
                                 <div>
-                                    {renderPlayerRatings(stats.homeRatings, homeTeam.name)}
-                                    {renderPlayerRatings(stats.awayRatings, awayTeam.name)}
+                                    {renderPlayerRatings(stats.homeRatings, homeTeam.name, homeTeam)}
+                                    {renderPlayerRatings(stats.awayRatings, awayTeam.name, awayTeam)}
                                 </div>
                             )}
                         </div>

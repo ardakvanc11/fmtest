@@ -1,11 +1,10 @@
 
-
-
-import { Team, Player, Fixture, MatchEvent, MatchStats, Position, Message } from '../types';
-import { generateId, generatePlayer, INJURY_TYPES, RIVALRIES } from '../constants';
+import { Team, Player, Fixture, MatchEvent, MatchStats, Position, Message, TransferRecord, NewsItem } from '../types';
+import { generateId, generatePlayer, INJURY_TYPES, RIVALRIES, GAME_CALENDAR } from '../constants';
 import { FAN_NAMES, DERBY_TWEETS_WIN, DERBY_TWEETS_LOSS, FAN_TWEETS_WIN, FAN_TWEETS_LOSS, FAN_TWEETS_DRAW } from '../data/tweetPool';
 import { MATCH_INFO_MESSAGES } from '../data/infoPool';
 import { GOAL_TEXTS, SAVE_TEXTS, MISS_TEXTS, FOUL_TEXTS, YELLOW_CARD_TEXTS, YELLOW_CARD_AGGRESSIVE_TEXTS, OFFSIDE_TEXTS, CORNER_TEXTS } from '../data/eventTexts';
+import { generatePlayer as createNewPlayer, calculateMarketValue } from '../data/playerConstants';
 
 export * from './helpers';
 export * from './ratingsAndStats';
@@ -17,8 +16,168 @@ export * from './gameFlow';
 
 import { calculateRating } from './ratingsAndStats'; // Import for use here
 import { getWeightedInjury } from './matchLogic'; 
+import { recalculateTeamStrength, calculateRawTeamStrength } from './teamCalculations';
 
-// ... existing code ...
+// --- AI TRANSFER SIMULATION LOGIC ---
+export const simulateAiDailyTransfers = (teams: Team[], currentDate: string, currentWeek: number, myTeamId: string | null): { updatedTeams: Team[], newNews: NewsItem[] } => {
+    const dateObj = new Date(currentDate);
+    const day = dateObj.getDate();
+    const month = dateObj.getMonth(); // 6 = July, 7 = Aug, 8 = Sept
+
+    // RULE: No transfers on July 1st (Preparation Day)
+    // Month is 0-indexed. July is month 6.
+    // Start Date: 1 July. 
+    if (month === 6 && day === 1) {
+        return { updatedTeams: teams, newNews: [] };
+    }
+
+    // RULE: Window closes Sept 1st.
+    // Allow if July (6), August (7) or Sept 1st (8/1)
+    const isWindowOpen = (month === 6) || (month === 7) || (month === 8 && day === 1);
+    
+    if (!isWindowOpen) {
+        return { updatedTeams: teams, newNews: [] };
+    }
+
+    let resultTeams = [...teams];
+    const generatedNews: NewsItem[] = [];
+
+    // Calculate days remaining until Sept 1st (approx)
+    // Sept 1st is target.
+    const deadline = new Date(dateObj.getFullYear(), 8, 1);
+    const diffTime = deadline.getTime() - dateObj.getTime();
+    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // Safety check
+    if (daysRemaining <= 0) return { updatedTeams: teams, newNews: [] };
+
+    // Iterate through teams to simulate activity
+    resultTeams = resultTeams.map(team => {
+        // Skip user team (user controls their own transfers)
+        if (team.id === myTeamId) return team;
+
+        let modifiedTeam = { ...team };
+        const transfersInCount = team.transferHistory.filter(t => t.type === 'BOUGHT').length;
+        
+        // Target: Minimum 6, Max 17 transfers
+        // Probability Logic:
+        // We need to make roughly (6 - current) transfers in (daysRemaining) days.
+        // Base chance increases as deadline approaches if below min.
+        // Also allow some randomness to reach up to 17.
+        
+        // Buying Probability
+        let buyChance = 0.15; // Base daily chance
+        if (transfersInCount < 6) {
+            buyChance = Math.min(0.8, (6 - transfersInCount) / daysRemaining * 2); // Accelerate if behind
+        } else if (transfersInCount >= 17) {
+            buyChance = 0; // Stop buying
+        }
+
+        // Selling Probability
+        // Sell if squad is too big (>25) or randomly to generate funds/churn
+        const squadSize = team.players.length;
+        let sellChance = 0.10;
+        if (squadSize > 25) sellChance = 0.40;
+        if (squadSize < 18) sellChance = 0; // Don't deplete too much
+
+        // --- EXECUTE BUY ---
+        if (Math.random() < buyChance) {
+            // Determine position need (simplified: random weighted by squad gaps)
+            // For AI simplicity, we generate a player fitting the team's strength level
+            
+            // Target Strength: Current Team Strength +/- variance
+            // If rich, aim higher.
+            const budgetFactor = team.budget > 20 ? 3 : team.budget > 5 ? 0 : -2;
+            const targetSkill = Math.floor(team.strength + budgetFactor + (Math.random() * 6 - 3));
+            
+            // Pick a position (random for now, could be smarter)
+            const positions = [Position.GK, Position.STP, Position.SLB, Position.SGB, Position.OS, Position.SLK, Position.SGK, Position.SNT];
+            const targetPos = positions[Math.floor(Math.random() * positions.length)];
+
+            // Generate "Inbound" Player (Simulates buying from foreign/lower leagues)
+            // Use existing generator but force reasonable value
+            const newPlayer = createNewPlayer(targetPos, targetSkill, team.id, true, team.jersey);
+            
+            // Check Budget
+            if (team.budget >= newPlayer.value) {
+                // BUY SUCCESS
+                modifiedTeam.budget -= newPlayer.value;
+                modifiedTeam.players = [...modifiedTeam.players, newPlayer];
+                
+                // Add History
+                const record: TransferRecord = {
+                    date: `${day} ${month === 6 ? 'Tem' : month === 7 ? 'Ağu' : 'Eyl'}`,
+                    playerName: newPlayer.name,
+                    type: 'BOUGHT',
+                    counterparty: newPlayer.nationality === 'Türkiye' ? 'Alt Lig' : 'Yurt Dışı',
+                    price: `${newPlayer.value} M€`
+                };
+                modifiedTeam.transferHistory = [...modifiedTeam.transferHistory, record];
+
+                // Recalculate Strength
+                modifiedTeam = recalculateTeamStrength(modifiedTeam);
+
+                // Add News (If significant)
+                if (newPlayer.value > 5) {
+                    generatedNews.push({
+                        id: generateId(),
+                        week: currentWeek,
+                        title: `Transfer: ${team.name}`,
+                        content: `${team.name}, kadrosunu ${newPlayer.name} (${newPlayer.position}, ${newPlayer.skill}) ile güçlendirdi. Bonservis: ${newPlayer.value} M€`,
+                        type: 'TRANSFER'
+                    });
+                }
+            }
+        }
+
+        // --- EXECUTE SELL ---
+        if (Math.random() < sellChance) {
+            // Pick a player to sell (Not the best ones usually, unless big offer logic added)
+            // Random index
+            if (modifiedTeam.players.length > 18) {
+                const sellIdx = Math.floor(Math.random() * modifiedTeam.players.length);
+                const playerToSell = modifiedTeam.players[sellIdx];
+                
+                // Don't sell newly bought players (check history)
+                const justBought = modifiedTeam.transferHistory.some(h => h.playerName === playerToSell.name && h.type === 'BOUGHT');
+                
+                if (!justBought) {
+                    // Sell Value (Market Value +/- 10%)
+                    const sellPrice = Number((playerToSell.value * (0.9 + Math.random() * 0.2)).toFixed(1));
+                    
+                    modifiedTeam.budget += sellPrice;
+                    modifiedTeam.players = modifiedTeam.players.filter(p => p.id !== playerToSell.id);
+                    
+                    const record: TransferRecord = {
+                        date: `${day} ${month === 6 ? 'Tem' : month === 7 ? 'Ağu' : 'Eyl'}`,
+                        playerName: playerToSell.name,
+                        type: 'SOLD',
+                        counterparty: 'Yurt Dışı', // Simplified destination
+                        price: `${sellPrice} M€`
+                    };
+                    modifiedTeam.transferHistory = [...modifiedTeam.transferHistory, record];
+                    
+                    // Recalculate Strength
+                    modifiedTeam = recalculateTeamStrength(modifiedTeam);
+
+                    if (sellPrice > 5) {
+                        generatedNews.push({
+                            id: generateId(),
+                            week: currentWeek,
+                            title: `Ayrılık: ${team.name}`,
+                            content: `${team.name}, ${playerToSell.name} ile yollarını ayırdı. Oyuncu yurt dışına transfer oldu. Gelir: ${sellPrice} M€`,
+                            type: 'TRANSFER'
+                        });
+                    }
+                }
+            }
+        }
+
+        return modifiedTeam;
+    });
+
+    return { updatedTeams: resultTeams, newNews: generatedNews };
+};
 
 // Process Matches: Disciplines, Injuries AND Update Season Stats
 export const processMatchPostGame = (teams: Team[], events: MatchEvent[], currentWeek: number, allFixtures: Fixture[] = []): Team[] => {
@@ -135,6 +294,8 @@ export const processMatchPostGame = (teams: Team[], events: MatchEvent[], curren
                     ...player.seasonStats,
                     goals: player.seasonStats.goals + goals,
                     assists: player.seasonStats.assists + assists,
+                    yellowCards: (player.seasonStats.yellowCards || 0) + yellowCards,
+                    redCards: (player.seasonStats.redCards || 0) + redCards,
                     matchesPlayed: player.seasonStats.matchesPlayed + 1,
                     ratings: [...player.seasonStats.ratings, matchRating]
                 };
