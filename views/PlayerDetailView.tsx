@@ -1,22 +1,61 @@
 
 import React, { useState } from 'react';
-import { Player, Position } from '../types';
-import { ChevronLeft, Trophy, Activity, Heart, Shield, Swords, Zap, Star, TrendingUp, AlertTriangle, Ruler, Anchor, FileText, Goal, ArrowRightLeft, Scale, History, Calendar, Lock, Unlock, Briefcase, Coins, CheckCircle2, ChevronDown, MessageCircle, BedDouble, FileSignature, UserMinus } from 'lucide-react';
+import { Player, Position, ManagerProfile } from '../types';
+import { ChevronLeft, Trophy, Activity, Heart, Shield, Swords, Zap, Star, TrendingUp, AlertTriangle, Ruler, Anchor, FileText, Goal, ArrowRightLeft, Scale, History, Calendar, Lock, Unlock, Briefcase, Coins, CheckCircle2, ChevronDown, MessageCircle, BedDouble, FileSignature, UserMinus, Smile, Users, ThumbsUp, ThumbsDown, UserCheck, Medal, Crown, X, Check, Wallet } from 'lucide-react';
 import PlayerFace from '../components/shared/PlayerFace';
 import PlayerPositionPitch from '../components/shared/PlayerPositionPitch';
 import PlayerStatsTable from '../components/shared/PlayerStatsTable';
+import { calculatePlayerWage } from '../utils/teamCalculations';
 
 interface PlayerDetailViewProps {
     player: Player;
     onClose: () => void;
     myTeamId?: string;
+    manager?: ManagerProfile;
+    teammates?: Player[];
+    onInteract?: (playerId: string, type: 'POSITIVE' | 'NEGATIVE' | 'HOSTILE') => void;
+    onUpdatePlayer?: (playerId: string, updates: Partial<Player>) => void;
+    onStartNegotiation?: (player: Player) => void;
+    onStartTransferNegotiation?: (player: Player) => void; // Added Prop
+    onReleasePlayer?: (player: Player, cost: number) => void;
+    currentWeek?: number; 
 }
 
-const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, myTeamId }) => {
-    const [activeTab, setActiveTab] = useState<'GENERAL' | 'CONTRACT' | 'TRANSFER' | 'DEVELOPMENT' | 'COMPARE' | 'HISTORY'>('GENERAL');
+// Internal Interface for Status Config
+interface StatusConfig {
+    id: string;
+    label: string;
+    rank: number;
+    color: string;
+    bg: string;
+    desc: string;
+    icon: any;
+}
+
+const STATUS_OPTIONS: StatusConfig[] = [
+    { id: 'STAR', label: 'Yıldız Oyuncu', rank: 7, color: 'text-yellow-500', bg: 'bg-yellow-500/10 border-yellow-500/50', desc: 'Takımın tartışmasız lideri ve en önemli ismi.', icon: Crown },
+    { id: 'IMPORTANT', label: 'Önemli Oyuncu', rank: 6, color: 'text-blue-500', bg: 'bg-blue-500/10 border-blue-500/50', desc: 'Kadro planlamasının kilit isimlerinden biri.', icon: Shield },
+    { id: 'FIRST_XI', label: 'İlk 11 Oyuncusu', rank: 5, color: 'text-green-500', bg: 'bg-green-500/10 border-green-500/50', desc: 'Düzenli olarak ilk 11\'de başlar.', icon: Star },
+    { id: 'ROTATION', label: 'Rotasyon', rank: 4, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/50', desc: 'Sık sık süre alan kadro alternatifi.', icon: ArrowRightLeft },
+    { id: 'IMPACT', label: 'Hamle Oyuncusu', rank: 3, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/50', desc: 'Maçın gidişatını değiştirmek için sonradan girer.', icon: Zap },
+    { id: 'JOKER', label: 'Joker', rank: 2, color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/50', desc: 'Farklı mevkilerde görev alabilen görev adamı.', icon: Briefcase },
+    { id: 'SURPLUS', label: 'İhtiyaç Yok', rank: 1, color: 'text-slate-500', bg: 'bg-slate-500/10 border-slate-500/50', desc: 'Kadro planlamasında düşünülmüyor.', icon: UserMinus }
+];
+
+const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, myTeamId, manager, teammates, onInteract, onUpdatePlayer, onStartNegotiation, onStartTransferNegotiation, onReleasePlayer, currentWeek }) => {
+    const [activeTab, setActiveTab] = useState<'GENERAL' | 'HAPPINESS' | 'CONTRACT' | 'TRANSFER' | 'DEVELOPMENT' | 'COMPARE' | 'HISTORY'>('GENERAL');
     const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+    const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+    
+    // Action Modals State
+    const [actionModal, setActionModal] = useState<'RELEASE' | 'TERMINATE' | null>(null);
 
     const isMyPlayer = myTeamId && player.teamId === myTeamId;
+    const isNegotiationOnCooldown = player.nextNegotiationWeek && currentWeek && currentWeek < player.nextNegotiationWeek;
+
+    // Financial Calculations
+    const actualWage = player.wage !== undefined ? player.wage : calculatePlayerWage(player);
+    const estimatedWage = actualWage.toFixed(2);
 
     const toggleDropdown = (id: string) => {
         if (activeDropdown === id) {
@@ -30,6 +69,7 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
         setActiveDropdown(null);
         switch (action) {
             case 'TAB_GENERAL': setActiveTab('GENERAL'); break;
+            case 'TAB_HAPPINESS': setActiveTab('HAPPINESS'); break;
             case 'TAB_CONTRACT': setActiveTab('CONTRACT'); break;
             case 'TAB_TRANSFER': setActiveTab('TRANSFER'); break;
             case 'TAB_DEVELOPMENT': setActiveTab('DEVELOPMENT'); break;
@@ -37,17 +77,84 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
             case 'TAB_HISTORY': setActiveTab('HISTORY'); break;
             
             // Actions
-            case 'HAPPINESS': alert("Mutluluk Durumu: Oyuncu şu an takımda mutlu görünüyor."); break;
-            case 'CONTRACT_START': alert("Sözleşme görüşmeleri başlatıldı..."); break;
-            case 'RELEASE': alert(`${player.name} serbest bırakıldı!`); break;
-            case 'TERMINATE': alert("Sözleşme karşılıklı feshedildi."); break;
-            case 'TRANSFER_OFFER': alert("Yeni transfer teklifi yapılıyor..."); break;
-            case 'TALK': alert("Oyuncu ile görüşme odasına gidiliyor..."); break;
-            case 'REST': alert("Oyuncuya 1 gün izin verildi."); break;
+            case 'CONTRACT_START': 
+                if (isNegotiationOnCooldown) {
+                    alert(`Bu oyuncu ile yakın zamanda görüşme yapıldı. ${player.nextNegotiationWeek && currentWeek ? player.nextNegotiationWeek - currentWeek : '?'} hafta daha beklemeniz gerekiyor.`);
+                    return;
+                }
+                if (onStartNegotiation) {
+                    onStartNegotiation(player);
+                } else {
+                    alert("Sözleşme modülü yüklenemedi.");
+                }
+                break;
+            
+            case 'RELEASE': 
+                setActionModal('RELEASE');
+                break;
+
+            case 'TERMINATE': 
+                setActionModal('TERMINATE');
+                break;
+
+            case 'TRANSFER_OFFER': 
+                if (isNegotiationOnCooldown) {
+                    alert(`Bu oyuncu için kulübüyle yakın zamanda görüşme yapıldı. ${player.nextNegotiationWeek && currentWeek ? player.nextNegotiationWeek - currentWeek : '?'} hafta daha beklemeniz gerekiyor.`);
+                    return;
+                }
+                if (onStartTransferNegotiation) {
+                    onStartTransferNegotiation(player);
+                } else {
+                    alert("Transfer modülü şu an devre dışı.");
+                }
+                break;
+            
+            case 'TALK': 
+                if (onInteract) {
+                    const outcome = Math.random() > 0.4 ? 'POSITIVE' : 'NEGATIVE';
+                    onInteract(player.id, outcome);
+                    alert(outcome === 'POSITIVE' ? "Görüşme olumlu geçti. İlişkiniz güçlendi." : "Görüşme gergin geçti. Oyuncu tepkili.");
+                }
+                break;
+            case 'REST': 
+                alert("Oyuncuya 1 gün izin verildi."); 
+                if (onInteract) onInteract(player.id, 'POSITIVE');
+                break;
+                
             default: break;
         }
     };
+
+    const handleConfirmRelease = () => {
+        if (onReleasePlayer) {
+            const currentYear = 2025; 
+            const yearsLeft = Math.max(1, player.contractExpiry - currentYear); 
+            const cost = yearsLeft * actualWage;
+            onReleasePlayer(player, cost);
+        }
+        setActionModal(null);
+    };
+
+    const handleConfirmTerminate = () => {
+        // Probability logic: 20% Base chance.
+        let successChance = 0.20;
+        if (player.morale < 40) successChance += 0.20; 
+        if (player.age > 33) successChance += 0.15; 
+        
+        const roll = Math.random();
+        
+        if (roll < successChance) {
+            if (onReleasePlayer) onReleasePlayer(player, 0); // 0 Cost
+            alert("BAŞARILI!\n\nOyuncu karşılıklı fesih teklifini kabul etti. Tazminat ödenmeden yollar ayrıldı.");
+        } else {
+            alert("BAŞARISIZ!\n\nOyuncu teklifi sert bir dille reddetti!\n\n'Ben paramı son kuruşuna kadar almadan şuradan şuraya gitmem!'\n\n(Oyuncu Morali Çöktü, İlişki: Düşman)");
+            if (onUpdatePlayer) onUpdatePlayer(player.id, { morale: 5 }); 
+            if (onInteract) onInteract(player.id, 'HOSTILE'); 
+        }
+        setActionModal(null);
+    };
     
+    // Helper functions and render logic...
     const getAttrColor = (val: number) => {
         if (val >= 90) return 'text-yellow-500 font-black'; 
         if (val >= 80) return 'text-green-500 font-bold';   
@@ -63,11 +170,108 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
         return 'bg-red-600';
     };
 
+    // --- SQUAD STATUS LOGIC ---
+    const getPlayerSquadStatus = (): StatusConfig => {
+        // If manually set, use that
+        if (player.squadStatus) {
+            const found = STATUS_OPTIONS.find(s => s.id === player.squadStatus);
+            if (found) return found;
+        }
+
+        // Fallback to calculation if no manual status
+        if (!teammates || teammates.length === 0) {
+            if (player.skill >= 88) return STATUS_OPTIONS[0]; // STAR
+            if (player.skill >= 82) return STATUS_OPTIONS[1]; // IMPORTANT
+            if (player.skill >= 75) return STATUS_OPTIONS[2]; // FIRST_XI
+            return STATUS_OPTIONS[3]; // ROTATION
+        }
+
+        const sortedTeammates = [...teammates].sort((a, b) => b.skill - a.skill);
+        const rank = sortedTeammates.findIndex(p => p.id === player.id);
+        
+        if (rank <= 1) return STATUS_OPTIONS[0]; // STAR (Top 2)
+        if (rank <= 4) return STATUS_OPTIONS[1]; // IMPORTANT (Next 3)
+        if (rank <= 10) return STATUS_OPTIONS[2]; // FIRST_XI (Next 6 - completes 11)
+        if (rank <= 15) return STATUS_OPTIONS[3]; // ROTATION
+        if (rank <= 18) return STATUS_OPTIONS[4]; // IMPACT
+        if (rank <= 22) return STATUS_OPTIONS[5]; // JOKER
+        return STATUS_OPTIONS[6]; // SURPLUS
+    };
+
+    const changeSquadStatus = (newStatusId: string) => {
+        if (!onUpdatePlayer) return;
+
+        const currentStatus = getPlayerSquadStatus();
+        const newStatus = STATUS_OPTIONS.find(s => s.id === newStatusId);
+        
+        if (!newStatus) return;
+
+        const rankDiff = currentStatus.rank - newStatus.rank;
+        let moraleChange = 0;
+
+        if (rankDiff > 0) {
+            // Demotion
+            if (rankDiff === 1) moraleChange = -15;
+            else if (rankDiff === 2) moraleChange = -30;
+            else if (rankDiff >= 3) moraleChange = -60;
+        } else if (rankDiff < 0) {
+            // Promotion
+            moraleChange = 10;
+        }
+
+        const newMorale = Math.max(0, Math.min(100, player.morale + moraleChange));
+        
+        onUpdatePlayer(player.id, { 
+            squadStatus: newStatusId,
+            morale: newMorale
+        });
+
+        setIsStatusModalOpen(false);
+        
+        // Feedback Alert
+        let msg = `Statü güncellendi: ${newStatus.label}.`;
+        if (moraleChange !== 0) msg += `\nMorale Etkisi: ${moraleChange > 0 ? '+' : ''}${moraleChange}`;
+        alert(msg);
+    };
+
     const currentCondition = player.condition !== undefined ? player.condition : player.stats.stamina;
     
-    // Financial Calculations
-    const estimatedWage = (player.value * 0.005 * 52).toFixed(2); // Annual
-    const releaseClause = (player.value * 1.5).toFixed(1);
+    // Get Manager Opinion
+    const getManagerOpinion = () => {
+        if (!manager || !isMyPlayer) return { text: "Sizin hakkınızda bir fikri yok", color: "text-white" };
+        
+        const relation = manager.playerRelations.find(r => r.playerId === player.id);
+        const val = relation ? relation.value : 50;
+
+        if (val >= 80) return { text: "Sizi idolü olarak görüyor", color: "text-green-400" };
+        if (val >= 60) return { text: "Sizi seviyor", color: "text-green-500" };
+        if (val <= 20) return { text: "Sizden nefret ediyor", color: "text-red-600" };
+        if (val <= 40) return { text: "Sizi sevmiyor", color: "text-red-400" };
+        
+        return { text: "Sizin hakkınızda nötr", color: "text-slate-300" };
+    };
+
+    // Get Favorite Teammates
+    const getFavoritePeople = () => {
+        if (!teammates || teammates.length === 0) return [];
+        // Filter self out
+        const others = teammates.filter(t => t.id !== player.id);
+        if (others.length === 0) return [];
+        
+        // Pseudo-random selection based on ID to be deterministic
+        const seed = player.id.charCodeAt(0);
+        const idx1 = seed % others.length;
+        const idx2 = (seed + 5) % others.length;
+        
+        const list = [others[idx1]];
+        if (others.length > 1 && idx1 !== idx2) list.push(others[idx2]);
+        
+        return list;
+    };
+
+    const managerOpinion = getManagerOpinion();
+    const favoriteTeammates = getFavoritePeople();
+    const squadStatus = getPlayerSquadStatus();
 
     const AttributeRow = ({ label, value }: { label: string, value: number }) => (
         <div className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-700/30 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-700/20 px-1 rounded transition-colors">
@@ -89,8 +293,8 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
                     <button onClick={() => handleAction('TAB_GENERAL')} className={btnClass}>
                         <Star size={16} /> Profil ve Özellikler
                     </button>
-                    <button onClick={() => handleAction('HAPPINESS')} className={btnClass}>
-                        <Heart size={16} className="text-red-500" /> Mutluluk Durumu
+                    <button onClick={() => handleAction('TAB_HAPPINESS')} className={btnClass}>
+                        <Heart size={16} className="text-red-500" /> Mutluluk ve Hiyerarşi
                     </button>
                 </div>
             );
@@ -101,18 +305,25 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
                     <button onClick={() => handleAction('TAB_CONTRACT')} className={btnClass}>
                         <FileText size={16} /> Sözleşme Detayları
                     </button>
-                    <button onClick={() => handleAction('CONTRACT_START')} className={btnClass}>
-                        <FileSignature size={16} className="text-blue-500"/> Sözleşme Görüşmelerine Başla
-                    </button>
-                    {isMyPlayer && (
+                    {isMyPlayer ? (
                         <>
-                            <button onClick={() => handleAction('TERMINATE')} className={`${btnClass} text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border-red-100 dark:border-red-900/30`}>
-                                <ArrowRightLeft size={16} /> Karşılıklı Fesih
+                            <button 
+                                onClick={() => handleAction('CONTRACT_START')} 
+                                disabled={isNegotiationOnCooldown}
+                                className={`${btnClass} ${isNegotiationOnCooldown ? 'opacity-50 cursor-not-allowed bg-slate-200 dark:bg-slate-800' : ''}`}
+                            >
+                                {isNegotiationOnCooldown ? <Lock size={16}/> : <FileSignature size={16} className="text-blue-500"/>}
+                                {isNegotiationOnCooldown ? 'Görüşmelere Kapalı (Soğuma)' : 'Sözleşme Görüşmelerine Başla'}
+                            </button>
+                            <button onClick={() => handleAction('TERMINATE')} className={`${btnClass} text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 border-orange-100 dark:border-orange-900/30`}>
+                                <ArrowRightLeft size={16} /> Karşılıklı Fesih (Riskli)
                             </button>
                             <button onClick={() => handleAction('RELEASE')} className={`${btnClass} text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border-red-100 dark:border-red-900/30`}>
-                                <UserMinus size={16} /> Serbest Bırak
+                                <UserMinus size={16} /> Serbest Bırak (Tazminatlı)
                             </button>
                         </>
+                    ) : (
+                        <div className="text-slate-500 text-xs p-2">Bu oyuncu sizin takımınızda değil.</div>
                     )}
                 </div>
             );
@@ -123,9 +334,11 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
                     <button onClick={() => handleAction('TAB_TRANSFER')} className={btnClass}>
                         <ArrowRightLeft size={16} /> Transfer Durumu
                     </button>
-                    <button onClick={() => handleAction('TRANSFER_OFFER')} className={btnClass}>
-                        <Coins size={16} className="text-green-500" /> Yeni Transfer Teklifi Yap
-                    </button>
+                    {!isMyPlayer && (
+                        <button onClick={() => handleAction('TRANSFER_OFFER')} className={btnClass}>
+                            <Coins size={16} className="text-green-500" /> Yeni Transfer Teklifi Yap
+                        </button>
+                    )}
                 </div>
             );
         }
@@ -144,7 +357,7 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
         return null;
     };
 
-    // Navigation Menu Config (Styled like screenshot)
+    // Navigation Menu Config
     const renderNavButton = (id: string, label: string, icon: any, hasDropdown: boolean) => {
         const isActive = activeTab === id;
         const isOpen = activeDropdown === id;
@@ -181,10 +394,140 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
     return (
         <div className="h-full bg-slate-100 dark:bg-slate-900 overflow-y-auto custom-scrollbar flex flex-col" onClick={() => activeDropdown && setActiveDropdown(null)}>
             
+            {/* Status Change Modal */}
+            {isStatusModalOpen && (
+                <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setIsStatusModalOpen(false)}>
+                    <div className="bg-slate-800 rounded-xl border border-slate-700 w-full max-w-lg p-6 shadow-2xl animate-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
+                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                <FileSignature className="text-yellow-500"/> Forma Süresi Ayarla
+                            </h3>
+                            <button onClick={() => setIsStatusModalOpen(false)} className="text-slate-400 hover:text-white">
+                                <X size={24}/>
+                            </button>
+                        </div>
+                        <div className="space-y-3">
+                            {STATUS_OPTIONS.map((status) => {
+                                const isCurrent = squadStatus.id === status.id;
+                                return (
+                                    <button 
+                                        key={status.id}
+                                        onClick={() => changeSquadStatus(status.id)}
+                                        className={`w-full p-4 rounded-xl border-2 flex items-center gap-4 transition-all text-left ${isCurrent ? 'bg-yellow-500/10 border-yellow-500' : 'bg-slate-700 border-slate-600 hover:bg-slate-600 hover:border-slate-500'}`}
+                                    >
+                                        <div className={`p-3 rounded-full ${isCurrent ? 'bg-yellow-500 text-black' : 'bg-slate-800 text-slate-400'}`}>
+                                            <status.icon size={24}/>
+                                        </div>
+                                        <div>
+                                            <div className={`text-lg font-bold ${isCurrent ? 'text-yellow-500' : 'text-white'}`}>{status.label}</div>
+                                            <div className="text-xs text-slate-400">{status.desc}</div>
+                                        </div>
+                                        {isCurrent && <CheckCircle2 className="ml-auto text-yellow-500" size={24}/>}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* RELEASE MODAL */}
+            {actionModal === 'RELEASE' && (
+                <div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setActionModal(null)}>
+                    <div className="bg-slate-800 rounded-xl border border-red-500 w-full max-w-md p-6 shadow-2xl animate-in zoom-in duration-200 text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-center mb-4">
+                            <div className="bg-red-500/20 p-4 rounded-full border border-red-500">
+                                <UserMinus size={48} className="text-red-500" />
+                            </div>
+                        </div>
+                        <h3 className="text-2xl font-bold text-white mb-2">Serbest Bırak</h3>
+                        <p className="text-slate-400 mb-6 text-sm">
+                            {player.name} isimli oyuncunun sözleşmesini tek taraflı feshetmek üzeresiniz.
+                        </p>
+                        
+                        <div className="bg-slate-900/50 p-4 rounded-lg text-left mb-6 space-y-3">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-slate-400">Kalan Sözleşme</span>
+                                <span className="text-white font-bold">{Math.max(1, player.contractExpiry - 2025)} Yıl</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-slate-400">Yıllık Maaş</span>
+                                <span className="text-white font-bold">{actualWage.toFixed(2)} M€</span>
+                            </div>
+                            <div className="h-px bg-slate-700 my-2"></div>
+                            <div className="flex justify-between text-base">
+                                <span className="text-red-400 font-bold uppercase">Toplam Tazminat</span>
+                                <span className="text-red-500 font-black font-mono">{(Math.max(1, player.contractExpiry - 2025) * actualWage).toFixed(2)} M€</span>
+                            </div>
+                        </div>
+
+                        <div className="bg-red-900/30 text-red-300 text-xs p-3 rounded mb-6 flex items-start gap-2 text-left">
+                            <AlertTriangle size={16} className="shrink-0 mt-0.5"/>
+                            Bu tutar transfer bütçenizden anında düşülecektir. İşlem geri alınamaz.
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button onClick={() => setActionModal(null)} className="flex-1 py-3 rounded-lg font-bold bg-slate-700 text-white hover:bg-slate-600 transition">
+                                İptal
+                            </button>
+                            <button onClick={handleConfirmRelease} className="flex-1 py-3 rounded-lg font-bold bg-red-600 text-white hover:bg-red-500 transition shadow-lg shadow-red-900/20">
+                                Onayla ve Öde
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* TERMINATE MODAL */}
+            {actionModal === 'TERMINATE' && (
+                <div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setActionModal(null)}>
+                    <div className="bg-slate-800 rounded-xl border border-orange-500 w-full max-w-md p-6 shadow-2xl animate-in zoom-in duration-200 text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-center mb-4">
+                            <div className="bg-orange-500/20 p-4 rounded-full border border-orange-500">
+                                <ArrowRightLeft size={48} className="text-orange-500" />
+                            </div>
+                        </div>
+                        <h3 className="text-2xl font-bold text-white mb-2">Karşılıklı Fesih</h3>
+                        <p className="text-slate-400 mb-6 text-sm">
+                            {player.name} ile masaya oturup sözleşmeyi tazminatsız sonlandırmayı teklif edeceksiniz.
+                        </p>
+                        
+                        <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div className="bg-green-900/20 border border-green-800 p-3 rounded-lg">
+                                <div className="text-green-500 font-bold text-sm mb-1 flex justify-center gap-1"><ThumbsUp size={14}/> Kabul Ederse</div>
+                                <p className="text-[10px] text-slate-400">Tazminat ödemeden takımdan ayrılır. Bütçeniz korunur.</p>
+                            </div>
+                            <div className="bg-red-900/20 border border-red-800 p-3 rounded-lg">
+                                <div className="text-red-500 font-bold text-sm mb-1 flex justify-center gap-1"><ThumbsDown size={14}/> Reddederse</div>
+                                <p className="text-[10px] text-slate-400">Morali çöker, size düşman olur ve performansı düşer.</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-900/50 p-3 rounded mb-6">
+                            <div className="flex justify-between text-xs text-slate-400 mb-1">
+                                <span>Tahmini Başarı Şansı</span>
+                                <span className={player.morale < 50 ? "text-green-400" : "text-orange-400"}>{player.morale < 50 ? 'Yüksek' : 'Düşük'}</span>
+                            </div>
+                            <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                                <div className={`h-full ${player.morale < 50 ? 'bg-green-500' : 'bg-orange-500'}`} style={{width: player.morale < 50 ? '70%' : '30%'}}></div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button onClick={() => setActionModal(null)} className="flex-1 py-3 rounded-lg font-bold bg-slate-700 text-white hover:bg-slate-600 transition">
+                                Vazgeç
+                            </button>
+                            <button onClick={handleConfirmTerminate} className="flex-1 py-3 rounded-lg font-bold bg-orange-600 text-white hover:bg-orange-500 transition shadow-lg shadow-orange-900/20">
+                                Teklifi Yap
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Header Navigation with Full Width Panel Dropdown */}
             <div 
-                className="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 flex flex-col shadow-md"
-                onMouseLeave={() => setActiveDropdown(null)}
+                className="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 flex flex-col shadow-md relative"
             >
                 <div className="flex items-center px-4">
                     <button
@@ -203,7 +546,6 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
                         {renderNavButton('COMPARE', 'Kıyasla', Scale, false)}
                         {renderNavButton('HISTORY', 'Geçmişim', History, false)}
                         
-                        {/* New Interaction Menu for Owned Players */}
                         {isMyPlayer && renderNavButton('INTERACT', 'İlişkiler', MessageCircle, true)}
                     </div>
                 </div>
@@ -211,7 +553,7 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
                 {/* Full Width Dropdown Panel */}
                 {activeDropdown && (
                     <div 
-                        className="border-t border-slate-700 bg-slate-800/95 backdrop-blur-sm shadow-2xl animate-in slide-in-from-top-1 z-40 max-h-[60vh] overflow-y-auto" 
+                        className="absolute top-full left-0 w-full border-t border-slate-700 bg-slate-800/95 backdrop-blur-sm shadow-2xl animate-in slide-in-from-top-1 z-50 max-h-[60vh] overflow-y-auto" 
                         onClick={(e) => e.stopPropagation()}
                     >
                         {renderDropdownContent()}
@@ -221,57 +563,59 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
 
             <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full space-y-6 pb-20">
                 
-                {/* 1. HERO SECTION (Always Visible) */}
-                <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden relative p-6 md:p-8">
-                    <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
-                        <Star size={200} />
-                    </div>
-
-                    <div className="flex flex-col lg:flex-row items-center gap-8 relative z-10">
-                        {/* Profile Photo */}
-                        <div className="relative shrink-0">
-                            <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-slate-100 dark:border-slate-700 shadow-xl overflow-hidden bg-slate-200">
-                                <PlayerFace player={player} />
-                            </div>
-                            <div className="absolute -bottom-2 -right-2 bg-slate-900 text-white w-10 h-10 md:w-12 md:h-12 flex flex-col items-center justify-center rounded-full shadow-lg border-2 border-yellow-500">
-                                <span className="text-base md:text-lg font-black leading-none">{player.skill}</span>
-                            </div>
+                {/* HERO SECTION */}
+                {activeTab !== 'HAPPINESS' && (
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden relative p-6 md:p-8">
+                        <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
+                            <Star size={200} />
                         </div>
 
-                        {/* Right: Info Area */}
-                        <div className="flex-1 text-center lg:text-left">
-                            <div className="flex flex-wrap justify-center lg:justify-start items-center gap-3 mb-2">
-                                <span className={`px-2 py-0.5 rounded text-xs md:text-sm font-bold text-white shadow-sm ${getPosBadgeColor(player.position)}`}>
-                                    {player.position}
-                                </span>
-                                {player.secondaryPosition && (
-                                    <span className={`px-2 py-0.5 rounded text-xs md:text-sm font-bold text-white shadow-sm opacity-70 ${getPosBadgeColor(player.secondaryPosition)}`}>
-                                        {player.secondaryPosition}
+                        <div className="flex flex-col lg:flex-row items-center gap-8 relative z-10">
+                            {/* Profile Photo */}
+                            <div className="relative shrink-0">
+                                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-slate-100 dark:border-slate-700 shadow-xl overflow-hidden bg-slate-200">
+                                    <PlayerFace player={player} />
+                                </div>
+                                <div className="absolute -bottom-2 -right-2 bg-slate-900 text-white w-10 h-10 md:w-12 md:h-12 flex flex-col items-center justify-center rounded-full shadow-lg border-2 border-yellow-500">
+                                    <span className="text-base md:text-lg font-black leading-none">{player.skill}</span>
+                                </div>
+                            </div>
+
+                            {/* Right: Info Area */}
+                            <div className="flex-1 text-center lg:text-left">
+                                <div className="flex flex-wrap justify-center lg:justify-start items-center gap-3 mb-2">
+                                    <span className={`px-2 py-0.5 rounded text-xs md:text-sm font-bold text-white shadow-sm ${getPosBadgeColor(player.position)}`}>
+                                        {player.position}
                                     </span>
-                                )}
-                            </div>
-                            
-                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-4 font-teko">
-                                {player.name}
-                            </h1>
+                                    {player.secondaryPosition && (
+                                        <span className={`px-2 py-0.5 rounded text-xs md:text-sm font-bold text-white shadow-sm opacity-70 ${getPosBadgeColor(player.secondaryPosition)}`}>
+                                            {player.secondaryPosition}
+                                        </span>
+                                    )}
+                                </div>
+                                
+                                <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-4 font-teko">
+                                    {player.name}
+                                </h1>
 
-                            <div className="flex flex-wrap justify-center lg:justify-start gap-4 text-sm text-slate-600 dark:text-slate-400">
-                                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                                    <Trophy size={14} className="text-yellow-600"/> <span>{player.nationality}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                                    <Ruler size={14} className="text-blue-500"/> <span>{player.age} Yaş • {player.height || 180} cm</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                                    <Anchor size={14} className="text-green-500"/> <span>{player.preferredFoot || 'Sağ'} Ayak</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                                    <Briefcase size={14} className="text-purple-500"/> <span>Sözleşme: {player.contractExpiry}</span>
+                                <div className="flex flex-wrap justify-center lg:justify-start gap-4 text-sm text-slate-600 dark:text-slate-400">
+                                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                        <Trophy size={14} className="text-yellow-600"/> <span>{player.nationality}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                        <Ruler size={14} className="text-blue-500"/> <span>{player.age} Yaş • {player.height || 180} cm</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                        <Anchor size={14} className="text-green-500"/> <span>{player.preferredFoot || 'Sağ'} Ayak</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                        <Briefcase size={14} className="text-purple-500"/> <span>Sözleşme: {player.contractExpiry}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 {/* --- TAB CONTENT --- */}
 
@@ -400,6 +744,168 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
                     </div>
                 )}
 
+                {/* 1.1 HAPPINESS TAB (Updated) */}
+                {activeTab === 'HAPPINESS' && (
+                    <div className="animate-in fade-in slide-in-from-right-2 h-full">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
+                            
+                            {/* COL 1: PLAYING TIME STRATEGY */}
+                            <div className="bg-slate-800 border border-slate-700 rounded-lg p-0 overflow-hidden flex flex-col h-full">
+                                <div className="bg-slate-900/50 p-3 border-b border-slate-700">
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase">Forma Süresi Stratejisi</h3>
+                                </div>
+                                <div className="p-4 space-y-6 flex-1">
+                                    <div className="flex justify-between items-center bg-slate-900/50 p-2 rounded">
+                                        <div className="text-center">
+                                            <div className="text-[10px] text-slate-500 uppercase font-bold">Maç</div>
+                                            <div className="text-xl font-black text-white">{player.seasonStats.matchesPlayed}</div>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-[10px] text-slate-500 uppercase font-bold">Ort P</div>
+                                            <div className="text-xl font-black text-green-400 bg-green-900/30 px-2 rounded border border-green-800">{player.seasonStats.averageRating || '-'}</div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div className="flex justify-between items-end mb-1">
+                                            <span className="text-[10px] font-bold text-slate-500 uppercase">Anlaşılan Statü</span>
+                                            {isMyPlayer && (
+                                                <button 
+                                                    onClick={() => setIsStatusModalOpen(true)}
+                                                    className="text-[10px] border border-slate-500 text-slate-400 px-2 py-0.5 rounded hover:bg-slate-700 hover:text-white transition"
+                                                >
+                                                    Değiştir
+                                                </button>
+                                            )}
+                                        </div>
+                                        
+                                        <div className={`p-3 rounded-lg border ${squadStatus.bg || 'bg-slate-700 border-slate-600'} flex items-center gap-3`}>
+                                            <squadStatus.icon size={24} className={squadStatus.color} />
+                                            <div>
+                                                <div className={`text-lg font-bold ${squadStatus.color}`}>
+                                                    {squadStatus.label}
+                                                </div>
+                                                <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{squadStatus.desc}</p>
+                                            </div>
+                                        </div>
+
+                                        <p className="text-xs text-slate-400 mt-3">Giydiği forma süresinden ve özellikle de son üç maçta forma giymesinden ötürü {player.morale > 70 ? 'memnun' : 'mutsuz'}.</p>
+                                    </div>
+
+                                    <div className="border-t border-slate-700 pt-4">
+                                        <div className="text-[10px] font-bold text-slate-500 uppercase mb-1">Planlar</div>
+                                        <ul className="space-y-2 text-xs text-slate-300">
+                                            <li className="flex items-start gap-2">
+                                                <span className="w-1 h-1 bg-white rounded-full mt-1.5 shrink-0"></span>
+                                                Kupa kazanmak istiyor ve takımının ligdeki şansı konusunda gayet heyecanlı
+                                            </li>
+                                            <li className="flex items-start gap-2">
+                                                <span className="w-1 h-1 bg-white rounded-full mt-1.5 shrink-0"></span>
+                                                Aklının bir köşesinde futbolu bıraktıktan sonra antrenörlük yaparak menajerlik yolunda ilerleme fikri var
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* COL 2: HIERARCHY */}
+                            <div className="bg-slate-800 border border-slate-700 rounded-lg p-0 overflow-hidden flex flex-col h-full">
+                                <div className="bg-slate-900/50 p-3 border-b border-slate-700 flex justify-between items-center">
+                                    <h3 className="text-xs font-bold text-blue-400 uppercase flex items-center gap-1">
+                                        Kadro Hiyerarşisi <ChevronLeft size={12} className="rotate-180"/>
+                                    </h3>
+                                </div>
+                                <div className="p-4 space-y-6 flex-1">
+                                    <div className="bg-slate-300 text-slate-900 font-bold text-center py-1 text-sm rounded-sm uppercase tracking-wide">
+                                        {player.skill > 85 ? 'Takım Lideri' : player.skill > 75 ? 'Yüksek Nüfuzlu Oyuncu' : 'Nüfuzlu Oyuncu'}
+                                    </div>
+                                    
+                                    <p className="text-xs text-slate-300">
+                                        {player.name} kulüpte {player.age < 21 ? 'genç yaşına rağmen' : 'tecrübesiyle'} saygı görüyor.
+                                    </p>
+
+                                    <div className="space-y-1 text-xs font-bold">
+                                        <div className="flex items-center gap-2 text-green-500"><span className="text-[10px]">+</span> İtibarı iyi</div>
+                                        <div className="flex items-center gap-2 text-green-500"><span className="text-[10px]">+</span> Yeteneği yüksek</div>
+                                        <div className="flex items-center gap-2 text-green-500"><span className="text-[10px]">+</span> Düzenli forma süresi alıyor</div>
+                                    </div>
+
+                                    <div className="bg-green-600 text-white font-bold text-center py-2 text-sm rounded flex items-center justify-center gap-2 cursor-pointer hover:bg-green-500 transition">
+                                        <Users size={16}/> Diğerleri'nin içinde <ChevronLeft size={12} className="rotate-180"/>
+                                    </div>
+                                    
+                                    <p className="text-xs text-slate-400">
+                                        Bu oyuncular şimdilik herhangi bir arkadaşlık grubuna uymayan oyunculardır. Bu durum, kulübe yeni transfer olmuş olmaları veya diğer oyuncularla uyuşamadıklarından kaynaklanıyor olabilir.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* COL 3: MORALE & RELATIONSHIPS */}
+                            <div className="bg-slate-800 border border-slate-700 rounded-lg p-0 overflow-hidden flex flex-col h-full">
+                                <div className="bg-slate-900/50 p-3 border-b border-slate-700">
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase">Moral</h3>
+                                </div>
+                                <div className="p-4 space-y-6 flex-1">
+                                    <div>
+                                        <div className="text-[10px] font-bold text-slate-500 uppercase mb-1">Moral</div>
+                                        <div className={`text-sm font-bold flex items-center gap-2 ${player.morale > 80 ? 'text-green-400' : player.morale > 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                                            <div className={`w-4 h-4 rounded-full flex items-center justify-center ${player.morale > 80 ? 'bg-green-500' : player.morale > 50 ? 'bg-yellow-500' : 'bg-red-500'}`}>
+                                                <div className="w-2 h-2 bg-slate-900 rounded-full"></div>
+                                            </div>
+                                            {player.morale > 90 ? 'Süper' : player.morale > 75 ? 'Çok İyi' : player.morale > 50 ? 'İdare Eder' : 'Kötü'}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div className="text-[10px] font-bold text-green-500 uppercase mb-1">Olumlu Düşünceleri</div>
+                                        <ul className="space-y-1 text-xs text-slate-300">
+                                            <li className="flex items-start gap-2"><span className="text-white">•</span> {player.teamId ? 'Takımına katıldığı için memnun' : 'Bir kulüp bulmak istiyor'}</li>
+                                            {player.morale > 80 && <li className="flex items-start gap-2"><span className="text-white">•</span> Antrenman düzeninden memnun</li>}
+                                            {player.skill > 80 && <li className="flex items-start gap-2"><span className="text-white">•</span> Oyuncular arasında nüfuzu yüksek biri olarak görülmekten memnun</li>}
+                                        </ul>
+                                    </div>
+
+                                    <div className="border-t border-slate-700 pt-4">
+                                        <div className="text-[10px] font-bold text-blue-400 uppercase mb-2">Yakınlık</div>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <UserCheck size={16} className="text-slate-400"/>
+                                            <span className="text-xs font-bold text-slate-200">Kendi Oyuncusu</span>
+                                        </div>
+                                        
+                                        <div className="text-[10px] font-bold text-slate-500 uppercase mb-1 mt-3">Hakkındaki Düşüncesi</div>
+                                        <div className={`text-sm font-bold mb-4 ${managerOpinion.color}`}>{managerOpinion.text}</div>
+
+                                        <div className="text-[10px] font-bold text-slate-500 uppercase mb-1">Sevilen Kişiler</div>
+                                        {favoriteTeammates.length > 0 ? (
+                                            <table className="w-full text-xs text-slate-300">
+                                                <thead>
+                                                    <tr className="text-[9px] text-slate-500 uppercase text-left">
+                                                        <th className="pb-1">İsim</th>
+                                                        <th className="pb-1">Sebep</th>
+                                                        <th className="pb-1 text-right">Uyruk</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="space-y-1">
+                                                    {favoriteTeammates.map((tm, i) => (
+                                                        <tr key={i}>
+                                                            <td className="font-bold flex items-center gap-1"><UserCheck size={10}/> {tm.name}</td>
+                                                            <td>Takım Arkadaşı</td>
+                                                            <td className="text-right font-bold">{tm.nationality}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        ) : (
+                                            <div className="text-xs text-slate-500 italic">Şu an için özel bir bağı yok.</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                )}
+
                 {/* 2. CONTRACT TAB */}
                 {activeTab === 'CONTRACT' && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-right-2">
@@ -427,18 +933,6 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
                                     <div className="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-700">
                                         <span className="text-slate-600 dark:text-slate-300 font-bold flex items-center gap-2"><Calendar size={16}/> Sözleşme Bitiş</span>
                                         <span className="font-mono text-slate-900 dark:text-white">30 Haziran {player.contractExpiry}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-700">
-                                        <span className="text-slate-600 dark:text-slate-300 font-bold flex items-center gap-2"><Unlock size={16}/> Serbest Kalma Bedeli</span>
-                                        <span className="font-mono text-slate-900 dark:text-white">{releaseClause} M€</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-700">
-                                        <span className="text-slate-600 dark:text-slate-300 font-bold flex items-center gap-2"><Coins size={16}/> Sadakat Bonusu</span>
-                                        <span className="font-mono text-slate-900 dark:text-white">{(player.value * 0.05).toFixed(2)} M€</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-700">
-                                        <span className="text-slate-600 dark:text-slate-300 font-bold flex items-center gap-2"><Briefcase size={16}/> Menajer</span>
-                                        <span className="font-mono text-slate-900 dark:text-white">Global Sports Mgmt.</span>
                                     </div>
                                 </div>
                             </div>

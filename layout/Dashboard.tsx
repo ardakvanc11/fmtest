@@ -65,10 +65,10 @@ const Dashboard = ({
     const isMatchDay = !!currentFixture;
     
     // Updated isMatchMode to restrict navigation during active match play, match flow, AND game over
-    const isMatchMode = ['match_live', 'match_result', 'interview', 'game_over'].includes(currentView);
+    const isMatchMode = ['match_live', 'match_result', 'interview', 'game_over', 'contract_negotiation'].includes(currentView);
     
-    // Specifically check for live match view to hide sidebar
-    const isMatchLive = currentView === 'match_live';
+    // Specifically check for live match OR contract negotiation to hide sidebar for immersion
+    const isFullScreenMode = ['match_live', 'contract_negotiation'].includes(currentView);
 
     // Calculate unread messages
     const unreadMessagesCount = state.messages.filter(m => !m.read).length;
@@ -81,18 +81,18 @@ const Dashboard = ({
     const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
     // Determine if we need padding (standard views) or full screen (match views/game over)
-    const noPaddingViews = ['match_live', 'locker_room', 'game_over'];
+    const noPaddingViews = ['match_live', 'locker_room', 'game_over', 'contract_negotiation'];
     const usePadding = !noPaddingViews.includes(currentView);
 
     return (
         <div className="flex h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-sans relative overflow-hidden transition-colors duration-300">
             {/* Mobile Sidebar Overlay */}
-            {mobileMenuOpen && !isMatchLive && (
+            {mobileMenuOpen && !isFullScreenMode && (
                 <div className="fixed inset-0 bg-black/80 z-40 md:hidden backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
             )}
 
-            {/* Sidebar - Conditionally Rendered based on isMatchLive */}
-            {!isMatchLive && (
+            {/* Sidebar - Conditionally Rendered based on isFullScreenMode */}
+            {!isFullScreenMode && (
                 <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 shrink-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                     <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                         <div className="flex items-center gap-3">
@@ -179,8 +179,8 @@ const Dashboard = ({
                 {/* HEADER - RESPONSIVE */}
                 <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-3 md:px-6 shadow-sm z-10 shrink-0 transition-colors duration-300">
                     <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
-                        {/* Hamburger - Hidden if match is live */}
-                        {!isMatchLive && (
+                        {/* Hamburger - Hidden if full screen mode */}
+                        {!isFullScreenMode && (
                             <button className="md:hidden text-slate-600 dark:text-slate-200 hover:text-black dark:hover:text-white p-2" onClick={() => setMobileMenuOpen(true)}>
                                 <Menu size={24} />
                             </button>
@@ -235,7 +235,7 @@ const Dashboard = ({
                             </button>
                         ) : isMatchMode ? (
                             <button disabled className="bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-400 px-3 py-2 md:px-4 md:py-2 rounded font-bold flex items-center cursor-not-allowed animate-pulse text-xs md:text-base transition-colors whitespace-nowrap">
-                                <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span> <span className="hidden sm:inline">MAÇ GÜNÜ</span><span className="sm:hidden">MAÇ</span>
+                                <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span> <span className="hidden sm:inline">MEŞGUL</span><span className="sm:hidden">MEŞGUL</span>
                             </button>
                         ) : !isMatchDay ? (
                             <button 

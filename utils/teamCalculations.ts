@@ -156,6 +156,73 @@ export const calculateTeamStrength = (team: Team): number => {
     return team.strength;
 };
 
+/**
+ * Calculates deterministic Annual Wage based on Skill, Value, Age and Squad Status.
+ * Used for both Finance view and AI logic.
+ */
+export const calculatePlayerWage = (player: Player): number => {
+    // 1. Determine Status (Fallback to skill-based if undefined)
+    let status = player.squadStatus;
+    if (!status) {
+        if (player.skill >= 85) status = 'STAR';
+        else if (player.skill >= 80) status = 'IMPORTANT';
+        else if (player.skill >= 75) status = 'FIRST_XI';
+        else if (player.skill >= 70) status = 'ROTATION';
+        else status = 'JOKER';
+    }
+
+    // 2. Base Wage from Market Value (20% baseline)
+    let wage = player.value * 0.20;
+
+    // 3. Skill Floor (Guarantees high wages for high skill players even if value is low due to age)
+    let skillFloor = 0;
+    if (player.skill >= 90) skillFloor = 12.0;
+    else if (player.skill >= 85) skillFloor = 8.0;
+    else if (player.skill >= 80) skillFloor = 4.0;
+    else if (player.skill >= 75) skillFloor = 1.5;
+    
+    // Use the higher of Value-based calc or Skill Floor
+    wage = Math.max(wage, skillFloor);
+
+    // 4. Squad Status Multiplier (Role Importance)
+    const statusMultipliers: Record<string, number> = {
+        'STAR': 1.6,       // Massive premium for Stars
+        'IMPORTANT': 1.3,
+        'FIRST_XI': 1.0,   // Standard
+        'ROTATION': 0.7,
+        'IMPACT': 0.6,
+        'JOKER': 0.5,
+        'SURPLUS': 0.3
+    };
+    wage *= (statusMultipliers[status] || 1.0);
+
+    // 5. Age Adjustments
+    if (player.age <= 21) {
+        // Young players get paid significantly less unless they are already superstars
+        wage *= 0.6; 
+    } else if (player.age >= 33) {
+        // Old Players Logic
+        if (player.skill >= 80) {
+            // "Yaşlı Yıldız": High wage premium despite age/value drop
+            wage *= 1.3; 
+        } else {
+            // Old Average Player: Standard or slight drop
+            wage *= 0.9;
+        }
+    }
+
+    // 6. Nationality Adjustment (Domestic Discount)
+    // Turkish players get 30% less wage compared to foreigners
+    if (player.nationality === 'Türkiye') {
+        wage *= 0.7;
+    }
+
+    // 7. Minimum Wage Floor (0.05 M€)
+    wage = Math.max(0.05, wage);
+
+    return Number(wage.toFixed(2));
+};
+
 export const calculateForm = (teamId: string, fixtures: Fixture[]): string[] => {
     const played = fixtures
         .filter(f => f.played && (f.homeTeamId === teamId || f.awayTeamId === teamId))
@@ -333,12 +400,20 @@ export const calculateMonthlyNetFlow = (team: Team, fixtures: Fixture[], current
 
     const totalIncome = inc_Sponsor + inc_Merch + inc_Trade + inc_TV + inc_Gate + inc_Loca + inc_Transfers;
 
-    const totalSquadValue = team.players.reduce((acc, p) => acc + p.value, 0);
-    const monthlyWages = (totalSquadValue * 0.005 * 52) / 12;
+    // Use calculatePlayerWage for robust calculation
+    const totalAnnualWages = team.players.reduce((acc, p) => {
+        // Use set wage if exists, else calculate dynamic
+        return acc + (p.wage !== undefined ? p.wage : calculatePlayerWage(p));
+    }, 0);
+    
+    const monthlyWages = totalAnnualWages / 12;
     const exp_Staff = monthlyWages * 0.15;
     const exp_Stadium = (team.stadiumCapacity / 100000) * 0.5;
     const exp_Academy = strengthFactor * 0.4;
+    
+    const totalSquadValue = team.players.reduce((sum, p) => sum + p.value, 0);
     const exp_Debt = (totalSquadValue * 0.4) / 60;
+    
     const exp_Transfers = manager && manager.contract.teamName === team.name ? (manager.stats.transferSpendThisMonth || 0) : 0;
 
     const totalExpense = monthlyWages + exp_Staff + exp_Stadium + exp_Academy + exp_Debt + exp_Transfers + 0.35; 

@@ -197,7 +197,8 @@ export interface Player {
     height: number; // YENİ
     preferredFoot: string; // YENİ
     contractExpiry: number; // YENİ (Yıl)
-    value: number; 
+    value: number;
+    wage?: number; // YENİ: Yıllık Maaş (M€) - Eğer undefined ise value üzerinden hesaplanır
     nationality: string;
     teamId: string;
     morale: number;
@@ -208,6 +209,9 @@ export interface Player {
     injurySusceptibility: number; // 0-100 (Higher is worse)
     injuryHistory: PastInjury[];
     lastInjuryDurationDays?: number; // Used to calculate recovery speed after injury
+    squadStatus?: string; // NEW: Manually assigned squad status (e.g., 'STAR', 'FIRST_XI')
+    nextNegotiationWeek?: number; // NEW: Cooldown for negotiations (Week Number)
+    activePromises?: string[]; // NEW: Promises made to the player
 }
 
 export interface FinancialRecords {
@@ -482,6 +486,14 @@ export interface Message {
     options: string[];
 }
 
+// NEW: Pending Transfer Interface
+export interface PendingTransfer {
+    playerId: string;
+    sourceTeamId: string;
+    agreedFee: number;
+    date: string;
+}
+
 export interface GameState {
     managerName: string | null;
     manager: ManagerProfile | null; 
@@ -497,4 +509,5 @@ export interface GameState {
     news: NewsItem[]; 
     playTime: number; // Seconds played
     lastSeenInjuryCount: number; // For health center badge
+    pendingTransfers: PendingTransfer[]; // NEW: Queue for delayed transfers
 }

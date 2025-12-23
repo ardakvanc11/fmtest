@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GameState, Team, Player, Fixture, MatchEvent, MatchStats } from '../types';
+import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, PendingTransfer } from '../types';
 import { FileWarning, LogOut, Trophy, Building2, BarChart3, ArrowRightLeft, Wallet, Clock, TrendingUp, TrendingDown, Crown } from 'lucide-react';
 
 // Views
@@ -14,12 +14,14 @@ import FinanceView from '../views/FinanceView';
 import SocialMediaView from '../views/SocialMediaView';
 import TrainingView from '../views/TrainingView';
 import TeamDetailView from '../views/TeamDetailView';
-import PlayerDetailView from '../views/PlayerDetailView'; // NEW VIEW
+import PlayerDetailView from '../views/PlayerDetailView'; 
 import MatchPreview from '../views/MatchPreview';
 import LockerRoomView from '../views/LockerRoomView';
 import MatchSimulation from '../views/MatchSimulation';
 import PostMatchInterview from '../views/PostMatchInterview';
 import HealthCenterView from '../views/HealthCenterView';
+import ContractNegotiationView from '../views/ContractNegotiationView'; 
+import TransferOfferNegotiationView from '../views/TransferOfferNegotiationView'; 
 
 // Layouts & Modals
 import Dashboard from '../layout/Dashboard';
@@ -60,7 +62,7 @@ interface MainContentProps {
     handleMatchFinish: (hScore: number, aScore: number, events: MatchEvent[], stats: MatchStats) => void;
     handleFastSimulate: () => void;
     handleShowTeamDetail: (teamId: string) => void;
-    handleShowPlayerDetail: (player: Player) => void; // NEW HANDLER
+    handleShowPlayerDetail: (player: Player) => void;
     handleBuyPlayer: (player: Player) => void;
     handleSellPlayer: (player: Player) => void;
     handleMessageReply: (msgId: number, optIndex: number) => void;
@@ -68,6 +70,15 @@ interface MainContentProps {
     handleSkipInterview: () => void; 
     handleRetire: () => void;
     handleTerminateContract: () => void;
+    handlePlayerInteraction: (playerId: string, type: 'POSITIVE' | 'NEGATIVE' | 'HOSTILE') => void;
+    handlePlayerUpdate: (playerId: string, updates: Partial<Player>) => void;
+    handleReleasePlayer: (player: Player, cost: number) => void; 
+    handleTransferOfferSuccess: (player: Player, agreedFee: number) => void; 
+    handleSignPlayer: (player: Player, fee: number, contract: any) => void; // NEW
+    handleCancelTransfer: (playerId: string) => void; // NEW
+    negotiatingTransferPlayer: Player | null; 
+    setNegotiatingTransferPlayer: React.Dispatch<React.SetStateAction<Player | null>>; 
+    incomingTransfer: PendingTransfer | null; // NEW
     myTeam?: Team;
     injuredBadgeCount: number;
     isTransferWindowOpen: boolean;
@@ -105,7 +116,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
         handleMatchFinish,
         handleFastSimulate,
         handleShowTeamDetail,
-        handleShowPlayerDetail, // NEW
+        handleShowPlayerDetail, 
         handleBuyPlayer,
         handleSellPlayer,
         handleMessageReply,
@@ -113,6 +124,15 @@ const MainContent: React.FC<MainContentProps> = (props) => {
         handleSkipInterview, 
         handleRetire,
         handleTerminateContract,
+        handlePlayerInteraction,
+        handlePlayerUpdate,
+        handleReleasePlayer,
+        handleTransferOfferSuccess,
+        handleSignPlayer,
+        handleCancelTransfer,
+        negotiatingTransferPlayer,
+        setNegotiatingTransferPlayer,
+        incomingTransfer,
         myTeam,
         injuredBadgeCount,
         isTransferWindowOpen
@@ -129,6 +149,9 @@ const MainContent: React.FC<MainContentProps> = (props) => {
 
     // State for showing Hall of Fame inside Game Over screen
     const [showGameOverHoF, setShowGameOverHoF] = useState(false);
+    
+    // State for Contract Negotiation (With Own Players)
+    const [negotiatingPlayer, setNegotiatingPlayer] = useState<Player | null>(null);
 
     // Function to handle budget updates from Finance View
     const handleBudgetUpdate = (newTransferBudget: number, newWageBudget: number) => {
@@ -145,13 +168,116 @@ const MainContent: React.FC<MainContentProps> = (props) => {
             teams: prev.teams.map(t => t.id === myTeam.id ? updatedTeam : t)
         }));
         
-        // Optional: Provide feedback
         alert("Bütçe dağılımı başarıyla güncellendi!"); 
     };
+
+    // Contract Negotiation Handlers
+    const handleStartNegotiation = (player: Player) => {
+        setNegotiatingPlayer(player);
+        navigateTo('contract_negotiation');
+    };
+
+    const handleFinishNegotiation = (success: boolean, newContract: any) => {
+        if (success && newContract) {
+            // Check if this is a NEW transfer or RENEWAL
+            if (incomingTransfer && activeNegotiationPlayer && activeNegotiationPlayer.id === incomingTransfer.playerId) {
+                // NEW TRANSFER
+                handleSignPlayer(activeNegotiationPlayer, incomingTransfer.agreedFee, newContract);
+            } else if (negotiatingPlayer) {
+                // RENEWAL
+                handlePlayerUpdate(negotiatingPlayer.id, {
+                    squadStatus: newContract.role,
+                    contractExpiry: 2025 + newContract.years, // Simplified
+                    activePromises: newContract.promises, // Store promises
+                    wage: newContract.wage // Store actual negotiated wage
+                });
+                alert("Yeni sözleşme imzalandı!");
+                setNegotiatingPlayer(null);
+                goBack(); // Go back to Player Detail
+            }
+        } else {
+            // Failed negotiation - COOLDOWN LOGIC
+            const cooldownWeeks = 4;
+            const nextWeek = gameState.currentWeek + cooldownWeeks;
+
+            if (negotiatingPlayer) {
+                // Failed renewal
+                handlePlayerUpdate(negotiatingPlayer.id, {
+                    activePromises: negotiatingPlayer.activePromises,
+                    nextNegotiationWeek: nextWeek
+                });
+                alert(`Görüşmeler başarısız oldu. Oyuncu ${cooldownWeeks} hafta boyunca yeni tekliflere kapalı olacak.`);
+                setNegotiatingPlayer(null);
+                goBack();
+            } else if (incomingTransfer) {
+                // Failed signing
+                // Update player (who is in other team or transfer list)
+                handlePlayerUpdate(incomingTransfer.playerId, {
+                    nextNegotiationWeek: nextWeek
+                });
+                alert(`Anlaşma sağlanamadı. ${cooldownWeeks} hafta boyunca tekrar teklif yapılamaz.`);
+                
+                handleCancelTransfer(incomingTransfer.playerId);
+                navigateTo('home');
+            }
+        }
+    };
+
+    // NEW: Transfer Negotiation Handler (Navigates to new View)
+    const handleStartTransferNegotiation = (player: Player) => {
+        setNegotiatingTransferPlayer(player);
+        navigateTo('transfer_negotiation');
+    }
+
+    const handleFinishTransferNegotiation = (success: boolean, fee: number) => {
+        if (success && negotiatingTransferPlayer) {
+            handleTransferOfferSuccess(negotiatingTransferPlayer, fee);
+        } else if (!success && negotiatingTransferPlayer) {
+            // Failed transfer offer
+            const cooldown = 3;
+            handlePlayerUpdate(negotiatingTransferPlayer.id, {
+                nextNegotiationWeek: gameState.currentWeek + cooldown
+            });
+            alert(`Kulüp ile anlaşma sağlanamadı. ${cooldown} hafta boyunca yeni teklif yapılamaz.`);
+        }
+        setNegotiatingTransferPlayer(null);
+        goBack();
+    };
+
+    // Resolve Player for Incoming Transfer (from Pending ID)
+    const getIncomingPlayer = () => {
+        if (!incomingTransfer) return null;
+        // Search in all teams or transfer list
+        for (const t of gameState.teams) {
+            const p = t.players.find(x => x.id === incomingTransfer.playerId);
+            if(p) return p;
+        }
+        return gameState.transferList.find(x => x.id === incomingTransfer.playerId) || null;
+    };
+
+    const incomingPlayerObj = getIncomingPlayer();
+    const activeNegotiationPlayer = negotiatingPlayer || incomingPlayerObj;
 
     if (currentView === 'intro') return <IntroScreen onStart={handleStart} />;
     
     if (currentView === 'team_select') return <TeamSelection teams={gameState.teams} onSelect={handleSelectTeam} />;
+
+    // Calculate Dynamic Max Wage for Negotiation
+    let maxAllowedWage = 0;
+    if (myTeam && activeNegotiationPlayer) {
+        const currentTotalWages = myTeam.players.reduce((acc, p) => acc + (p.wage !== undefined ? p.wage : (p.value * 0.005 * 52)), 0);
+        // If renewing, subtract current wage to find room. If new transfer, don't subtract anything from current totals.
+        const playerCurrentWage = (activeNegotiationPlayer.teamId === myTeam.id) 
+            ? (activeNegotiationPlayer.wage !== undefined ? activeNegotiationPlayer.wage : (activeNegotiationPlayer.value * 0.005 * 52))
+            : 0;
+            
+        const committedWagesOthers = currentTotalWages - playerCurrentWage;
+        
+        // Ensure wageBudget exists, otherwise fallback to currentTotal
+        const wageBudgetLimit = myTeam.wageBudget !== undefined ? myTeam.wageBudget : currentTotalWages;
+        
+        maxAllowedWage = Math.max(0, wageBudgetLimit - committedWagesOthers);
+    }
 
     return (
         <Dashboard 
@@ -317,7 +443,8 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     onUpdateBudget={handleBudgetUpdate}
                     fixtures={gameState.fixtures}
                     currentWeek={gameState.currentWeek}
-                    currentDate={gameState.currentDate} // Passed Current Date
+                    currentDate={gameState.currentDate}
+                    onPlayerClick={handleShowPlayerDetail} 
                 />
             )}
 
@@ -374,7 +501,49 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                 <PlayerDetailView 
                     player={selectedPlayerForDetail} 
                     onClose={() => goBack()}
-                    myTeamId={gameState.myTeamId!} // Pass current User Team ID
+                    myTeamId={gameState.myTeamId!} 
+                    manager={gameState.manager!}
+                    teammates={gameState.teams.find(t => t.id === selectedPlayerForDetail.teamId)?.players || []}
+                    onInteract={handlePlayerInteraction}
+                    onUpdatePlayer={handlePlayerUpdate}
+                    onStartNegotiation={handleStartNegotiation}
+                    onStartTransferNegotiation={handleStartTransferNegotiation} // Add this line
+                    onReleasePlayer={handleReleasePlayer} 
+                    currentWeek={gameState.currentWeek} 
+                />
+            )}
+
+            {/* CONTRACT NEGOTIATION VIEW */}
+            {currentView === 'contract_negotiation' && activeNegotiationPlayer && (
+                <ContractNegotiationView
+                    player={activeNegotiationPlayer}
+                    onClose={() => {
+                        setNegotiatingPlayer(null);
+                        if(incomingTransfer) {
+                            alert("Sözleşme görüşmesi iptal edildi. Transfer gerçekleşmedi.");
+                            handleCancelTransfer(incomingTransfer.playerId); // NEW: Cancel if user walks away
+                            navigateTo('home');
+                        } else {
+                            goBack();
+                        }
+                    }}
+                    onFinish={handleFinishNegotiation}
+                    maxAllowedWage={maxAllowedWage} 
+                />
+            )}
+
+            {/* NEW: TRANSFER NEGOTIATION VIEW */}
+            {currentView === 'transfer_negotiation' && negotiatingTransferPlayer && myTeam && (
+                <TransferOfferNegotiationView
+                    player={negotiatingTransferPlayer}
+                    targetTeam={gameState.teams.find(t => t.id === negotiatingTransferPlayer.teamId)!}
+                    myTeamBudget={myTeam.budget}
+                    myTeam={myTeam} // PASSING MY TEAM FOR SWAP PLAYERS
+                    onClose={() => {
+                        setNegotiatingTransferPlayer(null);
+                        goBack();
+                    }}
+                    onFinish={handleFinishTransferNegotiation}
                 />
             )}
 
@@ -434,7 +603,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     awayTeam={gameState.teams.find(t => t.id === selectedFixtureInfo.awayTeamId)!}
                     allFixtures={gameState.fixtures}
                     onClose={() => setSelectedFixtureInfo(null)}
-                    myTeamId={gameState.myTeamId || ''} // Passed for filtering
+                    myTeamId={gameState.myTeamId || ''} 
                 />
             )}
 
@@ -446,7 +615,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     awayScore={matchResultData.awayScore}
                     stats={matchResultData.stats}
                     events={matchResultData.events}
-                    onSkip={handleSkipInterview} // Pass handler
+                    onSkip={handleSkipInterview} 
                     onProceed={() => {
                         let result: 'WIN'|'LOSS'|'DRAW' = 'DRAW';
                         const isHome = matchResultData.homeTeam.id === gameState.myTeamId;
@@ -471,8 +640,6 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                             awayTeam={matchResultData.awayTeam}
                             myTeamId={gameState.myTeamId!}
                             onClose={() => {
-                                // Use handleInterviewComplete to perform necessary cleanup and navigation
-                                // passing empty object as effect
                                 handleInterviewComplete({});
                             }}
                             onComplete={handleInterviewComplete}

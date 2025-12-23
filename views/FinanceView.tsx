@@ -1,7 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
-import { Team, ManagerProfile, Fixture } from '../types';
-import { Wallet, TrendingUp, TrendingDown, DollarSign, Users, Building2, PieChart, Landmark, CreditCard, PiggyBank, ArrowRightLeft, Briefcase, Scale, AlertTriangle, CheckCircle, Save, AlertCircle, ArrowUpRight, ArrowDownRight, Coins, Calendar, ArrowUpDown } from 'lucide-react';
+import { Team, ManagerProfile, Fixture, Player } from '../types';
+import { Wallet, TrendingUp, TrendingDown, DollarSign, Users, Building2, PieChart, Landmark, CreditCard, PiggyBank, ArrowRightLeft, Briefcase, Scale, AlertTriangle, CheckCircle, Save, AlertCircle, ArrowUpRight, ArrowDownRight, Coins, Calendar, ArrowUpDown, ChevronRight } from 'lucide-react';
+import { calculatePlayerWage } from '../utils/teamCalculations';
+import PlayerFace from '../components/shared/PlayerFace';
 
 interface FinanceViewProps {
     team: Team;
@@ -10,9 +11,10 @@ interface FinanceViewProps {
     fixtures?: Fixture[];
     currentWeek?: number;
     currentDate?: string; // Add current date for daily calculations
+    onPlayerClick?: (player: Player) => void; // Added for navigation
 }
 
-const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget, fixtures, currentWeek, currentDate }) => {
+const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget, fixtures, currentWeek, currentDate, onPlayerClick }) => {
     const [tab, setTab] = useState<'OVERVIEW' | 'INCOME' | 'EXPENSE' | 'WAGES' | 'FFP' | 'DEBT' | 'SPONSORS'>('OVERVIEW');
     
     // Fix: Calculate fines once on mount to prevent fluctuation
@@ -33,10 +35,12 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
 
     // --- FINANCIAL CALCULATIONS (BASE ESTIMATES) ---
     const totalSquadValue = team.players.reduce((acc, p) => acc + p.value, 0);
-    // Weekly Wages estimate: ~0.5% of value. Annual = Weekly * 52
-    const estimatedWeeklyWages = totalSquadValue * 0.005;
-    const estimatedAnnualWages = estimatedWeeklyWages * 52;
-    const monthlyWages = estimatedAnnualWages / 12;
+    // Annual Wages Calculation: Use explicit wage if set, otherwise use new robust calculator
+    const totalAnnualWages = team.players.reduce((acc, p) => {
+        return acc + (p.wage !== undefined ? p.wage : calculatePlayerWage(p));
+    }, 0);
+    
+    const monthlyWages = totalAnnualWages / 12;
 
     // --- DETAILED MONTHLY BREAKDOWN CALCULATIONS ---
     // Multipliers based on Team Strength/Fanbase to simulate realism
@@ -247,18 +251,18 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
     const totalExpenseSeason = expenseBreakdown.reduce((sum, item) => sum + item.season, 0);
 
     // --- BUDGET SLIDER STATE ---
-    const currentAllocatedWageBudget = team.wageBudget || estimatedAnnualWages;
+    const currentAllocatedWageBudget = team.wageBudget || totalAnnualWages;
     const [transferBudget, setTransferBudget] = useState(team.budget);
     const [wageBudget, setWageBudget] = useState(currentAllocatedWageBudget);
     const totalBudgetPot = team.budget + currentAllocatedWageBudget;
-    const minAllowedWageBudget = estimatedAnnualWages * 0.9;
+    const minAllowedWageBudget = totalAnnualWages * 0.9;
     const maxTransferBudget = Math.max(0, totalBudgetPot - minAllowedWageBudget);
     const maxSliderPercentage = Math.floor((maxTransferBudget / totalBudgetPot) * 100);
 
     useEffect(() => {
         setTransferBudget(team.budget);
-        setWageBudget(team.wageBudget || estimatedAnnualWages);
-    }, [team.budget, team.wageBudget, estimatedAnnualWages]);
+        setWageBudget(team.wageBudget || totalAnnualWages);
+    }, [team.budget, team.wageBudget, totalAnnualWages]);
 
     const handleBudgetSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
         let percentage = parseInt(e.target.value);
@@ -274,7 +278,14 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
     };
 
     const currentSliderValue = (transferBudget / totalBudgetPot) * 100;
-    const topEarners = [...team.players].sort((a, b) => b.value - a.value).slice(0, 8);
+    
+    // Updated: Sort by wage and show ALL players
+    const sortedPlayersByWage = [...team.players].sort((a, b) => {
+        const wageA = a.wage !== undefined ? a.wage : calculatePlayerWage(a);
+        const wageB = b.wage !== undefined ? b.wage : calculatePlayerWage(b);
+        return wageB - wageA;
+    });
+    
     const formatMoney = (val: number) => `${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} M€`;
 
     const tabs = [
@@ -357,10 +368,10 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
                             </div>
 
                             <div className="flex items-center gap-4 mb-2">
-                                <div className={`flex-1 p-4 rounded-lg border text-center transition-colors ${wageBudget < estimatedAnnualWages ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
-                                    <div className={`text-xs uppercase font-bold mb-1 ${wageBudget < estimatedAnnualWages ? 'text-red-600 dark:text-red-400' : 'text-slate-500'}`}>Maaş Bütçesi (Yıllık)</div>
-                                    <div className={`text-2xl font-mono font-bold ${wageBudget < estimatedAnnualWages ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>{formatMoney(wageBudget)}</div>
-                                    <div className="text-xs text-slate-400 mt-1">Mevcut Gider: {formatMoney(estimatedAnnualWages)}</div>
+                                <div className={`flex-1 p-4 rounded-lg border text-center transition-colors ${wageBudget < totalAnnualWages ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
+                                    <div className={`text-xs uppercase font-bold mb-1 ${wageBudget < totalAnnualWages ? 'text-red-600 dark:text-red-400' : 'text-slate-500'}`}>Maaş Bütçesi (Yıllık)</div>
+                                    <div className={`text-2xl font-mono font-bold ${wageBudget < totalAnnualWages ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>{formatMoney(wageBudget)}</div>
+                                    <div className="text-xs text-slate-400 mt-1">Mevcut Gider: {formatMoney(totalAnnualWages)}</div>
                                 </div>
                                 <div className="flex-1 p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800 text-center">
                                     <div className="text-xs text-emerald-600 dark:text-emerald-400 uppercase font-bold mb-1">Transfer Bütçesi</div>
@@ -368,13 +379,13 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
                                 </div>
                             </div>
 
-                            {wageBudget < estimatedAnnualWages && (
+                            {wageBudget < totalAnnualWages && (
                                 <div className="mb-4 bg-red-100 dark:bg-red-900/30 border border-red-400 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg flex items-center gap-3 text-sm font-bold animate-pulse">
                                     <AlertCircle size={20} className="shrink-0"/>
                                     <div>
                                         DİKKAT: Maaş bütçesi mevcut giderlerin altında! <br/>
                                         <span className="text-xs font-normal opacity-90">
-                                            {formatMoney(estimatedAnnualWages - wageBudget)} tutarında maaş ödemesi karşılanamıyor.
+                                            {formatMoney(totalAnnualWages - wageBudget)} tutarında maaş ödemesi karşılanamıyor.
                                         </span>
                                     </div>
                                 </div>
@@ -577,35 +588,70 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
                 {tab === 'WAGES' && (
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                         <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                            <h3 className="font-bold text-slate-900 dark:text-white">Maaş Bordrosu (En Yüksek)</h3>
-                            <div className="text-xs font-bold text-slate-500">Yıllık Toplam: {formatMoney(estimatedAnnualWages)}</div>
+                            <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <Users className="text-blue-500" size={20}/> Maaş Bordrosu (Tüm Kadro)
+                            </h3>
+                            <div className="text-xs font-bold text-slate-500">Yıllık Toplam: {formatMoney(totalAnnualWages)}</div>
                         </div>
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-slate-100 dark:bg-slate-900 text-xs text-slate-500 font-bold uppercase">
-                                <tr>
-                                    <th className="p-3">Oyuncu</th>
-                                    <th className="p-3 text-center">Mevki</th>
-                                    <th className="p-3 text-center">Durum</th>
-                                    <th className="p-3 text-right">Yıllık Maaş (Tahmini)</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                                {topEarners.map(p => (
-                                    <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                                        <td className="p-3 font-bold text-slate-700 dark:text-slate-200">{p.name}</td>
-                                        <td className="p-3 text-center">
-                                            <span className="bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded text-[10px] font-bold">{p.position}</span>
-                                        </td>
-                                        <td className="p-3 text-center">
-                                            <span className="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded font-bold">Sözleşmeli</span>
-                                        </td>
-                                        <td className="p-3 text-right font-mono font-bold text-slate-900 dark:text-white">{(p.value * 0.26).toFixed(2)} M€</td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm whitespace-nowrap">
+                                <thead className="bg-slate-100 dark:bg-slate-900 text-xs text-slate-500 font-bold uppercase">
+                                    <tr>
+                                        <th className="p-3 w-10"></th>
+                                        <th className="p-3">Oyuncu</th>
+                                        <th className="p-3 text-center">Ülke</th>
+                                        <th className="p-3 text-center">Yaş</th>
+                                        <th className="p-3 text-center">Mevki</th>
+                                        <th className="p-3 text-center">Sözleşme Bitiş</th>
+                                        <th className="p-3 text-right">Yıllık Maaş</th>
+                                        <th className="p-3 text-center w-10"></th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        <div className="p-4 text-center text-xs text-slate-500 italic">
-                            * Maaşlar oyuncu piyasa değerine endeksli olarak gösterilmektedir.
+                                </thead>
+                                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                                    {sortedPlayersByWage.map(p => {
+                                        const actualWage = p.wage !== undefined ? p.wage : calculatePlayerWage(p);
+                                        return (
+                                            <tr 
+                                                key={p.id} 
+                                                onClick={() => onPlayerClick && onPlayerClick(p)}
+                                                className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group"
+                                            >
+                                                <td className="p-3">
+                                                    <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-300 dark:border-slate-600 bg-slate-200">
+                                                        <PlayerFace player={p} />
+                                                    </div>
+                                                </td>
+                                                <td className="p-3 font-bold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                                    {p.name}
+                                                </td>
+                                                <td className="p-3 text-center text-slate-600 dark:text-slate-400">{p.nationality}</td>
+                                                <td className="p-3 text-center text-slate-600 dark:text-slate-400">{p.age}</td>
+                                                <td className="p-3 text-center">
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold text-white ${
+                                                        p.position === 'GK' ? 'bg-yellow-600' :
+                                                        ['SLB', 'SGB', 'STP'].includes(p.position) ? 'bg-blue-600' :
+                                                        ['OS', 'OOS'].includes(p.position) ? 'bg-green-600' : 'bg-red-600'
+                                                    }`}>
+                                                        {p.position}
+                                                    </span>
+                                                </td>
+                                                <td className="p-3 text-center font-mono text-slate-600 dark:text-slate-300">
+                                                    {p.contractExpiry}
+                                                </td>
+                                                <td className="p-3 text-right font-mono font-bold text-slate-900 dark:text-white">
+                                                    {formatMoney(actualWage)}
+                                                </td>
+                                                <td className="p-3 text-center">
+                                                    <ChevronRight size={16} className="text-slate-400 group-hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all"/>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="p-4 text-center text-xs text-slate-500 italic bg-slate-50 dark:bg-slate-900/30">
+                            * Yeni sözleşmelerde maaşlar ve bitiş tarihleri otomatik olarak güncellenir.
                         </div>
                     </div>
                 )}
@@ -699,14 +745,5 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
         </div>
     );
 };
-
-// Icons helper
-const TicketIcon = (props: any) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>
-);
-
-const TrophyIcon = (props: any) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55-.47.98-.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
-);
 
 export default FinanceView;
