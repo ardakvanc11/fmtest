@@ -1,9 +1,61 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { NewsItem, Team, Message } from '../types';
-import { Smartphone, Mail, Hash, ChevronLeft, Send, MessageSquare, RotateCcw, Heart, User, CheckCheck } from 'lucide-react';
+import { NewsItem, Team, Message, Player } from '../types';
+import { Smartphone, Mail, Hash, ChevronLeft, Send, MessageSquare, RotateCcw, Heart, User, CheckCheck, BadgeCheck, AlertTriangle, MessageCircle } from 'lucide-react';
+import { pick } from '../utils/helpers';
 
-const SocialMediaView = ({ news, teams, messages, onUpdateMessages, onReply }: { news: NewsItem[], teams: Team[], messages: Message[], onUpdateMessages: (msgs: Message[]) => void, onReply?: (msgId: number, optIndex: number) => void }) => {
+// JOURNALIST PERSONAS
+const JOURNALISTS = [
+    { name: "Fabri Roman", handle: "@FabriRoman", reliability: 99, avatarColor: "bg-blue-600", verify: true, tagline: "Here we go! 🚨" },
+    { name: "Yağız Sabuncu", handle: "@yagosabuncu", reliability: 95, avatarColor: "bg-yellow-600", verify: true, tagline: "ÖZEL |" },
+    { name: "Nevzat Dindar", handle: "@nevzatdindar", reliability: 75, avatarColor: "bg-red-600", verify: true, tagline: "SICAK GELİŞME" },
+    { name: "Sercan Hamzaoğlu", handle: "@sercanhamzaoglu", reliability: 80, avatarColor: "bg-purple-600", verify: true, tagline: "Kulis Bilgisi" },
+    { name: "Duyumcu Dayı", handle: "@duyumcudayi", reliability: 30, avatarColor: "bg-slate-500", verify: false, tagline: "Kesin bilgi yayalım..." },
+    { name: "Transfer Merkezi", handle: "@transfermerkezi", reliability: 60, avatarColor: "bg-green-600", verify: false, tagline: "İddia:" }
+];
+
+// RUMOR TEMPLATES
+const RUMOR_TEMPLATES = [
+    "{team} yönetimi {player} için resmi teklif yapmaya hazırlanıyor. Oyuncu sıcak bakıyor.",
+    "{team}, {targetTeam}'in yıldızı {player} ile prensipte anlaştı. Kulüpler görüşüyor.",
+    "{team} teknik direktörü, {player} transferini bizzat istedi.",
+    "{player} menajeri İstanbul'a geldi! {team} ile masaya oturacak.",
+    "{team}, {player} için {amount} M€ bonservis bedelini gözden çıkardı.",
+    "{team} taraftarı {player} transferi için sosyal medyada kampanya başlattı.",
+    "Bomba iddia! {team}, rakibi {targetTeam}'in kaptanı {player}'a kanca attı.",
+    "{player} takımdan ayrılmak istediğini yönetime iletti. {team} pusuda bekliyor.",
+    "{team} transferde rotayı {player}'a çevirdi. Görüşmeler başladı.",
+    "{team} başkanı: '{player} gibi bir oyuncuyu kim istemez ki?'",
+];
+
+// FAN REACTIONS TO RUMORS
+const RUMOR_REACTIONS = [
+    "Gelirse ligi donunda sallar!",
+    "Çöp transfer, parayı çöpe atmayın.",
+    "Yönetim istifa, yine geç kaldık!",
+    "Fabri dediyse bitmiştir, hayırlı olsun.",
+    "Yağız abi balon haber yapmaz, bu iş biter.",
+    "Bize böyle topçu lazım işte, helal olsun.",
+    "O paraya 3 tane genç alırsın, vizyonsuzluk.",
+    "Bu adam sakat değil miydi ya?",
+    "Forma siparişini verdim bile!",
+    "İnanmayın beyler, menajer oyunu.",
+    "Kaynak sağlam mı dayı?",
+    "Gelirse havalimanına kadar taşırım.",
+    "Bu sene o sene, şampiyonluk geliyor!",
+    "Rüyamda gördüm bu adam bize gelecek."
+];
+
+interface Rumor {
+    id: string;
+    journalist: typeof JOURNALISTS[0];
+    content: string;
+    targetPlayer?: string;
+    targetTeam?: string;
+    reactions: string[];
+}
+
+const SocialMediaView = ({ news, teams, messages, onUpdateMessages, onReply, isTransferWindowOpen }: { news: NewsItem[], teams: Team[], messages: Message[], onUpdateMessages: (msgs: Message[]) => void, onReply?: (msgId: number, optIndex: number) => void, isTransferWindowOpen: boolean }) => {
     const [tab, setTab] = useState<'SOCIAL' | 'MESSAGES' | 'RUMORS'>('SOCIAL');
     const [interactions, setInteractions] = useState<Record<string, {
         likes: number;
@@ -15,8 +67,66 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages, onReply }: {
     }>>({});
     const [replyText, setReplyText] = useState("");
     
+    // Dynamic Rumors State
+    const [rumors, setRumors] = useState<Rumor[]>([]);
+    
     const [selectedMessageId, setSelectedMessageId] = useState<number | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // --- RUMOR GENERATION LOGIC ---
+    useEffect(() => {
+        if (isTransferWindowOpen && rumors.length === 0 && teams.length > 0) {
+            const newRumors: Rumor[] = [];
+            const count = 6; // Generate 6 daily rumors
+
+            for (let i = 0; i < count; i++) {
+                const journalist = pick(JOURNALISTS);
+                const buyingTeam = pick(teams);
+                
+                // Avoid buying team selling to itself
+                const otherTeams = teams.filter(t => t.id !== buyingTeam.id);
+                const sellingTeam = pick(otherTeams);
+                
+                // Pick a player to target
+                if (!sellingTeam || sellingTeam.players.length === 0) continue;
+                // Target star players more often for hype
+                const sortedPlayers = [...sellingTeam.players].sort((a,b) => b.skill - a.skill);
+                // Pick from top 5 players randomly
+                const targetPlayer = sortedPlayers[Math.floor(Math.random() * Math.min(5, sortedPlayers.length))];
+
+                const template = pick(RUMOR_TEMPLATES);
+                const amount = Math.floor(targetPlayer.value * (1 + Math.random() * 0.5)); // Inflated price
+
+                let content = template
+                    .replace('{team}', buyingTeam.name)
+                    .replace('{targetTeam}', sellingTeam.name)
+                    .replace('{player}', targetPlayer.name)
+                    .replace('{amount}', amount.toString());
+
+                // Add Journalist Tagline
+                content = `${journalist.tagline} ${content}`;
+
+                // Generate Fan Reactions
+                const reactions = [];
+                const reactionCount = Math.floor(Math.random() * 3) + 1;
+                for(let j=0; j<reactionCount; j++) {
+                    reactions.push(pick(RUMOR_REACTIONS));
+                }
+
+                newRumors.push({
+                    id: Math.random().toString(36).substr(2, 9),
+                    journalist,
+                    content,
+                    targetPlayer: targetPlayer.name,
+                    targetTeam: buyingTeam.name,
+                    reactions
+                });
+            }
+            setRumors(newRumors);
+        } else if (!isTransferWindowOpen) {
+            setRumors([]); // Clear rumors if window closed
+        }
+    }, [isTransferWindowOpen, teams]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -29,7 +139,6 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages, onReply }: {
     const handleSendChatMessage = (selectedText: string, optionIndex: number) => {
         if(!selectedMessageId) return;
         
-        // Trigger side effects (like morale change) in parent
         if (onReply) {
             onReply(selectedMessageId, optionIndex);
         }
@@ -41,10 +150,10 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages, onReply }: {
             if(msg.id === selectedMessageId) {
                 return {
                     ...msg,
-                    preview: `Siz: ${selectedText}`, // Update preview
+                    preview: `Siz: ${selectedText}`, 
                     date: 'Şimdi',
                     history: [...msg.history, { id: Date.now(), text: selectedText, time: timeString, isMe: true }],
-                    options: [] // Clear options here to prevent further replies
+                    options: [] 
                 };
             }
             return msg;
@@ -53,16 +162,56 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages, onReply }: {
         onUpdateMessages(updatedMessages);
     };
 
-    // Initialize random stats for news items if they don't exist
+    // Initialize stats with Team Popularity Logic
     useEffect(() => {
         const newInteractions = { ...interactions };
         let hasChanges = false;
 
         news.forEach(n => {
             if (!newInteractions[n.id]) {
+                let minLikes = 10;
+                let maxLikes = 500;
+                let minRTs = 2;
+                let maxRTs = 50;
+
+                // Check if it's an OFFICIAL account
+                if (n.title.includes('|OFFICIAL')) {
+                    const parts = n.title.split('|');
+                    const teamName = parts[0];
+                    const team = teams.find(t => t.name === teamName);
+
+                    if (team) {
+                        // Logic: Scale based on Fan Base. 
+                        // Assuming Max Fanbase ~25M -> 80k Likes
+                        // Assuming Min Fanbase ~0.5M -> 10k Likes
+                        // Normalize fanBase (0.5M to 25M) to range (0 to 1)
+                        const maxFans = 25000000;
+                        const normalizedFans = Math.min(1, Math.max(0, team.fanBase / maxFans));
+                        
+                        // Target Range: 10,000 to 80,000
+                        const baseLikes = 10000 + (normalizedFans * 70000);
+                        
+                        // Add some variance (+/- 15%)
+                        const variance = baseLikes * 0.15;
+                        minLikes = Math.floor(baseLikes - variance);
+                        maxLikes = Math.floor(baseLikes + variance);
+                        
+                        // RTs are roughly 5-15% of likes for official accounts
+                        minRTs = Math.floor(minLikes * 0.05);
+                        maxRTs = Math.floor(maxLikes * 0.15);
+                    } else {
+                        // Fallback for official but team not found
+                        minLikes = 5000;
+                        maxLikes = 15000;
+                    }
+                }
+
+                const likes = Math.floor(Math.random() * (maxLikes - minLikes)) + minLikes;
+                const rts = Math.floor(Math.random() * (maxRTs - minRTs)) + minRTs;
+
                 newInteractions[n.id] = {
-                    likes: Math.floor(Math.random() * 500) + 12,
-                    rts: Math.floor(Math.random() * 50) + 2,
+                    likes: likes,
+                    rts: rts,
                     liked: false,
                     rted: false,
                     comments: [],
@@ -75,7 +224,7 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages, onReply }: {
         if (hasChanges) {
             setInteractions(newInteractions);
         }
-    }, [news]); // Only dependency is news
+    }, [news, teams]);
 
     const toggleLike = (id: string) => {
         setInteractions(prev => ({
@@ -121,28 +270,24 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages, onReply }: {
         setReplyText("");
     };
 
-    // Fake Rumors Data
-    const rumors = [
-        { id: 1, text: 'Galatasaray, Kedispor\'un yıldız forveti için 20M€ teklif etmeye hazırlanıyor.', source: 'Fanatik', reliability: 80 },
-        { id: 2, text: 'Ayıboğanspor teknik direktörünün koltuğu sallantıda.', source: 'Sosyal Medya', reliability: 45 },
-        { id: 3, text: 'Köpekspor, stadyum kapasitesini artırma kararı aldı.', source: 'Yerel Basın', reliability: 90 },
-        { id: 4, text: 'Eşşekboğanspor\'un kalecisi antrenmanda takım arkadaşıyla kavga etti.', source: 'Duyumcu', reliability: 60 }
-    ];
-
-    // Calculate unread count
     const unreadCount = messages.filter(m => !m.read).length;
 
-    // Define tabs for rendering
     const tabs = [
         { id: 'SOCIAL', label: 'Sosyal Medya', icon: Smartphone },
         { id: 'MESSAGES', label: 'Mesajlar', icon: Mail, badge: unreadCount > 0 ? unreadCount : undefined },
         { id: 'RUMORS', label: 'Söylentiler', icon: Hash },
     ];
     
-    // Helper for random avatars colors
     const getAvatarColor = (index: number) => {
         const colors = ['bg-blue-500', 'bg-red-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-orange-500'];
         return colors[index % colors.length];
+    };
+
+    // Helper to format numbers (e.g. 12.5K)
+    const formatCount = (num: number) => {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'B';
+        return num.toString();
     };
 
     // --- RENDER LOGIC FOR CHAT VIEW ---
@@ -236,14 +381,23 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages, onReply }: {
 
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-10">
-                {/* SOCIAL FEED - Now Fan Tweets */}
+                {/* SOCIAL FEED */}
                 {tab === 'SOCIAL' && news.map((n, idx) => {
-                    // Extract name and handle from 'title' field
                     let name = "Taraftar";
                     let handle = "@taraftar";
                     let teamAffiliation = "";
+                    let isOfficial = false;
+                    let teamObj: Team | undefined;
 
-                    if (n.title.includes('|')) {
+                    // OFFICIAL ACCOUNT CHECK
+                    if (n.title.includes('|OFFICIAL')) {
+                        const parts = n.title.split('|');
+                        name = parts[0];
+                        handle = parts[1];
+                        isOfficial = true;
+                        teamObj = teams.find(t => t.name === name);
+                    } 
+                    else if (n.title.includes('|')) {
                         const parts = n.title.split('|');
                         name = parts[0];
                         handle = parts[1];
@@ -263,20 +417,30 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages, onReply }: {
 
                     return (
                         <div key={n.id} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 transition flex gap-4 shadow-sm w-full">
-                            <div className={`w-12 h-12 rounded-full shrink-0 flex items-center justify-center ${avatarColor} text-white text-lg font-bold`}>
-                                {name.charAt(0)}
-                            </div>
+                            
+                            {/* AVATAR RENDERING */}
+                            {isOfficial && teamObj && teamObj.logo ? (
+                                <img src={teamObj.logo} className="w-12 h-12 rounded-full shrink-0 object-contain bg-white border border-slate-200" alt={teamObj.name} />
+                            ) : (
+                                <div className={`w-12 h-12 rounded-full shrink-0 flex items-center justify-center ${avatarColor} text-white text-lg font-bold`}>
+                                    {name.charAt(0)}
+                                </div>
+                            )}
+
                             <div className="flex-1">
                                 <div className="flex flex-wrap items-center gap-2 mb-1">
-                                    <span className="font-bold text-slate-900 dark:text-white text-base">{name}</span>
+                                    <div className="flex items-center gap-1">
+                                        <span className="font-bold text-slate-900 dark:text-white text-base">{name}</span>
+                                        {isOfficial && <BadgeCheck size={16} className="text-blue-500 fill-white dark:fill-slate-800" />}
+                                    </div>
                                     <span className="text-slate-500 text-sm">{handle}</span>
                                     
-                                    {fanTeam ? (
+                                    {!isOfficial && fanTeam ? (
                                         <span className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${fanTeam.colors[0]} ${fanTeam.colors[1]} border-slate-300 dark:border-slate-600`}>
                                             {fanTeam.logo && <img src={fanTeam.logo} className="w-3 h-3 object-contain" alt="" />}
                                             <span className="font-bold uppercase tracking-wide">{fanTeam.name}</span>
                                         </span>
-                                    ) : teamAffiliation ? (
+                                    ) : !isOfficial && teamAffiliation ? (
                                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 uppercase tracking-wide">
                                             {teamAffiliation}
                                         </span>
@@ -293,7 +457,7 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages, onReply }: {
                                         className={`flex items-center gap-1.5 cursor-pointer transition ${stats.showComments ? 'text-blue-500' : 'hover:text-blue-500'}`}
                                     >
                                         <MessageSquare size={16} className={stats.showComments ? 'fill-blue-500 text-blue-500' : ''}/> 
-                                        {Math.floor(stats.likes/10) + stats.comments.length}
+                                        {formatCount(Math.floor(stats.likes/10) + stats.comments.length)}
                                     </button>
                                     
                                     <button 
@@ -301,7 +465,7 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages, onReply }: {
                                         className={`flex items-center gap-1.5 cursor-pointer transition ${stats.rted ? 'text-green-600' : 'hover:text-green-600'}`}
                                     >
                                         <RotateCcw size={16} /> 
-                                        {stats.rts}
+                                        {formatCount(stats.rts)}
                                     </button>
                                     
                                     <button 
@@ -309,7 +473,7 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages, onReply }: {
                                         className={`flex items-center gap-1.5 cursor-pointer transition ${stats.liked ? 'text-red-500' : 'hover:text-red-500'}`}
                                     >
                                         <Heart size={16} className={stats.liked ? 'fill-red-500 text-red-500' : ''}/> 
-                                        {stats.likes}
+                                        {formatCount(stats.likes)}
                                     </button>
                                 </div>
 
@@ -409,25 +573,77 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages, onReply }: {
                     </div>
                 )}
 
-                {/* RUMORS */}
-                {tab === 'RUMORS' && rumors.map(r => (
-                    <div key={r.id} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 relative overflow-hidden group shadow-sm hover:shadow-md transition w-full">
-                        <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition">
-                            <Hash size={50} className="text-slate-900 dark:text-white"/>
-                        </div>
-                        <div className="flex justify-between items-start mb-3 relative z-10">
-                             <span className="text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg">{r.source}</span>
-                             <div className="flex items-center gap-1.5 text-xs bg-slate-50 dark:bg-slate-900/50 px-2 py-1 rounded-lg">
-                                 <span className="text-slate-500 font-bold">Güvenilirlik:</span>
-                                 <div className="w-16 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                     <div className={`h-full ${r.reliability > 70 ? 'bg-green-500' : r.reliability > 40 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{width: `${r.reliability}%`}}></div>
-                                 </div>
-                                 <span className="font-mono font-bold text-slate-700 dark:text-slate-300">%{r.reliability}</span>
-                             </div>
-                        </div>
-                        <p className="text-slate-900 dark:text-white text-base font-serif italic leading-relaxed relative z-10 pl-2 border-l-2 border-yellow-500">"{r.text}"</p>
+                {/* RUMORS TAB */}
+                {tab === 'RUMORS' && (
+                    <div className="space-y-4">
+                        {!isTransferWindowOpen ? (
+                            <div className="flex flex-col items-center justify-center py-20 bg-slate-100 dark:bg-slate-800 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700">
+                                <AlertTriangle size={64} className="text-slate-400 mb-4 opacity-50"/>
+                                <h3 className="text-xl font-bold text-slate-600 dark:text-slate-300">Sessizlik Hakim</h3>
+                                <p className="text-slate-500 dark:text-slate-400 mt-2">Transfer dönemi kapalı olduğu için ortalık sakin.</p>
+                            </div>
+                        ) : (
+                            rumors.map(r => (
+                                <div key={r.id} className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition w-full relative overflow-hidden group">
+                                    {/* Journalist Header */}
+                                    <div className="flex items-start gap-4 mb-4 relative z-10">
+                                        <div className={`w-12 h-12 rounded-full ${r.journalist.avatarColor} flex items-center justify-center text-white text-lg font-bold shrink-0 border-2 border-white dark:border-slate-700`}>
+                                            {r.journalist.name.charAt(0)}
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="font-bold text-slate-900 dark:text-white text-base">{r.journalist.name}</span>
+                                                {r.journalist.verify && <BadgeCheck size={16} className="text-blue-500 fill-white dark:fill-slate-800" />}
+                                                <span className="text-slate-500 text-xs ml-1">{r.journalist.handle}</span>
+                                            </div>
+                                            
+                                            {/* Content */}
+                                            <p className="text-slate-800 dark:text-slate-200 text-sm mt-1 leading-relaxed">
+                                                {r.content}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Reliability Bar */}
+                                    <div className="flex items-center gap-2 mb-4 relative z-10 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg border border-slate-100 dark:border-slate-700/50">
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider w-20">Güvenilirlik</span>
+                                        <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                            <div 
+                                                className={`h-full ${r.journalist.reliability > 80 ? 'bg-green-500' : r.journalist.reliability > 50 ? 'bg-yellow-500' : 'bg-red-500'}`} 
+                                                style={{width: `${r.journalist.reliability}%`}}
+                                            ></div>
+                                        </div>
+                                        <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">%{r.journalist.reliability}</span>
+                                    </div>
+
+                                    {/* Fan Reactions Section */}
+                                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/50 relative z-10">
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 flex items-center gap-1">
+                                            <MessageCircle size={12}/> Anlık Tepkiler
+                                        </div>
+                                        <div className="space-y-2">
+                                            {r.reactions.map((reaction, i) => (
+                                                <div key={i} className="flex gap-2">
+                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${getAvatarColor(i)}`}>
+                                                        U
+                                                    </div>
+                                                    <div className="bg-slate-50 dark:bg-slate-900 px-3 py-1.5 rounded-lg rounded-tl-none text-xs text-slate-600 dark:text-slate-300 shadow-sm">
+                                                        {reaction}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Background Decor */}
+                                    <div className="absolute -top-4 -right-4 text-slate-100 dark:text-slate-700/20 opacity-50 group-hover:scale-110 transition-transform duration-500">
+                                        <Hash size={100} />
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
-                ))}
+                )}
             </div>
         </div>
     );

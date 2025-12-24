@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect } from 'react';
 import { Mic } from 'lucide-react';
 import { MatchEvent, Team } from '../types';
@@ -35,6 +33,7 @@ interface InterviewContext {
     opponentName: string;
     myScore: number;
     oppScore: number;
+    managerTrust: number; // ADDED
 }
 
 const PostMatchInterview = ({ 
@@ -44,7 +43,8 @@ const PostMatchInterview = ({
     events,
     homeTeam,
     awayTeam,
-    myTeamId
+    myTeamId,
+    managerTrust // ADDED
 }: { 
     result: 'WIN' | 'LOSS' | 'DRAW', 
     onClose: () => void,
@@ -52,7 +52,8 @@ const PostMatchInterview = ({
     events: MatchEvent[],
     homeTeam: Team,
     awayTeam: Team,
-    myTeamId: string
+    myTeamId: string,
+    managerTrust: number
 }) => {
     const [currentQuestion, setCurrentQuestion] = useState<{question: string, options: QuestionOption[]} | null>(null);
     const [relatedPlayerId, setRelatedPlayerId] = useState<string | undefined>(undefined);
@@ -90,6 +91,30 @@ const PostMatchInterview = ({
 
     // --- SCENARIO DEFINITIONS ---
     const SCENARIOS: QuestionScenario[] = [
+        // 0. MANAGER MUTINY (Priority: 100)
+        {
+            id: 'MANAGER_MUTINY',
+            priority: 100,
+            condition: (ctx) => ctx.managerTrust < 30 && ctx.result === 'LOSS',
+            templates: [
+                {
+                    question: "Sahada sanki size karşı oynayan bir takım vardı. Oyuncuların bilerek oynamadığı iddiaları hakkında ne düşünüyorsunuz?",
+                    options: [
+                        { text: "Bunu inkar edemem, bazı oyuncular ihanet ediyor.", effect: { teamMorale: -20, trustUpdate: { players: -20, board: -5 } } },
+                        { text: "Oyuncularıma güveniyorum, sadece kötü bir gündü.", effect: { teamMorale: 5, trustUpdate: { players: 5 } } }, // Trying to fix it
+                        { text: "Takım içi meseleleri burada konuşmam.", effect: { trustUpdate: { media: -5 } } }
+                    ]
+                },
+                {
+                    question: "Soyunma odasında kontrolü kaybettiğiniz ve oyuncuların sizi sabote ettiği konuşuluyor. İstifa edecek misiniz?",
+                    options: [
+                        { text: "Ben savaşçıyım, kimse beni yıldıramaz.", effect: { trustUpdate: { fans: 5, players: -5 } } },
+                        { text: "Yönetimle görüşüp gerekeni yapacağım.", effect: { trustUpdate: { board: -5 } } },
+                        { text: "Bu iddialar saçmalık.", effect: { trustUpdate: { media: -5 } } }
+                    ]
+                }
+            ]
+        },
         // 1. HAT TRICK HERO (Priority: 99)
         {
             id: 'HAT_TRICK',
@@ -478,7 +503,8 @@ const PostMatchInterview = ({
             myTeamName: myTeam.name,
             opponentName: opponentTeam.name,
             myScore,
-            oppScore
+            oppScore,
+            managerTrust // Added
         };
 
         // 1. Check Scenarios sorted by priority

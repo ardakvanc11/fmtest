@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
-import { Team, ManagerProfile, Fixture, Player } from '../types';
-import { Wallet, TrendingUp, TrendingDown, DollarSign, Users, Building2, PieChart, Landmark, CreditCard, PiggyBank, ArrowRightLeft, Briefcase, Scale, AlertTriangle, CheckCircle, Save, AlertCircle, ArrowUpRight, ArrowDownRight, Coins, Calendar, ArrowUpDown, ChevronRight } from 'lucide-react';
+import { Team, ManagerProfile, Fixture, Player, SponsorDeal } from '../types';
+import { Wallet, TrendingUp, TrendingDown, DollarSign, Users, Building2, PieChart, Landmark, CreditCard, PiggyBank, ArrowRightLeft, Briefcase, Scale, AlertTriangle, CheckCircle, Save, AlertCircle, ArrowUpRight, ArrowDownRight, Coins, Calendar, ArrowUpDown, ChevronRight, Lock, Unlock, RefreshCw, X, Check } from 'lucide-react';
 import { calculatePlayerWage } from '../utils/teamCalculations';
 import PlayerFace from '../components/shared/PlayerFace';
 
@@ -8,13 +9,24 @@ interface FinanceViewProps {
     team: Team;
     manager: ManagerProfile;
     onUpdateBudget: (newTransferBudget: number, newWageBudget: number) => void;
+    onUpdateSponsor?: (type: 'main' | 'stadium' | 'sleeve', deal: SponsorDeal) => void;
+    onTakeLoan?: (amount: number) => void; // NEW PROP
     fixtures?: Fixture[];
     currentWeek?: number;
-    currentDate?: string; // Add current date for daily calculations
-    onPlayerClick?: (player: Player) => void; // Added for navigation
+    currentDate?: string; 
+    onPlayerClick?: (player: Player) => void;
 }
 
-const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget, fixtures, currentWeek, currentDate, onPlayerClick }) => {
+const SPONSOR_OPTIONS = [
+    { name: "CryptoBet", risk: "High", valueMult: 1.3, duration: 2 },
+    { name: "Global Airlines", risk: "Low", valueMult: 1.0, duration: 4 },
+    { name: "TechGiant Inc.", risk: "Medium", valueMult: 1.15, duration: 3 },
+    { name: "Local Energy", risk: "Safe", valueMult: 0.9, duration: 5 },
+    { name: "AutoMotors", risk: "Low", valueMult: 1.05, duration: 3 },
+    { name: "FastFood Chain", risk: "Medium", valueMult: 1.1, duration: 2 }
+];
+
+const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget, onUpdateSponsor, onTakeLoan, fixtures, currentWeek, currentDate, onPlayerClick }) => {
     const [tab, setTab] = useState<'OVERVIEW' | 'INCOME' | 'EXPENSE' | 'WAGES' | 'FFP' | 'DEBT' | 'SPONSORS'>('OVERVIEW');
     
     // Fix: Calculate fines once on mount to prevent fluctuation
@@ -26,6 +38,10 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
     // Sorting State for Expense Tab
     const [expenseSortConfig, setExpenseSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'thisMonth', direction: 'desc' });
 
+    // Sponsor Modal State
+    const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
+    const [activeSponsorType, setActiveSponsorType] = useState<'main' | 'stadium' | 'sleeve' | null>(null);
+
     // Current Date Parsing
     const dateObj = currentDate ? new Date(currentDate) : new Date();
     const dayOfMonth = dateObj.getDate();
@@ -33,47 +49,42 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
     const currentYear = dateObj.getFullYear();
     const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-    // --- FINANCIAL CALCULATIONS (BASE ESTIMATES) ---
-    const totalSquadValue = team.players.reduce((acc, p) => acc + p.value, 0);
-    // Annual Wages Calculation: Use explicit wage if set, otherwise use new robust calculator
+    // Check if sponsors are unlocked (After July 1, 2026)
+    const unlockDate = new Date('2026-07-01');
+    const isSponsorUnlocked = dateObj >= unlockDate;
+
+    // Financial Distress Check
+    const isCrisis = team.budget < 0;
+
+    // --- FINANCIAL CALCULATIONS ---
     const totalAnnualWages = team.players.reduce((acc, p) => {
         return acc + (p.wage !== undefined ? p.wage : calculatePlayerWage(p));
     }, 0);
     
     const monthlyWages = totalAnnualWages / 12;
 
-    // --- DETAILED MONTHLY BREAKDOWN CALCULATIONS ---
-    // Multipliers based on Team Strength/Fanbase to simulate realism
     const strengthFactor = team.strength / 100;
-    const fanFactor = team.fanBase / 1000000; // Millions
+    const fanFactor = team.fanBase / 1000000; 
 
-    // GELİRLER (Monthly - Used in Overview)
-    
-    // 1. SPONSOR INCOME (AccruES Daily)
-    // Full monthly deal value
-    const totalMonthlySponsorValue = ((team.championships * 2) + (fanFactor * 0.5)) / 12;
-    // Current amount accrued this month (Day 1 = small, Day 30 = full)
+    // SPONSOR INCOME (Based on Team Data now)
+    const annualSponsorIncome = 
+        team.sponsors.main.yearlyValue + 
+        team.sponsors.stadium.yearlyValue + 
+        team.sponsors.sleeve.yearlyValue;
+
+    const totalMonthlySponsorValue = annualSponsorIncome / 12;
     const inc_Sponsor = (totalMonthlySponsorValue / daysInCurrentMonth) * dayOfMonth;
 
-    // 2. COMMERCIAL/MERCH (Random Fluctuation based on Month & Strength)
-    // Seed using TeamID + Month + Year to keep it stable within the month but change next month
+    // MERCH
     const merchSeed = team.id.charCodeAt(0) + currentMonth + currentYear;
-    // Generate pseudo-random fluctuation between 0.8 and 1.2
-    // (seed % 40) gives 0-39. /100 gives 0.0-0.39. +0.8 gives 0.8-1.19.
     const merchFluctuation = 0.8 + ((merchSeed % 40) / 100);
-    
-    // Additional strength bonus for commercial (Better teams sell more)
     const strengthBonus = team.strength > 80 ? 1.2 : team.strength > 70 ? 1.05 : 1.0;
-    
-    // --- YILDIZ OYUNCU FORMA SATIŞ BONUSU ---
-    // Kural: Gücü 86 ve üzeri olan her oyuncu için aylık +0.2 M€ (200.000 €) ekstra gelir.
     const starPlayerBonus = team.players.filter(p => p.skill >= 86).length * 0.2;
-
     const baseMerch = (fanFactor * 0.8) / 12;
     const inc_Merch = (baseMerch * merchFluctuation * strengthBonus) + starPlayerBonus;
-    const inc_Trade = inc_Merch * 0.2; // Extra commercial trade linked to merch
+    const inc_Trade = inc_Merch * 0.2; 
 
-    // 3. TV REVENUE (Based on Matches Played This Month)
+    // TV
     let matchesPlayedThisMonth = 0;
     if (fixtures) {
         matchesPlayedThisMonth = fixtures.filter(f => 
@@ -83,17 +94,15 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
             new Date(f.date).getFullYear() === currentYear
         ).length;
     }
-    // Base TV per match + Strength bonus
-    const tvPerMatch = 0.20 + (strengthFactor * 0.10); // e.g. 0.20 + 0.08 = 0.28M per match
+    const tvPerMatch = 0.20 + (strengthFactor * 0.10); 
     const inc_TV = matchesPlayedThisMonth * tvPerMatch;
 
-    // 4. GATE RECEIPTS (Realized based on played matches if fixtures provided)
+    // GATE
     const ticketIncomePerMatch = fanFactor * 0.01944444;
     let inc_GateReceipts = 0;
     let inc_GateReceiptsLastMonth = 0;
     
     if (fixtures && currentWeek) {
-        // "This Month": Actual played home matches in current month
         const homeMatchesThisMonth = fixtures.filter(f => 
             f.homeTeamId === team.id && f.played &&
             new Date(f.date).getMonth() === currentMonth &&
@@ -101,7 +110,6 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
         );
         inc_GateReceipts = homeMatchesThisMonth.length * ticketIncomePerMatch;
 
-        // "Last Month": Previous month
         const prevMonthDate = new Date(currentYear, currentMonth - 1, 1);
         const homeMatchesLastMonth = fixtures.filter(f => 
             f.homeTeamId === team.id && f.played &&
@@ -111,50 +119,39 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
         inc_GateReceiptsLastMonth = homeMatchesLastMonth.length * ticketIncomePerMatch;
     }
 
-    const inc_Loca = inc_GateReceipts * 0.45; // VIP/Loca Income linked to gate
-    
-    // CHANGE: Prize money is strictly 0 as requested.
+    const inc_Loca = inc_GateReceipts * 0.45; 
     const inc_Prizes = 0; 
-    
-    // DISABLED INTEREST & INVESTMENTS AS REQUESTED
     const inc_Investments = 0; 
     const inc_Interest = 0; 
-    
-    // UPDATED: Use monthly tracker for monthly view
     const inc_PlayerSales = manager.stats.transferIncomeThisMonth || 0;
     
     const totalMonthlyIncome = inc_GateReceipts + inc_Loca + inc_TV + inc_Merch + inc_Sponsor + inc_Prizes + inc_Investments + inc_Interest + inc_PlayerSales + inc_Trade;
 
-    // GİDERLER (Monthly)
-    // Pro-rate wages based on day of month for display accuracy? No, usually wages shown as monthly burden.
-    // But to match "net flow", let's keep it as monthly liability.
+    // EXPENSES
     const exp_PlayerWages = monthlyWages;
-    const exp_StaffWages = monthlyWages * 0.15; // Coaching/Medical staff
-    const exp_DirectorWages = 0.05; // Board/Director salaries
-    const exp_Bonuses = (manager.stats.wins * 0.1) / 4; // Match bonuses approx
-    const exp_MatchDay = 0.15; // Hosting costs per month
-    const exp_StadiumMaint = (team.stadiumCapacity / 100000) * 0.5; // Maintenance
-    const exp_Academy = strengthFactor * 0.4; // Youth Academy investment
-    const exp_Scouting = strengthFactor * 0.2; // Scouting network costs
-    const exp_Travel = 0.1; // Travel expenses
-    const exp_Fines = fixedFines; // Use stable state value
-    const exp_DebtRepay = (totalSquadValue * 0.4) / 60; // Long term debt repayment (5 years / 60 months)
-    
-    // UPDATED: Use monthly tracker for monthly view
+    const exp_StaffWages = monthlyWages * 0.15; 
+    const exp_DirectorWages = 0.05; 
+    const exp_Bonuses = (manager.stats.wins * 0.1) / 4; 
+    const exp_MatchDay = 0.15; 
+    const exp_StadiumMaint = (team.stadiumCapacity / 100000) * 0.5; 
+    const exp_Academy = strengthFactor * 0.4; 
+    const exp_Scouting = strengthFactor * 0.2; 
+    const exp_Travel = 0.1; 
+    const exp_Fines = fixedFines; 
+    const exp_DebtRepay = (team.initialDebt || 0) / 60; 
     const exp_Transfers = manager.stats.transferSpendThisMonth || 0; 
 
     const totalMonthlyExpense = exp_PlayerWages + exp_StaffWages + exp_DirectorWages + exp_Bonuses + exp_MatchDay + exp_StadiumMaint + exp_Academy + exp_Scouting + exp_Travel + exp_Fines + exp_DebtRepay + exp_Transfers;
 
     const monthlyNet = totalMonthlyIncome - totalMonthlyExpense;
 
-    // --- SEASONAL DATA FROM FINANCIAL RECORDS ---
+    // RECORDS
     const financialRecs = team.financialRecords;
 
-    // Detailed Income Breakdown Data
     const incomeBreakdown = [
         { label: "Satılan Oyuncular", thisMonth: inc_PlayerSales, lastMonth: 0, season: financialRecs.income.transfers },
         { label: "TV & Yayın Gelirleri", thisMonth: inc_TV, lastMonth: inc_TV, season: financialRecs.income.tv },
-        { label: "Ticaret & Pazarlama", thisMonth: inc_Trade + inc_Merch, lastMonth: (inc_Trade + inc_Merch) * 0.95, season: financialRecs.income.merch }, // Merch is handled separately usually, using accumulator for consistency? Actually no, merch isn't in financialRecords explicitly in handleNextDay yet, let's use estimate + accumulator or just fix useGameState. For now assuming simplified model in records.
+        { label: "Ticaret & Pazarlama", thisMonth: inc_Trade + inc_Merch, lastMonth: (inc_Trade + inc_Merch) * 0.95, season: financialRecs.income.merch }, 
         { label: "Loca & VIP Geliri", thisMonth: inc_Loca, lastMonth: inc_Loca * 1.05, season: financialRecs.income.loca },
         { label: "Gişe Hasılatları", thisMonth: inc_GateReceipts, lastMonth: inc_GateReceiptsLastMonth, season: financialRecs.income.gate },
         { label: "Sponsorluk Anlaşmaları", thisMonth: inc_Sponsor, lastMonth: totalMonthlySponsorValue, season: financialRecs.income.sponsor },
@@ -162,7 +159,6 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
         { label: "Faiz & Yatırım", thisMonth: 0, lastMonth: 0, season: 0 },
     ];
 
-    // Detailed Expense Breakdown Data
     const expenseBreakdown = [
         { label: "Oyuncu Maaşları", thisMonth: exp_PlayerWages, lastMonth: exp_PlayerWages, season: financialRecs.expense.wages },
         { label: "Transfer Harcamaları", thisMonth: exp_Transfers, lastMonth: 0, season: financialRecs.expense.transfers },
@@ -178,7 +174,6 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
         { label: "Cezalar", thisMonth: exp_Fines, lastMonth: 0, season: financialRecs.expense.fines }
     ];
 
-    // Sorting Logic Helper
     const sortData = (data: any[], config: {key: string, direction: 'asc'|'desc'}) => {
         return [...data].sort((a, b) => {
             const valA = a[config.key];
@@ -211,8 +206,6 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
         }));
     };
 
-    // --- ARRAYS FOR OVERVIEW SORTING ---
-    // Create arrays to sort items from highest to lowest amount
     const overviewIncomeItems = [
         { label: "Gişe Hasılatları", amount: inc_GateReceipts },
         { label: "Loca & VIP Geliri", amount: inc_Loca },
@@ -220,7 +213,7 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
         { label: "TV & Yayın Gelirleri", amount: inc_TV },
         { label: "Ticari Faaliyetler (Mağaza)", amount: inc_Merch },
         { label: "Ticaret & Pazarlama", amount: inc_Trade },
-        { label: "Para Ödülleri", amount: 0 }, // Explicitly 0
+        { label: "Para Ödülleri", amount: 0 }, 
         { label: "Satılan Oyuncular", amount: inc_PlayerSales },
         { label: "Finansal Yatırımlar", amount: inc_Investments },
         { label: "Faiz Gelirleri", amount: inc_Interest }
@@ -250,7 +243,7 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
     const totalExpenseLastMonth = expenseBreakdown.reduce((sum, item) => sum + item.lastMonth, 0);
     const totalExpenseSeason = expenseBreakdown.reduce((sum, item) => sum + item.season, 0);
 
-    // --- BUDGET SLIDER STATE ---
+    // --- BUDGET SLIDER ---
     const currentAllocatedWageBudget = team.wageBudget || totalAnnualWages;
     const [transferBudget, setTransferBudget] = useState(team.budget);
     const [wageBudget, setWageBudget] = useState(currentAllocatedWageBudget);
@@ -279,7 +272,6 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
 
     const currentSliderValue = (transferBudget / totalBudgetPot) * 100;
     
-    // Updated: Sort by wage and show ALL players
     const sortedPlayersByWage = [...team.players].sort((a, b) => {
         const wageA = a.wage !== undefined ? a.wage : calculatePlayerWage(a);
         const wageB = b.wage !== undefined ? b.wage : calculatePlayerWage(b);
@@ -288,17 +280,39 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
     
     const formatMoney = (val: number) => `${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} M€`;
 
+    const handleOpenSponsorModal = (type: 'main' | 'stadium' | 'sleeve') => {
+        setActiveSponsorType(type);
+        setSponsorModalOpen(true);
+    };
+
+    const handleSelectSponsor = (option: typeof SPONSOR_OPTIONS[0]) => {
+        if (activeSponsorType && onUpdateSponsor) {
+            // Calculate actual value based on current base * multiplier
+            const currentDeal = team.sponsors[activeSponsorType];
+            const newValue = currentDeal.yearlyValue * option.valueMult;
+            
+            const newDeal: SponsorDeal = {
+                name: option.name,
+                yearlyValue: parseFloat(newValue.toFixed(2)),
+                expiryYear: currentYear + option.duration
+            };
+            
+            onUpdateSponsor(activeSponsorType, newDeal);
+            setSponsorModalOpen(false);
+            setActiveSponsorType(null);
+        }
+    };
+
     const tabs = [
         { id: 'OVERVIEW', label: 'Genel', icon: PieChart },
         { id: 'INCOME', label: 'Gelirler', icon: TrendingUp },
         { id: 'EXPENSE', label: 'Giderler', icon: TrendingDown },
         { id: 'WAGES', label: 'Maaşlar', icon: Users },
         { id: 'FFP', label: 'FFP & Lisans', icon: Scale },
-        { id: 'DEBT', label: 'Borçlar', icon: CreditCard },
+        { id: 'DEBT', label: 'Borçlar', icon: CreditCard, alert: isCrisis },
         { id: 'SPONSORS', label: 'Sponsorlar', icon: Briefcase }
     ];
 
-    // Added optional key to props type to satisfy assignment checking in maps
     const RenderMoneyRow = ({ label, amount, type }: { label: string, amount: number, type: 'inc' | 'exp', key?: any }) => (
         <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-700/50 last:border-0 text-sm">
             <span className="text-slate-600 dark:text-slate-400">{label}</span>
@@ -320,12 +334,106 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
         </th>
     );
 
+    const renderSponsorCard = (type: 'main' | 'stadium' | 'sleeve', label: string, deal: SponsorDeal) => (
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group">
+            <div className="relative z-10 flex justify-between items-start">
+                <div>
+                    <div className="text-xs font-bold text-slate-500 uppercase mb-2">{label}</div>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white mb-1">{deal.name}</div>
+                    <div className="text-green-600 dark:text-green-400 font-mono font-bold text-lg">{formatMoney(deal.yearlyValue)} / Yıl</div>
+                    <div className="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                        <Calendar size={12}/> Bitiş: {deal.expiryYear}
+                    </div>
+                </div>
+                
+                <div className="flex flex-col items-end gap-2">
+                    {isSponsorUnlocked ? (
+                        <button 
+                            onClick={() => handleOpenSponsorModal(type)}
+                            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition shadow-lg shadow-blue-900/20"
+                        >
+                            <RefreshCw size={16}/> Değiştir
+                        </button>
+                    ) : (
+                        <div className="bg-slate-200 dark:bg-slate-700 text-slate-500 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 cursor-not-allowed">
+                            <Lock size={14}/> Kilitli (2026)
+                        </div>
+                    )}
+                </div>
+            </div>
+            {/* Background Icon */}
+            <Briefcase size={100} className="absolute -bottom-4 -right-4 text-slate-100 dark:text-slate-700 opacity-50 group-hover:scale-110 transition-transform duration-500 pointer-events-none"/>
+        </div>
+    );
+
     return (
-        <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900">
+        <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 relative">
+            
+            {/* SPONSOR NEGOTIATION MODAL */}
+            {sponsorModalOpen && (
+                <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSponsorModalOpen(false)}>
+                    <div className="bg-slate-800 w-full max-w-2xl rounded-xl border border-slate-700 shadow-2xl flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 border-b border-slate-700 bg-slate-900 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <Briefcase className="text-yellow-500"/> Yeni Sponsor Anlaşması
+                                </h3>
+                                <p className="text-slate-400 text-sm mt-1">
+                                    {activeSponsorType === 'main' ? 'Ana Forma Sponsoru' : activeSponsorType === 'stadium' ? 'Stadyum İsim Hakkı' : 'Kol Sponsoru'} için teklifler
+                                </p>
+                            </div>
+                            <button onClick={() => setSponsorModalOpen(false)} className="text-slate-400 hover:text-white"><X size={24}/></button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {SPONSOR_OPTIONS.map((opt, idx) => {
+                                const currentDealVal = activeSponsorType ? team.sponsors[activeSponsorType].yearlyValue : 0;
+                                const offerVal = currentDealVal * opt.valueMult;
+                                
+                                return (
+                                    <button 
+                                        key={idx}
+                                        onClick={() => handleSelectSponsor(opt)}
+                                        className="bg-slate-700 border border-slate-600 hover:border-yellow-500 hover:bg-slate-600 p-4 rounded-xl text-left transition group relative overflow-hidden"
+                                    >
+                                        <div className="relative z-10">
+                                            <div className="text-lg font-bold text-white mb-1">{opt.name}</div>
+                                            <div className="flex justify-between items-end">
+                                                <div>
+                                                    <div className="text-sm text-slate-400">Yıllık Teklif</div>
+                                                    <div className={`text-xl font-black font-mono ${opt.valueMult >= 1.1 ? 'text-green-400' : opt.valueMult < 1.0 ? 'text-yellow-400' : 'text-blue-400'}`}>
+                                                        {formatMoney(offerVal)}
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-xs font-bold text-slate-500 uppercase">Süre</div>
+                                                    <div className="text-white font-bold">{opt.duration} Yıl</div>
+                                                </div>
+                                            </div>
+                                            <div className="mt-3 flex gap-2">
+                                                <span className="text-[10px] bg-slate-800 px-2 py-1 rounded border border-slate-600 text-slate-300">
+                                                    Risk: {opt.risk}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {opt.valueMult >= 1.2 && (
+                                            <div className="absolute top-0 right-0 bg-yellow-500 text-black text-[10px] font-bold px-2 py-1 rounded-bl-lg">
+                                                FIRSAT
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Top Navigation */}
             <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-700/50 px-2 overflow-x-auto no-scrollbar shrink-0 pt-2">
                 {tabs.map((t) => {
                     const isActive = tab === t.id;
+                    const isAlert = t.alert;
                     return (
                         <button
                             key={t.id}
@@ -341,6 +449,7 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
                             )}
                             <t.icon size={18} className={`${isActive ? "text-yellow-600 dark:text-yellow-400" : "text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300"}`} />
                             <span>{t.label}</span>
+                            {isAlert && <AlertCircle size={14} className="text-red-500 animate-pulse"/>}
                         </button>
                     );
                 })}
@@ -698,45 +807,118 @@ const FinanceView: React.FC<FinanceViewProps> = ({ team, manager, onUpdateBudget
                     </div>
                 )}
 
-                {/* --- DEBT TAB --- */}
+                {/* --- DEBT TAB (UPDATED FOR EMERGENCY LOANS) --- */}
                 {tab === 'DEBT' && (
-                    <div className="flex flex-col items-center justify-center h-64 bg-white dark:bg-slate-800 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center p-8">
-                        <CreditCard size={48} className="text-slate-300 mb-4"/>
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Borç Yapılandırması</h3>
-                        <p className="text-slate-500 max-w-md mt-2">
-                            Kulübün şu anki net banka borcu: <span className="font-bold text-red-500">{(totalSquadValue * 0.4).toFixed(1)} M€</span>. 
-                            <br/>Ödemeler 2030 yılına kadar yapılandırılmıştır.
-                        </p>
+                    <div className="space-y-6">
+                        <div className="flex flex-col items-center justify-center h-48 bg-white dark:bg-slate-800 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center p-8">
+                            <CreditCard size={48} className="text-slate-300 mb-4"/>
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Borç Yapılandırması</h3>
+                            <p className="text-slate-500 max-w-md mt-2">
+                                Kulübün şu anki net banka borcu: <span className="font-bold text-red-500">{(team.initialDebt || 0).toFixed(1)} M€</span>. 
+                                <br/>Ödemeler 2030 yılına kadar yapılandırılmıştır.
+                            </p>
+                        </div>
+
+                        {/* EMERGENCY LOAN INTERFACE */}
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                            <div className={`p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center ${isCrisis ? 'bg-red-50 dark:bg-red-900/30' : 'bg-slate-50 dark:bg-slate-900'}`}>
+                                <h3 className={`font-bold text-lg flex items-center gap-2 ${isCrisis ? 'text-red-700 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                                    <Landmark size={20} /> Acil Durum Kredisi
+                                </h3>
+                                {isCrisis ? (
+                                    <span className="bg-red-200 text-red-800 text-xs font-bold px-3 py-1 rounded-full animate-pulse border border-red-300">
+                                        ACİL NAKİT GEREKLİ
+                                    </span>
+                                ) : (
+                                    <span className="text-xs text-slate-500 flex items-center gap-1 font-bold">
+                                        <Lock size={12}/> KİLİTLİ (Finansal Durum İyi)
+                                    </span>
+                                )}
+                            </div>
+                            
+                            <div className="p-6">
+                                <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg text-sm text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                    <p className="font-bold mb-1">Kredi Koşulları:</p>
+                                    <ul className="list-disc list-inside space-y-1">
+                                        <li>Yıllık Sabit Faiz: <span className="font-bold text-red-600 dark:text-red-400">%35</span> (Toplam borca eklenir)</li>
+                                        <li>Yönetim Güveni Etkisi: <span className="font-bold text-red-600 dark:text-red-400">-10 Puan</span> (Mali başarısızlık)</li>
+                                        <li>Sadece <span className="font-bold">Transfer Bütçesi Negatif</span> olduğunda kullanılabilir.</li>
+                                    </ul>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {[10, 25, 50, 100].map((amount) => {
+                                        const isHighRep = team.reputation > 4.5;
+                                        const isAllowed = isCrisis && (amount !== 100 || isHighRep);
+                                        const totalDebtAdd = amount * 1.35;
+
+                                        return (
+                                            <button
+                                                key={amount}
+                                                disabled={!isAllowed}
+                                                onClick={() => isAllowed && onTakeLoan && onTakeLoan(amount)}
+                                                className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${
+                                                    !isCrisis 
+                                                    ? 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 opacity-50 cursor-not-allowed'
+                                                    : !isAllowed 
+                                                        ? 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 opacity-50 cursor-not-allowed'
+                                                        : 'bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 hover:border-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 cursor-pointer shadow-sm hover:shadow-md active:scale-95'
+                                                }`}
+                                            >
+                                                <div className="text-2xl font-black text-slate-800 dark:text-white">{amount} M€</div>
+                                                <div className="text-xs text-red-500 font-bold">
+                                                    Geri Ödeme: {totalDebtAdd.toFixed(1)} M€
+                                                </div>
+                                                {amount === 100 && !isHighRep && isCrisis && (
+                                                    <div className="text-[9px] text-slate-400 mt-1 uppercase font-bold">
+                                                        İtibar {'>'} 4.5 Gerekli
+                                                    </div>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
 
-                {/* --- SPONSORS TAB --- */}
+                {/* --- SPONSORS TAB (LOCKED LOGIC) --- */}
                 {tab === 'SPONSORS' && (
-                    <div className="space-y-4">
-                        <div className="bg-gradient-to-r from-blue-900 to-slate-900 p-6 rounded-xl text-white shadow-lg flex justify-between items-center relative overflow-hidden">
-                            <div className="relative z-10">
-                                <div className="text-xs font-bold text-blue-300 uppercase mb-1">Ana Forma Sponsoru</div>
-                                <div className="text-3xl font-black italic tracking-wider">HAYVANLAR HOLDING</div>
-                                <div className="mt-2 text-sm opacity-80">
-                                    Yıllık {formatMoney(totalMonthlySponsorValue * 12 * 0.6)} • Bitiş: 2028
-                                    <br/>
-                                    <span className="text-xs text-yellow-400">Bu Ay Kazanılan: {formatMoney(inc_Sponsor * 0.6)} ({dayOfMonth}. Gün)</span>
+                    <div className="space-y-6">
+                        {!isSponsorUnlocked && (
+                            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4 rounded-xl flex items-start gap-3">
+                                <Lock className="text-yellow-600 dark:text-yellow-500 shrink-0 mt-1" size={24}/>
+                                <div>
+                                    <h3 className="font-bold text-yellow-800 dark:text-yellow-400">Sponsorluk Anlaşmaları Kilitli</h3>
+                                    <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                                        Mevcut anlaşmalar 2026 yılına kadar devam etmektedir. Yeni sezona (1 Temmuz 2026) giriş yapıldığında yeni teklifleri değerlendirebilirsiniz.
+                                    </p>
                                 </div>
                             </div>
-                            <Briefcase size={64} className="text-white opacity-10 absolute right-4"/>
-                        </div>
+                        )}
+
+                        {isSponsorUnlocked && (
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-xl flex items-start gap-3">
+                                <Unlock className="text-blue-600 dark:text-blue-400 shrink-0 mt-1" size={24}/>
+                                <div>
+                                    <h3 className="font-bold text-blue-800 dark:text-blue-400">Sponsorluk Dönemi Açık!</h3>
+                                    <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                                        Mevcut anlaşmaları yenileyebilir veya daha iyi teklifler için pazarlık yapabilirsiniz.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Main Sponsor */}
+                        {renderSponsorCard('main', 'Ana Forma Sponsoru', team.sponsors.main)}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-                                <div className="text-xs font-bold text-slate-500 uppercase mb-1">Stadyum İsim Hakkı</div>
-                                <div className="text-lg font-bold text-slate-900 dark:text-white">{team.stadiumName}</div>
-                                <div className="text-sm text-green-600 dark:text-green-400 font-mono mt-1">+{formatMoney(totalMonthlySponsorValue * 12 * 0.3)} / Yıl</div>
-                            </div>
-                            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-                                <div className="text-xs font-bold text-slate-500 uppercase mb-1">Kol Sponsoru</div>
-                                <div className="text-lg font-bold text-slate-900 dark:text-white">Süper Toto</div>
-                                <div className="text-sm text-green-600 dark:text-green-400 font-mono mt-1">+{formatMoney(totalMonthlySponsorValue * 12 * 0.1)} / Yıl</div>
-                            </div>
+                            {/* Stadium Sponsor */}
+                            {renderSponsorCard('stadium', 'Stadyum İsim Hakkı', team.sponsors.stadium)}
+                            
+                            {/* Sleeve Sponsor */}
+                            {renderSponsorCard('sleeve', 'Kol Sponsoru', team.sponsors.sleeve)}
                         </div>
                     </div>
                 )}

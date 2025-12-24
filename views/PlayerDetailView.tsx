@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Player, Position, ManagerProfile } from '../types';
-import { ChevronLeft, Trophy, Activity, Heart, Shield, Swords, Zap, Star, TrendingUp, AlertTriangle, Ruler, Anchor, FileText, Goal, ArrowRightLeft, Scale, History, Calendar, Lock, Unlock, Briefcase, Coins, CheckCircle2, ChevronDown, MessageCircle, BedDouble, FileSignature, UserMinus, Smile, Users, ThumbsUp, ThumbsDown, UserCheck, Medal, Crown, X, Check, Wallet } from 'lucide-react';
+import { ChevronLeft, Trophy, Activity, Heart, Shield, Swords, Zap, Star, TrendingUp, AlertTriangle, Ruler, Anchor, FileText, Goal, ArrowRightLeft, Scale, History, Calendar, Lock, Unlock, Briefcase, Coins, CheckCircle2, ChevronDown, MessageCircle, BedDouble, FileSignature, UserMinus, Smile, Users, ThumbsUp, ThumbsDown, UserCheck, Medal, Crown, X, Check, Wallet, MessageSquare } from 'lucide-react';
 import PlayerFace from '../components/shared/PlayerFace';
 import PlayerPositionPitch from '../components/shared/PlayerPositionPitch';
 import PlayerStatsTable from '../components/shared/PlayerStatsTable';
@@ -16,7 +15,7 @@ interface PlayerDetailViewProps {
     onInteract?: (playerId: string, type: 'POSITIVE' | 'NEGATIVE' | 'HOSTILE') => void;
     onUpdatePlayer?: (playerId: string, updates: Partial<Player>) => void;
     onStartNegotiation?: (player: Player) => void;
-    onStartTransferNegotiation?: (player: Player) => void; // Added Prop
+    onStartTransferNegotiation?: (player: Player) => void; 
     onReleasePlayer?: (player: Player, cost: number) => void;
     currentWeek?: number; 
 }
@@ -49,6 +48,10 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
     
     // Action Modals State
     const [actionModal, setActionModal] = useState<'RELEASE' | 'TERMINATE' | null>(null);
+
+    // Interaction Modal States
+    const [interactionModal, setInteractionModal] = useState<'TALK' | 'REST' | null>(null);
+    const [interactionResult, setInteractionResult] = useState<{ text: string, mood: 'HAPPY' | 'ANGRY' | 'NEUTRAL' } | null>(null);
 
     const isMyPlayer = myTeamId && player.teamId === myTeamId;
     const isNegotiationOnCooldown = player.nextNegotiationWeek && currentWeek && currentWeek < player.nextNegotiationWeek;
@@ -110,19 +113,86 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
                 break;
             
             case 'TALK': 
-                if (onInteract) {
-                    const outcome = Math.random() > 0.4 ? 'POSITIVE' : 'NEGATIVE';
-                    onInteract(player.id, outcome);
-                    alert(outcome === 'POSITIVE' ? "Görüşme olumlu geçti. İlişkiniz güçlendi." : "Görüşme gergin geçti. Oyuncu tepkili.");
-                }
+                setInteractionResult(null);
+                setInteractionModal('TALK');
                 break;
+
             case 'REST': 
-                alert("Oyuncuya 1 gün izin verildi."); 
-                if (onInteract) onInteract(player.id, 'POSITIVE');
+                setInteractionResult(null);
+                setInteractionModal('REST');
                 break;
                 
             default: break;
         }
+    };
+
+    // --- INTERACTION LOGIC ---
+
+    const handleTalkOption = (type: 'PRAISE' | 'CRITICIZE' | 'MOTIVATE') => {
+        let response = "";
+        let mood: 'HAPPY' | 'ANGRY' | 'NEUTRAL' = 'NEUTRAL';
+        let effect: 'POSITIVE' | 'NEGATIVE' | 'HOSTILE' = 'POSITIVE';
+
+        if (type === 'PRAISE') {
+            if (player.seasonStats.averageRating >= 7.0 || player.morale >= 80) {
+                response = "Teşekkürler hocam! Güveninizi boşa çıkarmamak için çalışmaya devam edeceğim.";
+                mood = 'HAPPY';
+                effect = 'POSITIVE';
+            } else {
+                response = "Açıkçası kendimi o kadar iyi hissetmiyorum ama desteğiniz için sağ olun.";
+                mood = 'NEUTRAL';
+                effect = 'POSITIVE'; // Still slight boost
+            }
+        } 
+        else if (type === 'CRITICIZE') {
+            if (player.seasonStats.averageRating < 6.5) {
+                response = "Haklısınız hocam. Performansımın farkındayım, daha çok çalışacağım.";
+                mood = 'NEUTRAL';
+                effect = 'POSITIVE'; // Accepts criticism constructively
+            } else {
+                response = "Buna katılmıyorum! Elimden gelenin en iyisini yapıyorum, bana haksızlık ediyorsunuz.";
+                mood = 'ANGRY';
+                effect = 'NEGATIVE';
+            }
+        }
+        else if (type === 'MOTIVATE') {
+            if (player.morale < 50) {
+                response = "Moralim çok bozuktu, bu konuşma iyi geldi. Sizi mahcup etmeyeceğim.";
+                mood = 'HAPPY';
+                effect = 'POSITIVE';
+            } else {
+                response = "Ben zaten her zaman hazırım hocam, merak etmeyin.";
+                mood = 'NEUTRAL';
+                effect = 'POSITIVE';
+            }
+        }
+
+        setInteractionResult({ text: response, mood });
+        if (onInteract) onInteract(player.id, effect);
+    };
+
+    const handleRestConfirm = () => {
+        const cond = player.condition !== undefined ? player.condition : player.stats.stamina;
+        let response = "";
+        let mood: 'HAPPY' | 'ANGRY' | 'NEUTRAL' = 'NEUTRAL';
+        
+        // Fit Player Logic (>80%)
+        if (cond > 80) {
+            response = "Hocam kendimi gayet zinde hissediyorum! Oynamak istiyorum, beni kesmeniz hiç hoşuma gitmedi.";
+            mood = 'ANGRY';
+            // Morale drop, no condition boost
+            if (onInteract) onInteract(player.id, 'NEGATIVE');
+        } else {
+            // Tired Player Logic
+            response = "Anlayışınız için teşekkürler hocam. Bacaklarım gerçekten ağırlaşmıştı, bu izin bana ilaç gibi gelecek.";
+            mood = 'HAPPY';
+            // Morale boost AND Condition boost
+            if (onInteract) onInteract(player.id, 'POSITIVE');
+            if (onUpdatePlayer) {
+                onUpdatePlayer(player.id, { condition: Math.min(100, cond + 30) }); // Boost condition
+            }
+        }
+        setInteractionResult({ text: response, mood });
     };
 
     const handleConfirmRelease = () => {
@@ -394,6 +464,88 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
     return (
         <div className="h-full bg-slate-100 dark:bg-slate-900 overflow-y-auto custom-scrollbar flex flex-col" onClick={() => activeDropdown && setActiveDropdown(null)}>
             
+            {/* INTERACTION MODAL (Talk/Rest) */}
+            {interactionModal && (
+                <div className="fixed inset-0 bg-black/80 z-[80] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setInteractionModal(null)}>
+                    <div className="bg-slate-800 rounded-xl border border-slate-700 w-full max-w-md shadow-2xl animate-in zoom-in duration-200 overflow-hidden" onClick={e => e.stopPropagation()}>
+                        {/* Header */}
+                        <div className="bg-slate-900 p-4 border-b border-slate-700 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                {interactionModal === 'TALK' ? <MessageSquare className="text-blue-500"/> : <BedDouble className="text-indigo-500"/>}
+                                {interactionModal === 'TALK' ? 'Oyuncuyla Görüş' : 'Dinlendirme Kararı'}
+                            </h3>
+                            <button onClick={() => setInteractionModal(null)} className="text-slate-400 hover:text-white"><X size={20}/></button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6">
+                            {!interactionResult ? (
+                                // Step 1: Selection
+                                <>
+                                    <div className="flex items-center gap-4 mb-6">
+                                        <div className="w-16 h-16 rounded-full bg-slate-200 border-2 border-slate-500 overflow-hidden">
+                                            <PlayerFace player={player} />
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-bold text-lg">{player.name}</p>
+                                            <p className="text-slate-400 text-sm">
+                                                {interactionModal === 'TALK' 
+                                                    ? 'Ne konuda konuşmak istersiniz?' 
+                                                    : 'Oyuncuyu bir sonraki maçta dinlendirmeyi planlıyorsunuz. Bunu ona nasıl söyleyeceksiniz?'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {interactionModal === 'TALK' ? (
+                                            <>
+                                                <button onClick={() => handleTalkOption('PRAISE')} className="w-full p-4 bg-green-900/20 border border-green-800 rounded-lg text-left hover:bg-green-900/40 transition group">
+                                                    <div className="font-bold text-green-400 mb-1 group-hover:text-green-300">Öv ve Motive Et</div>
+                                                    <div className="text-xs text-slate-400">Performansından memnun olduğunuzu belirtin.</div>
+                                                </button>
+                                                <button onClick={() => handleTalkOption('CRITICIZE')} className="w-full p-4 bg-red-900/20 border border-red-800 rounded-lg text-left hover:bg-red-900/40 transition group">
+                                                    <div className="font-bold text-red-400 mb-1 group-hover:text-red-300">Eleştir ve Uyar</div>
+                                                    <div className="text-xs text-slate-400">Daha iyisini yapabileceğini sert bir dille anlatın.</div>
+                                                </button>
+                                                <button onClick={() => handleTalkOption('MOTIVATE')} className="w-full p-4 bg-blue-900/20 border border-blue-800 rounded-lg text-left hover:bg-blue-900/40 transition group">
+                                                    <div className="font-bold text-blue-400 mb-1 group-hover:text-blue-300">Güven Aşıla</div>
+                                                    <div className="text-xs text-slate-400">Ona güvendiğinizi ve takımın lideri olduğunu hatırlatın.</div>
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="bg-slate-900/50 p-4 rounded-lg mb-4 text-sm text-slate-300">
+                                                    <p>Mevcut Kondisyon: <span className={currentCondition < 70 ? "text-red-400 font-bold" : "text-green-400 font-bold"}>%{Math.round(currentCondition)}</span></p>
+                                                    <p className="mt-2 text-xs italic text-slate-500">Not: Eğer oyuncu yorgunsa (%80 altı) bu kararı olumlu karşılar. Eğer zindeyse (%80 üstü) oynamak istediği için tepki gösterebilir.</p>
+                                                </div>
+                                                <button onClick={handleRestConfirm} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition shadow-lg">
+                                                    Dinlendirileceğini Bildir
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                // Step 2: Result
+                                <div className="text-center animate-in fade-in slide-in-from-bottom-2">
+                                    <div className="flex justify-center mb-4">
+                                        <div className={`p-4 rounded-full ${interactionResult.mood === 'HAPPY' ? 'bg-green-500/20 text-green-500' : interactionResult.mood === 'ANGRY' ? 'bg-red-500/20 text-red-500' : 'bg-slate-500/20 text-slate-400'}`}>
+                                            {interactionResult.mood === 'HAPPY' ? <Smile size={48}/> : interactionResult.mood === 'ANGRY' ? <UserMinus size={48}/> : <UserCheck size={48}/>}
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-700/50 p-4 rounded-lg border-l-4 border-slate-500 text-left mb-6 italic text-slate-200">
+                                        "{interactionResult.text}"
+                                    </div>
+                                    <button onClick={() => setInteractionModal(null)} className="px-6 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg font-bold">
+                                        Tamam
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Status Change Modal */}
             {isStatusModalOpen && (
                 <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setIsStatusModalOpen(false)}>
@@ -542,7 +694,7 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
                         {renderNavButton('GENERAL', 'Genel', Star, true)}
                         {renderNavButton('CONTRACT', 'Sözleşme', FileText, true)}
                         {renderNavButton('TRANSFER', 'Transfer', ArrowRightLeft, true)}
-                        {renderNavButton('DEVELOPMENT', 'Profilim', TrendingUp, false)}
+                        {renderNavButton('DEVELOPMENT', 'Gelişim', TrendingUp, false)}
                         {renderNavButton('COMPARE', 'Kıyasla', Scale, false)}
                         {renderNavButton('HISTORY', 'Geçmişim', History, false)}
                         
@@ -987,7 +1139,7 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="text-center py-8 text-slate-500 italic text-sm">
+                                    <div className="text-center py-8 text-slate-500 italic text-sm bg-slate-50 dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
                                         Şu an için resmi bir ilgi bulunmuyor.
                                     </div>
                                 )}
@@ -1012,17 +1164,18 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
                                 <div className="w-px bg-slate-200 dark:bg-slate-700"></div>
                                 <div className="text-center">
                                     <div className="text-xs text-slate-500 uppercase font-bold mb-1">Potansiyel</div>
-                                    <div className="text-4xl font-black text-slate-400 dark:text-slate-500">{Math.min(99, player.skill + (30 - player.age) * 2)}</div>
+                                    <div className="text-4xl font-black text-slate-400 dark:text-slate-500">{player.potential}</div>
                                 </div>
                             </div>
 
                             <div className="w-full bg-slate-100 dark:bg-slate-900 h-4 rounded-full overflow-hidden relative mb-2">
-                                <div className="h-full bg-slate-300 dark:bg-slate-700 absolute left-0 top-0" style={{width: `${Math.min(99, player.skill + (30 - player.age) * 2)}%`}}></div>
+                                {/* Max potential is player.potential */}
+                                <div className="h-full bg-slate-300 dark:bg-slate-700 absolute left-0 top-0" style={{width: `${player.potential}%`}}></div>
                                 <div className="h-full bg-blue-500 absolute left-0 top-0" style={{width: `${player.skill}%`}}></div>
                             </div>
                             <div className="flex justify-between text-xs text-slate-500 font-bold uppercase">
-                                <span>Mevcut</span>
-                                <span>Potansiyel</span>
+                                <span>Mevcut ({player.skill})</span>
+                                <span>Potansiyel ({player.potential})</span>
                             </div>
 
                             <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1036,7 +1189,14 @@ const PlayerDetailView: React.FC<PlayerDetailViewProps> = ({ player, onClose, my
                                 </div>
                                 <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
                                     <div className="text-sm font-bold text-slate-900 dark:text-white mb-1">Antrenör Görüşü</div>
-                                    <div className="text-xs text-slate-500 italic">"Son zamanlarda fiziksel olarak büyük aşama kaydetti."</div>
+                                    <div className="text-xs text-slate-500 italic">
+                                        {player.age > 30 
+                                            ? "Fiziksel olarak düşüşte ancak tecrübesiyle açığı kapatıyor." 
+                                            : player.potential > player.skill + 5 
+                                                ? "Hala gelişime çok açık, potansiyeline ulaşması için zamana ihtiyacı var."
+                                                : "Potansiyeline ulaşmış durumda, formunu korumaya odaklanmalı."
+                                        }
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -1,3 +1,4 @@
+
 export enum Position {
     GK = 'GK',
     SLB = 'SLB', // Sol Bek
@@ -188,7 +189,8 @@ export interface Player {
     name: string;
     position: Position;
     secondaryPosition?: Position; // NEW: Added secondary position
-    skill: number; 
+    skill: number;
+    potential: number; // NEW: Fixed Potential Ability
     stats: PlayerStats; 
     seasonStats: PlayerSeasonStats; // NEW
     face: PlayerFaceData; // NEW: Layered face data
@@ -252,6 +254,19 @@ export interface TransferRecord {
     price: string; // Display string "12.5 M€"
 }
 
+// NEW: Sponsor Structure
+export interface SponsorDeal {
+    name: string;
+    yearlyValue: number;
+    expiryYear: number;
+}
+
+export interface TeamSponsors {
+    main: SponsorDeal;
+    stadium: SponsorDeal;
+    sleeve: SponsorDeal;
+}
+
 export interface Team {
     id: string;
     name: string;
@@ -266,6 +281,7 @@ export interface Team {
     stadiumName: string;
     stadiumCapacity: number; // NEW: Added stadium capacity
     budget: number; 
+    initialDebt: number; // NEW: Fixed debt amount (M€)
     wageBudget?: number; // NEW: Explicit Wage Budget Allocation to prevent reset bugs
     players: Player[]; 
     reputation: number; // NEW: Dynamic reputation value (base 1-5)
@@ -273,6 +289,7 @@ export interface Team {
     // --- FINANCIALS ---
     financialRecords: FinancialRecords; // Cumulative Season Data
     transferHistory: TransferRecord[]; // NEW: Real transfer logs
+    sponsors: TeamSponsors; // NEW: Stored sponsor deals
 
     // --- TACTICS ---
     formation: string; 
@@ -494,6 +511,44 @@ export interface PendingTransfer {
     date: string;
 }
 
+export interface SeasonChampion {
+    teamId: string;
+    teamName: string;
+    logo?: string;
+    colors: [string, string];
+    season: string;
+}
+
+// --- NEW: SEASON SUMMARY TYPES ---
+export interface TransferImpact {
+    name: string;
+    fee: number;
+    goals: number;
+    assists: number;
+    rating: number;
+    type: 'BOUGHT';
+}
+
+export interface SeasonSummary {
+    season: string;
+    teamName: string;
+    rank: number;
+    stats: {
+        wins: number;
+        draws: number;
+        losses: number;
+        goalsFor: number;
+        goalsAgainst: number;
+        points: number;
+    };
+    bestXI: Player[]; // Snapshot of players
+    topScorer: { name: string, count: number };
+    topAssister: { name: string, count: number };
+    topRated: { name: string, rating: number };
+    trophiesWon: string[]; // "Lig Şampiyonluğu", "Türkiye Kupası" etc.
+    transfersIn: TransferImpact[];
+}
+
 export interface GameState {
     managerName: string | null;
     manager: ManagerProfile | null; 
@@ -510,4 +565,6 @@ export interface GameState {
     playTime: number; // Seconds played
     lastSeenInjuryCount: number; // For health center badge
     pendingTransfers: PendingTransfer[]; // NEW: Queue for delayed transfers
+    seasonChampion?: SeasonChampion | null; // NEW: Stores the champion to trigger celebration
+    lastSeasonSummary?: SeasonSummary | null; // NEW: Stores last season data for modal
 }

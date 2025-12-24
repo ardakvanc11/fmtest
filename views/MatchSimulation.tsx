@@ -1,18 +1,20 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Team, MatchEvent, MatchStats, Position, Player, Mentality } from '../types';
 import { simulateMatchStep, getEmptyMatchStats } from '../utils/gameEngine';
 import PitchVisual from '../components/shared/PitchVisual';
 import TacticsView from './TacticsView';
 import { MonitorPlay, Timer, AlertOctagon, Megaphone, Settings, PlayCircle, Disc, Syringe, Lock, Target, AlertCircle, RefreshCw, Zap, BarChart2, List } from 'lucide-react';
+import { calculateTeamStrength } from '../utils/teamCalculations';
 
 // SOUND PATHS
 const GOAL_SOUND = '/voices/goalsound.wav';
 const WHISTLE_SOUND = '/voices/whistle.wav';
 
 const MatchSimulation = ({ 
-    homeTeam, awayTeam, userTeamId, onFinish, allTeams, fixtures
+    homeTeam, awayTeam, userTeamId, onFinish, allTeams, fixtures, managerTrust
 }: { 
-    homeTeam: Team, awayTeam: Team, userTeamId: string, onFinish: (h: number, a: number, events: MatchEvent[], stats: MatchStats) => void, allTeams: Team[], fixtures: any[]
+    homeTeam: Team, awayTeam: Team, userTeamId: string, onFinish: (h: number, a: number, events: MatchEvent[], stats: MatchStats) => void, allTeams: Team[], fixtures: any[], managerTrust: number
 }) => {
     const [minute, setMinute] = useState(0);
     const [homeScore, setHomeScore] = useState(0);
@@ -46,6 +48,10 @@ const MatchSimulation = ({
 
     // Mobile Tab Switcher (Feed vs Stats)
     const [mobileTab, setMobileTab] = useState<'FEED' | 'STATS'>('FEED');
+
+    // SABOTAGE CHECK
+    const isSabotageActive = managerTrust < 30;
+    const [sabotageTriggered, setSabotageTriggered] = useState(false);
 
     // Local tactics state for USER View (Needs to sync with liveHome/liveAway)
     const userIsHome = homeTeam.id === userTeamId;
@@ -114,6 +120,31 @@ const MatchSimulation = ({
         else setLiveAwayTeam(updatedTeam);
     };
 
+    // --- APPLY SABOTAGE PENALTY ---
+    const getSimulateTeams = () => {
+        // Deep copy not strictly needed but safer for modification logic if we were modifying objects
+        let simHome = liveHomeTeam;
+        let simAway = liveAwayTeam;
+
+        // If Sabotage is active, the USER's team gets a massive debuff
+        // We handle this by creating a mock team object with lowered strength/morale just for the calculation step
+        if (isSabotageActive) {
+            const debuffFactor = 0.75; // 25% strength reduction
+            if (userIsHome) {
+                // Lower home strength via morale hack or direct calculation modification inside simulateMatchStep
+                // Since simulateMatchStep recalculates strength from players, we need to hack the players' morale temporarily
+                // OR better, pass a flag to simulateMatchStep. But simulateMatchStep signature is fixed in utility.
+                // Best hack: temporarily lower morale of all players in the object passed
+                const sabotagedPlayers = simHome.players.map(p => ({ ...p, morale: 0 })); // Tank morale to 0
+                simHome = { ...simHome, players: sabotagedPlayers, strength: Math.floor(simHome.strength * debuffFactor) };
+            } else {
+                const sabotagedPlayers = simAway.players.map(p => ({ ...p, morale: 0 }));
+                simAway = { ...simAway, players: sabotagedPlayers, strength: Math.floor(simAway.strength * debuffFactor) };
+            }
+        }
+        return { simHome, simAway };
+    };
+
     useEffect(() => {
         // Halt simulation loop if any overlay is active or phase is stopped
         if(isTacticsOpen || phase === 'HALFTIME' || phase === 'FULL_TIME' || isVarActive || isPenaltyActive) return;
@@ -121,6 +152,17 @@ const MatchSimulation = ({
         const interval = setInterval(() => {
             setMinute(m => {
                 const nextM = m + 1;
+                
+                // SABOTAGE NOTIFICATION
+                if (isSabotageActive && !sabotageTriggered && nextM === 10) {
+                    setSabotageTriggered(true);
+                    setEvents(prev => [...prev, {
+                        minute: nextM,
+                        type: 'INFO',
+                        description: "⚠️ DİKKAT: Oyuncular sahada isteksiz görünüyor. Menajere olan tepkileri oyuna yansıyor!",
+                        teamName: myTeamCurrent.name
+                    }]);
+                }
                 
                 if (nextM === 45 && phase === 'FIRST_HALF') {
                     setPhase('HALFTIME');
@@ -172,7 +214,10 @@ const MatchSimulation = ({
                     }
                 }
 
-                const event = simulateMatchStep(nextM, liveHomeTeam, liveAwayTeam, {h: homeScore, a: awayScore}, events);
+                // Prepare teams for simulation step (Apply Sabotage if needed)
+                const { simHome, simAway } = getSimulateTeams();
+
+                const event = simulateMatchStep(nextM, simHome, simAway, {h: homeScore, a: awayScore}, events);
                 
                 if(event) {
                     setEvents(prev => [...prev, event]);
@@ -388,7 +433,7 @@ const MatchSimulation = ({
         }, 1000 / speed);
 
         return () => clearInterval(interval);
-    }, [minute, isTacticsOpen, phase, speed, isVarActive, isPenaltyActive, events, liveHomeTeam, liveAwayTeam, homeSubsUsed, awaySubsUsed, forcedSubstitutionPlayerId]);
+    }, [minute, isTacticsOpen, phase, speed, isVarActive, isPenaltyActive, events, liveHomeTeam, liveAwayTeam, homeSubsUsed, awaySubsUsed, forcedSubstitutionPlayerId, isSabotageActive]);
 
     const liveScores = { homeId: homeTeam.id, awayId: awayTeam.id, homeScore, awayScore };
     

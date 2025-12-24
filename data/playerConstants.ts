@@ -1,3 +1,4 @@
+
 import { Position, PlayerStats, Player, PlayerFaceData } from '../types';
 import { FACE_ASSETS } from './uiConstants';
 import { generateId } from './gameConstants';
@@ -653,6 +654,47 @@ export const generatePlayer = (position: Position, targetSkill: number, teamId: 
         }
     }
 
+    // --- POTENTIAL CALCULATION (NEW REALISTIC LOGIC) ---
+    let potential = skill; // Default is current skill
+
+    if (age > 30) {
+        // 30+: No more growth potential
+        potential = skill;
+    } else if (age >= 25) {
+        // 25-30: Very limited growth (1-2 points)
+        potential = Math.min(95, skill + Math.floor(Math.random() * 2) + 1);
+    } else if (age >= 22) {
+        // 22-25: Limited potential (Max ~90, typically lower)
+        const room = 90 - skill;
+        if (room > 0) {
+            potential = skill + Math.floor(Math.random() * room * 0.5); 
+            if (potential > 90) potential = 90; 
+        } else {
+            potential = skill; 
+        }
+    } else {
+        // 16-21: GENÇ YETENEK MANTIĞI
+        const isWonderkid = Math.random() < 0.02; // %2 Wonderkid şansı
+
+        if (isWonderkid) {
+            potential = Math.floor(Math.random() * (98 - 90 + 1)) + 90; // 90-98 Arası
+        } else {
+            if (skill < 75) {
+                // KULLANICI TALEBİ: Skill 75 altındaysa Potansiyel 77-87 arası
+                // Rastgelelik ekleyerek bu aralıkta dağıtıyoruz
+                potential = Math.floor(Math.random() * (87 - 77 + 1)) + 77;
+            } else {
+                // Skill 75 ve üzeriyse (Zaten iyi genç)
+                // 85-94 arasına çıkabilir
+                potential = Math.min(94, skill + Math.floor(Math.random() * 10) + 5);
+            }
+        }
+    }
+    
+    // Safety check: Potential can never be lower than current skill
+    potential = Math.max(skill, potential);
+
+
     // --- SECONDARY POSITION LOGIC ---
     let secondaryPosition: Position | undefined = undefined;
     
@@ -819,6 +861,7 @@ export const generatePlayer = (position: Position, targetSkill: number, teamId: 
         position,
         secondaryPosition,
         skill,
+        potential, // Set the calculated potential
         stats,
         seasonStats: { goals: 0, assists: 0, yellowCards: 0, redCards: 0, ratings: [], averageRating: 0, matchesPlayed: 0 }, 
         face: faceData,

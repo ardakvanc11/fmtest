@@ -1,9 +1,8 @@
 
-
 import React, { useState } from 'react';
-import { Team, Player, Mentality, Tempo, TimeWasting, PassingStyle, Width, CreativeFreedom, FinalThird, Crossing, DefensiveLine, Tackling, PressingFocus } from '../types';
+import { Team, Player, Mentality, Tempo, TimeWasting, PassingStyle, Width, CreativeFreedom, FinalThird, Crossing, DefensiveLine, Tackling, PressingFocus, Position } from '../types';
 import PitchVisual from '../components/shared/PitchVisual';
-import { Syringe, Ban } from 'lucide-react';
+import { Syringe, Ban, Zap } from 'lucide-react';
 
 interface PlayerListItemProps {
     p: Player;
@@ -79,6 +78,85 @@ const TacticsView = ({
 }: TacticsViewProps) => {
     const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
     const [tab, setTab] = useState<'GENERAL' | 'ATTACK' | 'DEFENSE'>('GENERAL');
+
+    // --- SMART AUTO PICK LOGIC ---
+    const handleAutoPick = () => {
+        // 1. Separate unavailable players (Injured or Suspended)
+        const unavailablePlayers: Player[] = [];
+        const availablePool: Player[] = [];
+
+        team.players.forEach(p => {
+            const isInjured = p.injury && p.injury.daysRemaining > 0;
+            const isSuspended = p.suspendedUntilWeek && currentWeek && p.suspendedUntilWeek > currentWeek;
+            
+            if (isInjured || isSuspended) {
+                unavailablePlayers.push(p);
+            } else {
+                availablePool.push(p);
+            }
+        });
+
+        // 2. Sort available players by skill DESC to ensure best players are picked
+        availablePool.sort((a, b) => b.skill - a.skill);
+
+        const newStartingXI: (Player | null)[] = new Array(11).fill(null);
+        
+        // 3. Define 4-4-2 Formation Requirements (Indices 0-10 match PitchVisual)
+        // Order: GK, SLB, STP, STP, SGB, SLK, OS, OS, SGK, SNT, SNT
+        const formationRequirements = [
+            [Position.GK],                          // 0: GK
+            [Position.SLB, Position.SGB],           // 1: SLB (Left Back) - Allow RB fallback
+            [Position.STP],                         // 2: STP
+            [Position.STP],                         // 3: STP
+            [Position.SGB, Position.SLB],           // 4: SGB (Right Back) - Allow LB fallback
+            [Position.SLK, Position.SGK, Position.OOS], // 5: SLK (Left Wing)
+            [Position.OS, Position.OOS],            // 6: OS
+            [Position.OS, Position.OOS],            // 7: OS
+            [Position.SGK, Position.SLK, Position.OOS], // 8: SGK (Right Wing)
+            [Position.SNT],                         // 9: SNT
+            [Position.SNT]                          // 10: SNT
+        ];
+
+        // 4. Fill Starting XI with Positional Preference
+        formationRequirements.forEach((reqPosList, index) => {
+            // Try to find best player matching primary position
+            let candidateIndex = availablePool.findIndex(p => reqPosList.includes(p.position));
+            
+            // If not found, try secondary position
+            if (candidateIndex === -1) {
+                candidateIndex = availablePool.findIndex(p => p.secondaryPosition && reqPosList.includes(p.secondaryPosition));
+            }
+
+            if (candidateIndex !== -1) {
+                newStartingXI[index] = availablePool[candidateIndex];
+                availablePool.splice(candidateIndex, 1); // Remove from pool
+            }
+        });
+
+        // 5. Fill Empty Spots in XI with Best Remaining (Out of Position)
+        // This ensures we always have 11 players if available, even if positions don't match perfect
+        for (let i = 0; i < 11; i++) {
+            if (newStartingXI[i] === null) {
+                if (availablePool.length > 0) {
+                    newStartingXI[i] = availablePool[0];
+                    availablePool.shift();
+                }
+            }
+        }
+
+        // 6. Fill Bench (Next 7 best players)
+        const bench = availablePool.splice(0, 7);
+
+        // 7. Reserves (Remaining healthy + All Unavailable)
+        // Unavailable players are pushed to the absolute end
+        const reserves = [...availablePool, ...unavailablePlayers];
+
+        // 8. Combine into final roster
+        // Filter out nulls in case squad size is < 11 (rare edge case)
+        const finalRoster = [...(newStartingXI.filter(p => p !== null) as Player[]), ...bench, ...reserves];
+
+        setTeam({ ...team, players: finalRoster });
+    };
 
     const handlePlayerClick = (clickedPlayer: Player) => {
         // Allow selection of any player, logic comes when swapping
@@ -197,13 +275,25 @@ const TacticsView = ({
         <div className="flex flex-col h-full gap-4 pb-20 md:pb-0">
             {!compact && <div className="flex items-center justify-between shrink-0">
                 <h3 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">İlk 11 ve Taktik</h3>
-                {isMatchActive ? (
-                    <div className="text-xs md:text-sm font-bold bg-slate-200 dark:bg-slate-700 px-3 py-1 rounded text-slate-800 dark:text-white">
-                        Değişiklik: <span className={`${subsUsed >= maxSubs ? 'text-red-500' : 'text-green-500'}`}>{subsUsed}</span>/{maxSubs}
-                    </div>
-                ) : (
-                    <div className="text-xs text-slate-500 dark:text-slate-400 hidden md:block">Oyuncuya tıkla, sonra listeden seç.</div>
-                )}
+                
+                <div className="flex items-center gap-2">
+                    {!isMatchActive && (
+                        <button 
+                            onClick={handleAutoPick}
+                            className="bg-purple-600 hover:bg-purple-500 text-white text-xs md:text-sm px-3 py-1.5 rounded font-bold flex items-center gap-2 shadow-lg transition-all"
+                        >
+                            <Zap size={14} className="fill-white"/> Hızlı Seçim
+                        </button>
+                    )}
+                    
+                    {isMatchActive ? (
+                        <div className="text-xs md:text-sm font-bold bg-slate-200 dark:bg-slate-700 px-3 py-1 rounded text-slate-800 dark:text-white">
+                            Değişiklik: <span className={`${subsUsed >= maxSubs ? 'text-red-500' : 'text-green-500'}`}>{subsUsed}</span>/{maxSubs}
+                        </div>
+                    ) : (
+                        <div className="text-xs text-slate-500 dark:text-slate-400 hidden md:block">Oyuncuya tıkla, sonra listeden seç.</div>
+                    )}
+                </div>
             </div>}
             
             {/* 

@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, PendingTransfer } from '../types';
+import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, PendingTransfer, SponsorDeal } from '../types';
 import { FileWarning, LogOut, Trophy, Building2, BarChart3, ArrowRightLeft, Wallet, Clock, TrendingUp, TrendingDown, Crown } from 'lucide-react';
 
 // Views
@@ -29,6 +30,8 @@ import MatchDetailModal from '../modals/MatchDetailModal';
 import MatchResultModal from '../modals/MatchResultModal';
 import HallOfFameModal from '../modals/HallOfFameModal';
 import FixtureDetailPanel from './shared/FixtureDetailPanel';
+import ChampionCelebrationModal from '../modals/ChampionCelebrationModal'; 
+import SeasonSummaryModal from '../modals/SeasonSummaryModal'; // NEW
 
 // Types definition for props
 interface MainContentProps {
@@ -74,11 +77,13 @@ interface MainContentProps {
     handlePlayerUpdate: (playerId: string, updates: Partial<Player>) => void;
     handleReleasePlayer: (player: Player, cost: number) => void; 
     handleTransferOfferSuccess: (player: Player, agreedFee: number) => void; 
-    handleSignPlayer: (player: Player, fee: number, contract: any) => void; // NEW
-    handleCancelTransfer: (playerId: string) => void; // NEW
+    handleSignPlayer: (player: Player, fee: number, contract: any) => void; 
+    handleCancelTransfer: (playerId: string) => void; 
+    handleUpdateSponsor: (type: 'main' | 'stadium' | 'sleeve', deal: SponsorDeal) => void;
+    handleTakeEmergencyLoan: (amount: number) => void; // NEW
     negotiatingTransferPlayer: Player | null; 
     setNegotiatingTransferPlayer: React.Dispatch<React.SetStateAction<Player | null>>; 
-    incomingTransfer: PendingTransfer | null; // NEW
+    incomingTransfer: PendingTransfer | null; 
     myTeam?: Team;
     injuredBadgeCount: number;
     isTransferWindowOpen: boolean;
@@ -130,6 +135,8 @@ const MainContent: React.FC<MainContentProps> = (props) => {
         handleTransferOfferSuccess,
         handleSignPlayer,
         handleCancelTransfer,
+        handleUpdateSponsor,
+        handleTakeEmergencyLoan,
         negotiatingTransferPlayer,
         setNegotiatingTransferPlayer,
         incomingTransfer,
@@ -258,6 +265,14 @@ const MainContent: React.FC<MainContentProps> = (props) => {
     const incomingPlayerObj = getIncomingPlayer();
     const activeNegotiationPlayer = negotiatingPlayer || incomingPlayerObj;
 
+    const handleCloseCelebration = () => {
+        setGameState(prev => ({ ...prev, seasonChampion: null }));
+    };
+
+    const handleCloseSeasonSummary = () => {
+        setGameState(prev => ({ ...prev, lastSeasonSummary: null }));
+    };
+
     if (currentView === 'intro') return <IntroScreen onStart={handleStart} />;
     
     if (currentView === 'team_select') return <TeamSelection teams={gameState.teams} onSelect={handleSelectTeam} />;
@@ -295,6 +310,22 @@ const MainContent: React.FC<MainContentProps> = (props) => {
             canForward={historyIndex < viewHistory.length - 1}
             injuredCount={injuredBadgeCount}
         >
+            {/* Season Champion Celebration Modal */}
+            {gameState.seasonChampion && (
+                <ChampionCelebrationModal 
+                    champion={gameState.seasonChampion} 
+                    onClose={handleCloseCelebration}
+                />
+            )}
+
+            {/* Season Summary Modal (The Report Card) */}
+            {gameState.lastSeasonSummary && (
+                <SeasonSummaryModal
+                    summary={gameState.lastSeasonSummary}
+                    onClose={handleCloseSeasonSummary}
+                />
+            )}
+
             {/* Game Over Screen */}
             {(currentView === 'game_over' || gameOverReason) && (
                 <div className={`h-full flex items-center justify-center p-8 absolute inset-0 z-50 overflow-y-auto ${gameOverReason?.includes('emekli') || gameOverReason?.includes('feshettin') ? 'bg-slate-900' : 'bg-red-950'} text-white`}>
@@ -371,6 +402,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                 </div>
             )}
 
+            {/* ... Rest of existing views ... */}
             {currentView === 'home' && myTeam && (
                 <HomeView 
                     manager={gameState.manager!} 
@@ -387,8 +419,13 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                 />
             )}
             
+            {/* ... Other existing views unchanged ... */}
             {currentView === 'squad' && myTeam && (
-                <SquadView team={myTeam} onPlayerClick={handleShowPlayerDetail} />
+                <SquadView 
+                    team={myTeam} 
+                    onPlayerClick={handleShowPlayerDetail}
+                    manager={gameState.manager!} 
+                />
             )}
 
             {currentView === 'tactics' && myTeam && (
@@ -441,6 +478,8 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     team={myTeam} 
                     manager={gameState.manager!}
                     onUpdateBudget={handleBudgetUpdate}
+                    onUpdateSponsor={handleUpdateSponsor} 
+                    onTakeLoan={handleTakeEmergencyLoan} // Pass the loan handler
                     fixtures={gameState.fixtures}
                     currentWeek={gameState.currentWeek}
                     currentDate={gameState.currentDate}
@@ -455,6 +494,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     messages={gameState.messages}
                     onUpdateMessages={(msgs) => setGameState(prev => ({ ...prev, messages: msgs }))}
                     onReply={handleMessageReply}
+                    isTransferWindowOpen={isTransferWindowOpen}
                 />
             )}
 
@@ -465,7 +505,6 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                 />
             )}
 
-            {/* Team Detail View as a full page view */}
             {currentView === 'team_detail' && selectedTeamForDetail && (
                 <TeamDetailView 
                     team={selectedTeamForDetail} 
@@ -482,7 +521,6 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                 />
             )}
 
-            {/* USER TEAM DETAIL VIEW */}
             {currentView === 'my_team_detail' && myTeam && (
                 <TeamDetailView 
                     team={myTeam} 
@@ -496,7 +534,6 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                 />
             )}
 
-            {/* NEW FULL PAGE PLAYER DETAIL VIEW */}
             {currentView === 'player_detail' && selectedPlayerForDetail && (
                 <PlayerDetailView 
                     player={selectedPlayerForDetail} 
@@ -507,13 +544,12 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     onInteract={handlePlayerInteraction}
                     onUpdatePlayer={handlePlayerUpdate}
                     onStartNegotiation={handleStartNegotiation}
-                    onStartTransferNegotiation={handleStartTransferNegotiation} // Add this line
+                    onStartTransferNegotiation={handleStartTransferNegotiation} 
                     onReleasePlayer={handleReleasePlayer} 
                     currentWeek={gameState.currentWeek} 
                 />
             )}
 
-            {/* CONTRACT NEGOTIATION VIEW */}
             {currentView === 'contract_negotiation' && activeNegotiationPlayer && (
                 <ContractNegotiationView
                     player={activeNegotiationPlayer}
@@ -521,7 +557,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                         setNegotiatingPlayer(null);
                         if(incomingTransfer) {
                             alert("Sözleşme görüşmesi iptal edildi. Transfer gerçekleşmedi.");
-                            handleCancelTransfer(incomingTransfer.playerId); // NEW: Cancel if user walks away
+                            handleCancelTransfer(incomingTransfer.playerId); 
                             navigateTo('home');
                         } else {
                             goBack();
@@ -532,13 +568,12 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                 />
             )}
 
-            {/* NEW: TRANSFER NEGOTIATION VIEW */}
             {currentView === 'transfer_negotiation' && negotiatingTransferPlayer && myTeam && (
                 <TransferOfferNegotiationView
                     player={negotiatingTransferPlayer}
                     targetTeam={gameState.teams.find(t => t.id === negotiatingTransferPlayer.teamId)!}
                     myTeamBudget={myTeam.budget}
-                    myTeam={myTeam} // PASSING MY TEAM FOR SWAP PLAYERS
+                    myTeam={myTeam} 
                     onClose={() => {
                         setNegotiatingTransferPlayer(null);
                         goBack();
@@ -546,8 +581,6 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     onFinish={handleFinishTransferNegotiation}
                 />
             )}
-
-            {/* FULL SCREEN VIEWS INTEGRATED INTO DASHBOARD (NO OVERLAY) */}
 
             {currentView === 'match_preview' && myTeam && (
                 <div className="h-full bg-slate-50 dark:bg-slate-900 overflow-y-auto p-4 transition-colors duration-300">
@@ -564,7 +597,12 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                 <div className="h-full bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
                     <LockerRoomView 
                         team={myTeam} 
-                        setTeam={(t) => setGameState(prev => ({ ...prev, teams: prev.teams.map(team => team.id === t.id ? t : team) }))}
+                        setTeam={(updatedTeam) => {
+                            setGameState(prev => ({
+                                ...prev,
+                                teams: prev.teams.map(t => t.id === updatedTeam.id ? updatedTeam : t)
+                            }));
+                        }}
                         onStartMatch={() => navigateTo('match_live')}
                         onSimulateMatch={handleFastSimulate}
                         currentWeek={gameState.currentWeek}
@@ -573,20 +611,46 @@ const MainContent: React.FC<MainContentProps> = (props) => {
             )}
 
             {currentView === 'match_live' && myTeam && (
-                <div className="h-full bg-slate-900">
+                <div className="h-full w-full bg-black">
                     <MatchSimulation 
-                        homeTeam={gameState.teams.find(t => t.id === (gameState.fixtures.find(f => f.week === gameState.currentWeek && (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId))?.homeTeamId))!}
-                        awayTeam={gameState.teams.find(t => t.id === (gameState.fixtures.find(f => f.week === gameState.currentWeek && (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId))?.awayTeamId))!}
+                        homeTeam={gameState.fixtures.find(f => (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId) && !f.played) ? gameState.teams.find(t => t.id === gameState.fixtures.find(f => (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId) && !f.played)!.homeTeamId)! : myTeam}
+                        awayTeam={gameState.fixtures.find(f => (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId) && !f.played) ? gameState.teams.find(t => t.id === gameState.fixtures.find(f => (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId) && !f.played)!.awayTeamId)! : myTeam}
                         userTeamId={myTeam.id}
                         onFinish={handleMatchFinish}
                         allTeams={gameState.teams}
                         fixtures={gameState.fixtures}
+                        managerTrust={gameState.manager?.trust.players || 50}
                     />
                 </div>
             )}
 
-            {/* Modals and Overlays */}
-            
+            {currentView === 'match_result' && matchResultData && (
+                <MatchResultModal 
+                    homeTeam={matchResultData.homeTeam}
+                    awayTeam={matchResultData.awayTeam}
+                    homeScore={matchResultData.homeScore}
+                    awayScore={matchResultData.awayScore}
+                    stats={matchResultData.stats}
+                    events={matchResultData.events}
+                    onProceed={() => navigateTo('interview')}
+                    onSkip={handleSkipInterview}
+                />
+            )}
+
+            {currentView === 'interview' && matchResultData && (
+                <PostMatchInterview 
+                    result={matchResultData.homeScore > matchResultData.awayScore ? (matchResultData.homeTeam.id === myTeam?.id ? 'WIN' : 'LOSS') : matchResultData.homeScore < matchResultData.awayScore ? (matchResultData.homeTeam.id === myTeam?.id ? 'LOSS' : 'WIN') : 'DRAW'}
+                    onClose={handleSkipInterview}
+                    onComplete={handleInterviewComplete}
+                    events={matchResultData.events}
+                    homeTeam={matchResultData.homeTeam}
+                    awayTeam={matchResultData.awayTeam}
+                    myTeamId={myTeam?.id || ''}
+                    managerTrust={gameState.manager?.trust.players || 50}
+                />
+            )}
+
+            {/* Modals that can appear on top of other views */}
             {selectedFixtureForDetail && (
                 <MatchDetailModal 
                     fixture={selectedFixtureForDetail} 
@@ -595,58 +659,22 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                 />
             )}
 
-            {/* NEW: Fixture Info Side Panel */}
             {selectedFixtureInfo && (
-                <FixtureDetailPanel 
-                    fixture={selectedFixtureInfo}
-                    homeTeam={gameState.teams.find(t => t.id === selectedFixtureInfo.homeTeamId)!}
-                    awayTeam={gameState.teams.find(t => t.id === selectedFixtureInfo.awayTeamId)!}
-                    allFixtures={gameState.fixtures}
-                    onClose={() => setSelectedFixtureInfo(null)}
-                    myTeamId={gameState.myTeamId || ''} 
-                />
-            )}
-
-             {currentView === 'match_result' && matchResultData && (
-                <MatchResultModal 
-                    homeTeam={matchResultData.homeTeam}
-                    awayTeam={matchResultData.awayTeam}
-                    homeScore={matchResultData.homeScore}
-                    awayScore={matchResultData.awayScore}
-                    stats={matchResultData.stats}
-                    events={matchResultData.events}
-                    onSkip={handleSkipInterview} 
-                    onProceed={() => {
-                        let result: 'WIN'|'LOSS'|'DRAW' = 'DRAW';
-                        const isHome = matchResultData.homeTeam.id === gameState.myTeamId;
-                        const myScore = isHome ? matchResultData.homeScore : matchResultData.awayScore;
-                        const oppScore = isHome ? matchResultData.awayScore : matchResultData.homeScore;
-                        if(myScore > oppScore) result = 'WIN';
-                        if(myScore < oppScore) result = 'LOSS';
-                        setMatchResultData({ ...matchResultData, result });
-                        navigateTo('interview');
-                    }}
-                />
-            )}
-            
-            {currentView === 'interview' && matchResultData && (
-                <div className="fixed inset-0 z-50 p-4 bg-[url('https://i.imgur.com/xfBpLhO.png')] bg-cover bg-center">
-                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
-                    <div className="relative z-10 h-full">
-                        <PostMatchInterview 
-                            result={matchResultData.result}
-                            events={matchResultData.events}
-                            homeTeam={matchResultData.homeTeam}
-                            awayTeam={matchResultData.awayTeam}
+                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex justify-end" onClick={() => setSelectedFixtureInfo(null)}>
+                    <div className="w-full max-w-md h-full" onClick={e => e.stopPropagation()}>
+                        <FixtureDetailPanel 
+                            fixture={selectedFixtureInfo}
+                            homeTeam={gameState.teams.find(t => t.id === selectedFixtureInfo.homeTeamId)!}
+                            awayTeam={gameState.teams.find(t => t.id === selectedFixtureInfo.awayTeamId)!}
+                            allFixtures={gameState.fixtures}
+                            onClose={() => setSelectedFixtureInfo(null)}
+                            variant="modal"
                             myTeamId={gameState.myTeamId!}
-                            onClose={() => {
-                                handleInterviewComplete({});
-                            }}
-                            onComplete={handleInterviewComplete}
                         />
                     </div>
                 </div>
             )}
+
         </Dashboard>
     );
 };

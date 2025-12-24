@@ -2,9 +2,9 @@
 import React, { useState } from 'react';
 import { GameState } from '../types';
 import { getFormattedDate, isSameDay } from '../utils/calendarAndFixtures';
-import { Home, Users, Briefcase, DollarSign, Calendar, Dumbbell, Smartphone, Save, RotateCcw, X, Menu, ChevronLeft, ChevronRight, PlayCircle, Sun, Moon, Activity, PieChart, Shield } from 'lucide-react';
+import { Home, Users, Briefcase, DollarSign, Calendar, Dumbbell, Smartphone, Save, RotateCcw, X, Menu, ChevronLeft, ChevronRight, PlayCircle, Sun, Moon, Activity, PieChart, Shield, AlertCircle } from 'lucide-react';
 
-const NavItem = ({ id, label, icon: Icon, badge, onClick, currentView, isMatchMode }: any) => (
+const NavItem = ({ id, label, icon: Icon, badge, onClick, currentView, isMatchMode, isAlert }: any) => (
     <button 
         disabled={isMatchMode} 
         onClick={() => { onClick(id); }} 
@@ -12,7 +12,10 @@ const NavItem = ({ id, label, icon: Icon, badge, onClick, currentView, isMatchMo
     >
         <Icon size={20} /> 
         <span className="flex-1 text-left">{label}</span>
-        {badge && badge > 0 ? (
+        {isAlert && (
+            <AlertCircle size={18} className="text-red-600 animate-pulse ml-auto" fill="currentColor" />
+        )}
+        {!isAlert && badge && badge > 0 ? (
             <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse ml-auto">
                 {badge}
             </span>
@@ -73,6 +76,9 @@ const Dashboard = ({
     // Calculate unread messages
     const unreadMessagesCount = state.messages.filter(m => !m.read).length;
 
+    // Financial Alert Check
+    const isFinancialCrisis = myTeam ? myTeam.budget < 0 : false;
+
     // Mobile Menu State
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [confirmNewGame, setConfirmNewGame] = useState(false);
@@ -111,7 +117,7 @@ const Dashboard = ({
                         <NavItem id="tactics" label="Taktik" icon={Briefcase} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                         <NavItem id="health_center" label="Sağlık Merkezi" icon={Activity} badge={injuredCount} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                         <NavItem id="transfer" label="Transfer Merkezi" icon={DollarSign} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
-                        <NavItem id="finance" label="Finans" icon={PieChart} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
+                        <NavItem id="finance" label="Finans" icon={PieChart} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} isAlert={isFinancialCrisis} />
                         <NavItem id="my_team_detail" label="Takım Profili" icon={Shield} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                         <NavItem id="fixtures" label="Fikstür" icon={Calendar} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                         <NavItem id="training" label="Antrenman" icon={Dumbbell} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
@@ -217,7 +223,7 @@ const Dashboard = ({
 
                     <div className="flex items-center gap-2 md:gap-4 shrink-0">
                          {/* Budget - Hidden on very small screens if needed, mostly visible */}
-                         <div className="hidden sm:flex items-center space-x-2 text-green-600 dark:text-green-400 font-mono text-sm md:text-base">
+                         <div className={`hidden sm:flex items-center space-x-2 font-mono text-sm md:text-base ${myTeam && myTeam.budget < 0 ? 'text-red-600 dark:text-red-500 font-bold animate-pulse' : 'text-green-600 dark:text-green-400'}`}>
                             <DollarSign size={16} />
                             <span>{myTeam?.budget?.toFixed(1)} M€</span>
                         </div>

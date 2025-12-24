@@ -374,7 +374,14 @@ export const calculateMonthlyNetFlow = (team: Team, fixtures: Fixture[], current
     const strengthFactor = team.strength / 100;
     const fanFactor = team.fanBase / 1000000;
 
-    const totalMonthlySponsorValue = ((team.championships * 2) + (fanFactor * 0.5)) / 12;
+    // UPDATED: Use Real Sponsor Data from Team Object
+    // Sum annual values
+    const annualSponsorIncome = 
+        (team.sponsors.main.yearlyValue) + 
+        (team.sponsors.stadium.yearlyValue) + 
+        (team.sponsors.sleeve.yearlyValue);
+
+    const totalMonthlySponsorValue = annualSponsorIncome / 12;
     const inc_Sponsor = (totalMonthlySponsorValue / daysInCurrentMonth) * dayOfMonth;
 
     const merchSeed = team.id.charCodeAt(0) + currentMonth + currentYear;
@@ -412,7 +419,8 @@ export const calculateMonthlyNetFlow = (team: Team, fixtures: Fixture[], current
     const exp_Academy = strengthFactor * 0.4;
     
     const totalSquadValue = team.players.reduce((sum, p) => sum + p.value, 0);
-    const exp_Debt = (totalSquadValue * 0.4) / 60;
+    // NEW: Use fixed initialDebt for repayment calculation. 60 months (5 years) term.
+    const exp_Debt = (team.initialDebt || 0) / 60;
     
     const exp_Transfers = manager && manager.contract.teamName === team.name ? (manager.stats.transferSpendThisMonth || 0) : 0;
 

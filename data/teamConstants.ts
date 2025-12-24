@@ -22,6 +22,7 @@ export const TEAM_TEMPLATES = [
         budget: 15, 
         targetStrength: 84,
         baseReputation: 4.5,
+        debt: 104, // M€
         leagueHistory: [
             {year: '1983/84', rank: 6}, {year: '1984/85', rank: 11}, {year: '1985/86', rank: 10}, {year: '1986/87', rank: 13},
             {year: '1987/88', rank: 13}, {year: '1988/89', rank: 7}, {year: '1989/90', rank: 10}, {year: '1990/91', rank: 5},
@@ -51,6 +52,7 @@ export const TEAM_TEMPLATES = [
         budget: 211, 
         targetStrength: 82,
         baseReputation: 4.1,
+        debt: 122, // M€
         leagueHistory: [
             {year: '1983/84', rank: 5}, {year: '1984/85', rank: 3}, {year: '1985/86', rank: 3}, {year: '1986/87', rank: 2},
             {year: '1987/88', rank: 3}, {year: '1988/89', rank: 3}, {year: '1989/90', rank: 1}, {year: '1990/91', rank: 2},
@@ -80,6 +82,7 @@ export const TEAM_TEMPLATES = [
         budget: 12, 
         targetStrength: 81,
         baseReputation: 4.1,
+        debt: 105, // M€
         leagueHistory: [
             {year: '1983/84', rank: 1}, {year: '1984/85', rank: 1}, {year: '1985/86', rank: 2}, {year: '1986/87', rank: 3},
             {year: '1987/88', rank: 2}, {year: '1988/89', rank: 2}, {year: '1989/90', rank: 3}, {year: '1990/91', rank: 1},
@@ -108,6 +111,7 @@ export const TEAM_TEMPLATES = [
         budget: 9, 
         targetStrength: 78,
         baseReputation: 3.6,
+        debt: 66, // M€
         leagueHistory: [
             {year: '1983/84', rank: 10}, {year: '1984/85', rank: 11}, {year: '1985/86', rank: 10}, {year: '1986/87', rank: 13},
             {year: '1987/88', rank: 13}, {year: '1988/89', rank: 7}, {year: '1989/90', rank: 10}, {year: '1990/91', rank: 5},
@@ -137,6 +141,7 @@ export const TEAM_TEMPLATES = [
         budget: 22, 
         targetStrength: 84,
         baseReputation: 4.3,
+        debt: 64, // M€
         leagueHistory: [
             {year: '1983/84', rank: 16}, {year: '1984/85', rank: 15}, {year: '1985/86', rank: 16}, {year: '1986/87', rank: 12},
             {year: '1987/88', rank: 4}, {year: '1988/89', rank: 14}, {year: '1989/90', rank: 14}, {year: '1990/91', rank: 10},
@@ -166,6 +171,7 @@ export const TEAM_TEMPLATES = [
         budget: 13, 
         targetStrength: 80,
         baseReputation: 3.9,
+        debt: 77, // M€
         leagueHistory: [
             {year: '1983/84', rank: 3}, {year: '1984/85', rank: 14}, {year: '1985/86', rank: 12}, {year: '1986/87', rank: 16},
             {year: '1987/88', rank: 5}, {year: '1988/89', rank: 10}, {year: '1989/90', rank: 7}, {year: '1990/91', rank: 6},
@@ -195,6 +201,7 @@ export const TEAM_TEMPLATES = [
         budget: 5, 
         targetStrength: 75,
         baseReputation: 3.2,
+        debt: 14, // M€
         leagueHistory: [
             {year: '1983/84', rank: 15}, {year: '1984/85', rank: 10}, {year: '1985/86', rank: 17}, {year: '1986/87', rank: 15},
             {year: '1987/88', rank: 14}, {year: '1988/89', rank: 12}, {year: '1989/90', rank: 13}, {year: '1990/91', rank: 11},
@@ -224,6 +231,7 @@ export const TEAM_TEMPLATES = [
         budget: 6, 
         targetStrength: 73,
         baseReputation: 3.3,
+        debt: 21, // M€
         leagueHistory: [
             {year: '1983/84', rank: 8}, {year: '1984/85', rank: 7}, {year: '1985/86', rank: 4}, {year: '1986/87', rank: 5},
             {year: '1987/88', rank: 12}, {year: '1988/89', rank: 4}, {year: '1989/90', rank: 9}, {year: '1990/91', rank: 8},
@@ -253,6 +261,7 @@ export const TEAM_TEMPLATES = [
         budget: 6, 
         targetStrength: 72,
         baseReputation: 3.3,
+        debt: 19, // M€
         leagueHistory: [
             {year: '1983/84', rank: 12}, {year: '1984/85', rank: 18}, {year: '1985/86', rank: 6}, {year: '1986/87', rank: 11},
             {year: '1987/88', rank: 9}, {year: '1988/89', rank: 5}, {year: '1989/90', rank: 16}, {year: '1990/91', rank: 7},
@@ -282,6 +291,7 @@ export const TEAM_TEMPLATES = [
         budget: 7, 
         targetStrength: 74,
         baseReputation: 3.2,
+        debt: 8, // M€
         leagueHistory: [
             {year: '1983/84', rank: 14}, {year: '1984/85', rank: 12}, {year: '1985/86', rank: 8}, {year: '1986/87', rank: 14},
             {year: '1987/88', rank: 11}, {year: '1988/89', rank: 8}, {year: '1989/90', rank: 12}, {year: '1990/91', rank: 14},
@@ -311,6 +321,7 @@ export const TEAM_TEMPLATES = [
         budget: 4, 
         targetStrength: 71,
         baseReputation: 2.8,
+        debt: 9, // M€
         leagueHistory: [
             {year: '1983/84', rank: 9}, {year: '1984/85', rank: 9}, {year: '1985/86', rank: 7}, {year: '1986/87', rank: 9},
             {year: '1987/88', rank: 6}, {year: '1988/89', rank: 6}, {year: '1989/90', rank: 15}, {year: '1990/91', rank: 17},
@@ -340,6 +351,7 @@ export const TEAM_TEMPLATES = [
         budget: 114, 
         targetStrength: 70,
         baseReputation: 3.0,
+        debt: 19, // M€
         leagueHistory: [
             {year: '1983/84', rank: 17}, {year: '1984/85', rank: 17}, {year: '1985/86', rank: 15}, {year: '1986/87', rank: 8},
             {year: '1987/88', rank: 18}, {year: '1988/89', rank: 17}, {year: '1989/90', rank: 18}, {year: '1990/91', rank: 15},
@@ -369,6 +381,7 @@ export const TEAM_TEMPLATES = [
         budget: 324, 
         targetStrength: 67,
         baseReputation: 2.8,
+        debt: 17, // M€
         leagueHistory: [
             {year: '1983/84', rank: 16}, {year: '1984/85', rank: 13}, {year: '1985/86', rank: 14}, {year: '1986/87', rank: 18},
             {year: '1987/88', rank: 16}, {year: '1988/89', rank: 18}, {year: '1989/90', rank: 17}, {year: '1990/91', rank: 18},
@@ -398,6 +411,7 @@ export const TEAM_TEMPLATES = [
         budget: 7, 
         targetStrength: 76,
         baseReputation: 3.4,
+        debt: 33, // M€
         leagueHistory: [
             {year: '1983/84', rank: 7}, {year: '1984/85', rank: 6}, {year: '1985/86', rank: 9}, {year: '1986/87', rank: 6},
             {year: '1987/88', rank: 8}, {year: '1988/89', rank: 13}, {year: '1989/90', rank: 5}, {year: '1990/91', rank: 4},
@@ -427,6 +441,7 @@ export const TEAM_TEMPLATES = [
         budget: 2, 
         targetStrength: 68,
         baseReputation: 2.7,
+        debt: 11, // M€
         leagueHistory: [
             {year: '1983/84', rank: 11}, {year: '1984/85', rank: 16}, {year: '1985/86', rank: 13}, {year: '1986/87', rank: 4},
             {year: '1987/88', rank: 15}, {year: '1988/89', rank: 15}, {year: '1989/90', rank: 8}, {year: '1990/91', rank: 13},
@@ -456,6 +471,7 @@ export const TEAM_TEMPLATES = [
         budget: 8, 
         targetStrength: 75,
         baseReputation: 3.1,
+        debt: 15, // M€
         leagueHistory: [
             {year: '1983/84', rank: 10}, {year: '1984/85', rank: 4}, {year: '1985/86', rank: 11}, {year: '1986/87', rank: 7},
             {year: '1987/88', rank: 10}, {year: '1988/89', rank: 11}, {year: '1989/90', rank: 4}, {year: '1990/91', rank: 12},
@@ -485,6 +501,7 @@ export const TEAM_TEMPLATES = [
         budget: 4, 
         targetStrength: 72,
         baseReputation: 3.0,
+        debt: 16, // M€
         leagueHistory: [
             {year: '1983/84', rank: 18}, {year: '1984/85', rank: 5}, {year: '1985/86', rank: 5}, {year: '1986/87', rank: 10},
             {year: '1987/88', rank: 7}, {year: '1988/89', rank: 9}, {year: '1989/90', rank: 6}, {year: '1990/91', rank: 16},
@@ -514,6 +531,7 @@ export const TEAM_TEMPLATES = [
         budget: 8, 
         targetStrength: 74,
         baseReputation: 3.1,
+        debt: 7, // M€
         leagueHistory: [
             {year: '1983/84', rank: 13}, {year: '1984/85', rank: 8}, {year: '1985/86', rank: 18}, {year: '1986/87', rank: 17},
             {year: '1987/88', rank: 17}, {year: '1988/89', rank: 16}, {year: '1989/90', rank: 11}, {year: '1990/91', rank: 9},
@@ -601,6 +619,17 @@ export const initializeTeams = (): Team[] => {
         const totalValue = players.reduce((sum, p) => sum + p.value, 0);
         const estimatedWages = totalValue * 0.005 * 52; 
 
+        // CALCULATE SPONSOR VALUES BASED ON OLD FORMULA FOR CONSISTENCY
+        const strengthFactor = tmpl.targetStrength / 100;
+        const fanFactor = tmpl.fans / 1000000;
+        const totalMonthlySponsorValue = ((tmpl.championships * 2) + (fanFactor * 0.5)) / 12;
+        
+        // Annual Values
+        const annualTotal = totalMonthlySponsorValue * 12;
+        const mainSponsorValue = Number((annualTotal * 0.6).toFixed(2));
+        const stadiumSponsorValue = Number((annualTotal * 0.3).toFixed(2));
+        const sleeveSponsorValue = Number((annualTotal * 0.1).toFixed(2));
+
         return {
             id: teamId,
             name: tmpl.name,
@@ -615,10 +644,19 @@ export const initializeTeams = (): Team[] => {
             stadiumName: tmpl.stadium,
             stadiumCapacity: tmpl.capacity,
             budget: tmpl.budget,
+            initialDebt: tmpl.debt, // NEW: Set Initial Debt from template
             wageBudget: Number((estimatedWages * 1.1).toFixed(1)), 
             players,
             reputation: tmpl.baseReputation, 
             leagueHistory: tmpl.leagueHistory || [], 
+            
+            // NEW: Initialize Sponsors
+            sponsors: {
+                main: { name: 'HAYVANLAR HOLDING', yearlyValue: mainSponsorValue, expiryYear: 2026 },
+                stadium: { name: tmpl.stadium, yearlyValue: stadiumSponsorValue, expiryYear: 2026 },
+                sleeve: { name: 'Süper Toto', yearlyValue: sleeveSponsorValue, expiryYear: 2026 }
+            },
+
             financialRecords: {
                 income: {
                     transfers: 0, tv: 0, merch: 0, loca: 0, gate: 0, sponsor: 0

@@ -45,20 +45,24 @@ export const applyTraining = (team: Team, type: 'ATTACK' | 'DEFENSE' | 'PHYSICAL
         let skill = p.skill;
         let morale = p.morale;
 
+        // Skill bump logic: Only if skill < potential
+        // But also small chance to slightly exceed? No, stick to potential cap for realism.
+        const canGrow = skill < p.potential;
+
         if (type === 'ATTACK') {
             stats.finishing = Math.min(99, stats.finishing + 1);
             stats.technique = Math.min(99, stats.technique + 1);
             stats.passing = Math.min(99, stats.passing + 1);
             stats.offTheBall = Math.min(99, stats.offTheBall + 1);
             stats.vision = Math.min(99, stats.vision + 1);
-            if(Math.random() > 0.8) skill = Math.min(99, skill + 1);
+            if(Math.random() > 0.8 && canGrow) skill = Math.min(99, skill + 1);
         } else if (type === 'DEFENSE') {
             stats.tackling = Math.min(99, stats.tackling + 1);
             stats.marking = Math.min(99, stats.marking + 1);
             stats.positioning = Math.min(99, stats.positioning + 1);
             stats.heading = Math.min(99, stats.heading + 1);
             stats.bravery = Math.min(99, stats.bravery + 1);
-            if(Math.random() > 0.8) skill = Math.min(99, skill + 1);
+            if(Math.random() > 0.8 && canGrow) skill = Math.min(99, skill + 1);
         } else if (type === 'PHYSICAL') {
             stats.pace = Math.min(99, stats.pace + 1);
             stats.acceleration = Math.min(99, stats.acceleration + 1);

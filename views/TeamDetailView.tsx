@@ -305,7 +305,7 @@ const TeamDetailView = ({ team, allTeams, fixtures, currentDate, manager, onClos
                 {/* 2. SQUAD TAB */}
                 {activeTab === 'SQUAD' && (
                     <div className="animate-in fade-in slide-in-from-bottom-2">
-                        <SquadView team={team} onPlayerClick={onPlayerClick} />
+                        <SquadView team={team} onPlayerClick={onPlayerClick} manager={manager} />
                     </div>
                 )}
 
