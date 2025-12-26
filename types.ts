@@ -11,105 +11,231 @@ export enum Position {
     SNT = 'SNT'  // Santrafor
 }
 
-// --- NEW TACTICAL ENUMS ---
+// --- NEW DETAILED TACTICAL ENUMS ---
 
-export enum Mentality {
-    DEFENSIVE = 'Defansif (Otobüsü Çek)',
-    CAUTIOUS = 'Temkinli',
-    BALANCED = 'Dengeli',
-    POSITIVE = 'Pozitif Futbol',
-    ATTACKING = 'Hücum',
-    ALL_OUT = 'Topyekün Saldırı'
-}
+// TOPA SAHİPKEN (IN POSSESSION)
 
 export enum PassingStyle {
+    EXTREME_SHORT = 'Aşırı Kısa Pas',
     SHORT = 'Kısa Pas',
-    DIRECT = 'Direkt / Uzun Top',
-    MIXED = 'Karışık'
+    STANDARD = 'Standart',
+    DIRECT = 'Dikine Uzun',
+    PUMP_BALL = 'İleri Şişir'
 }
 
 export enum Tempo {
+    VERY_SLOW = 'Çok Düşük',
     SLOW = 'Düşük',
-    NORMAL = 'Normal',
-    FAST = 'Yüksek'
+    STANDARD = 'Standart',
+    HIGH = 'Yüksek',
+    BEAST_MODE = 'Hayvan Gibi'
 }
 
 export enum Width {
+    VERY_NARROW = 'Çok Dar Alan',
     NARROW = 'Dar Alan',
-    NORMAL = 'Normal',
-    WIDE = 'Geniş Alan (Çizgiye İn)'
+    STANDARD = 'Standart',
+    WIDE = 'Geniş Alan',
+    VERY_WIDE = 'Çok Geniş Alan'
+}
+
+export enum AttackingTransition {
+    KEEP_SHAPE = 'Dağılımı Koru',
+    STANDARD = 'Standart',
+    PUSH_FORWARD = 'İleri Çık'
 }
 
 export enum CreativeFreedom {
-    DISCIPLINED = 'Disiplinli Oyna',
+    DISCIPLINED = 'Disiplinli',
+    STANDARD = 'Standart',
+    CREATIVE = 'Yaratıcı'
+}
+
+export enum SetPiecePlay {
+    RECYCLE = 'Oyun İçinde Kalsın',
+    TRY_SCORE = 'Kazanmaya Çalış'
+}
+
+export enum PlayStrategy {
+    TRY_BREAK = 'Presi Kırmaya Çalış',
+    STANDARD = 'Standart',
+    BREAK_PRESS = 'Presi Kır'
+}
+
+export enum GoalKickType {
+    SHORT = 'Kısa',
+    STANDARD = 'Standart',
+    LONG = 'Uzun'
+}
+
+export enum GKDistributionTarget {
+    CBS = 'Stoperlere',
+    FULLBACKS = 'Beklere',
+    MIDFIELD = 'Orta Saha',
+    WINGS = 'Kanatlar',
+    STRIKER = 'Forvete'
+}
+
+export enum SupportRuns {
     BALANCED = 'Dengeli',
-    EXPRESSIVE = 'Yaratıcı Oyna'
+    RIGHT = 'Sağdan',
+    LEFT = 'Soldan',
+    CENTER = 'Ortadan'
 }
 
-export enum FinalThird {
-    WORK_INTO_BOX = 'Paslaşarak Gir',
-    MIXED = 'Karışık',
-    SHOOT_ON_SIGHT = 'Kaleyi Görünce Vur'
+export enum Dribbling {
+    DISCOURAGE = 'Vazgeçir',
+    STANDARD = 'Standart',
+    ENCOURAGE = 'Destekle'
 }
 
-export enum Crossing {
-    FLOAT = 'Havadan (Arka Direk)',
-    MIXED = 'Karışık',
-    DRILL = 'Yerden Sert'
+export enum FocusArea {
+    STANDARD = 'Standart',
+    LEFT = 'Soldan',
+    RIGHT = 'Sağdan',
+    CENTER = 'Ortadan',
+    BOTH_WINGS = 'Her İki Kanat'
+}
+
+export enum PassTarget {
+    FEET = 'Ayağına Ver',
+    STANDARD = 'Standart',
+    SPACE = 'Koşu Yoluna'
+}
+
+export enum Patience {
+    EARLY_CROSS = 'Fazla Bekletmeden Orta Aç',
+    STANDARD = 'Standart',
+    WORK_INTO_BOX = 'Paslaşarak Gir'
+}
+
+export enum LongShots {
+    DISCOURAGE = 'Vazgeçir',
+    STANDARD = 'Standart',
+    ENCOURAGE = 'Destekle'
+}
+
+export enum CrossingType {
+    LOW = 'Yerden',
+    STANDARD = 'Standart',
+    HIGH = 'Havadan'
+}
+
+export enum GKDistributionSpeed {
+    STANDARD = 'Standart',
+    SLOW = 'Yavaş',
+    FAST = 'Hızlı'
+}
+
+// TOP RAKİPTEYKEN (OUT OF POSSESSION)
+
+export enum PressingLine {
+    LOW = 'Geride',
+    MID = 'Ortada',
+    HIGH = 'İleride'
 }
 
 export enum DefensiveLine {
-    DEEP = 'Geride Karşıla',
+    VERY_DEEP = 'Çok Geride',
+    DEEP = 'Geride',
     STANDARD = 'Standart',
-    HIGH = 'Önde Bas (Ofsayt Taktiği)'
+    HIGH = 'İleride',
+    VERY_HIGH = 'Çok İleride'
+}
+
+export enum DefLineMobility {
+    STEP_UP = 'Daha Sık Önde Savun',
+    BALANCED = 'Dengeli',
+    DROP_BACK = 'Daha Sık Geriye Yaslan'
+}
+
+export enum PressIntensity {
+    VERY_LOW = 'Çok Az',
+    LOW = 'Az Şiddetli',
+    STANDARD = 'Standart',
+    HIGH = 'Şiddetli Pres',
+    VERY_HIGH = 'Çok Şiddetli Pres'
+}
+
+export enum DefensiveTransition {
+    REGROUP = 'Kademeye Dön',
+    STANDARD = 'Standart',
+    COUNTER_PRESS = 'Karşı Pres'
 }
 
 export enum Tackling {
-    CAUTIOUS = 'Temkinli (Ayakta Kal)',
-    NORMAL = 'Normal',
-    AGGRESSIVE = 'Sert (Topa Dal)'
+    CAUTIOUS = 'Sert Yok',
+    STANDARD = 'Standart',
+    AGGRESSIVE = 'Sert Dal'
+}
+
+export enum PreventCrosses {
+    STOP_CROSS = 'Ortaları Engelle',
+    STANDARD = 'Standart',
+    ALLOW_CROSS = 'İzin Ver'
 }
 
 export enum PressingFocus {
-    CENTER = 'Ortayı Kapat',
-    MIXED = 'Karışık',
-    WINGS = 'Kanatlara Zorla'
+    CENTER = 'Rakibi Merkezden Preslet',
+    BALANCED = 'Dengeli',
+    WINGS = 'Kanatlardan Prese Zorla'
+}
+
+// --- NEW ADDITIONS FOR COMPATIBILITY ---
+
+export enum Mentality {
+    VERY_DEFENSIVE = 'Çok Defansif',
+    DEFENSIVE = 'Defansif',
+    STANDARD = 'Dengeli',
+    ATTACKING = 'Hücum',
+    VERY_ATTACKING = 'Çok Hücum'
 }
 
 export enum TimeWasting {
-    NEVER = 'Asla',
+    RARELY = 'Nadiren',
     SOMETIMES = 'Bazen',
-    FREQUENTLY = 'Sık Sık (Zaman Geçir)'
+    FREQUENTLY = 'Sık Sık',
+    ALWAYS = 'Her Zaman'
 }
 
-// Old enums kept for compatibility logic, but UI will use new ones mostly
 export enum TacticStyle {
     BALANCED = 'Dengeli',
-    ATTACKING = 'Hücum',
-    DEFENSIVE = 'Defansif',
-    COUNTER = 'Kontra Atak',
-    TIKI_TAKA = 'Pas Oyunu'
+    POSSESSION = 'Topa Sahip Olma',
+    COUNTER_ATTACK = 'Kontra Atak',
+    HIGH_PRESS = 'Önde Baskı',
+    PARK_THE_BUS = 'Otobüsü Çek',
+    ROUTE_ONE = 'Uzun Top'
 }
 
 export enum AttackStyle {
-    CENTER = 'Ortadan',
-    WINGS = 'Kanatlardan',
-    MIXED = 'Karışık'
+    MIXED = 'Karışık',
+    LEFT_WING = 'Sol Kanat',
+    RIGHT_WING = 'Sağ Kanat',
+    BOTH_WINGS = 'Her İki Kanat',
+    CENTER = 'Merkez'
 }
 
 export enum PressingStyle {
-    LOW = 'Düşük (Bekle)',
     BALANCED = 'Dengeli',
-    HIGH = 'Yüksek Pres',
-    GEGEN = 'Gegenpress (Şok Pres)'
+    HIGH_PRESS = 'Önde Bas',
+    DROP_DEEP = 'Geride Karşıla'
+}
+
+// --- INTERFACES ---
+
+export interface HalftimeTalkOption {
+    id: string;
+    text: string;
+    style: 'AGGRESSIVE' | 'ASSERTIVE' | 'PASSIONATE' | 'CALM' | 'CAUTIOUS' | 'MOTIVATIONAL';
+    effectDesc: string;
 }
 
 export interface PlayerSeasonStats {
     goals: number;
     assists: number;
-    yellowCards: number; // YENI
-    redCards: number;    // YENI
-    ratings: number[]; // Store history to calc average
+    yellowCards: number; 
+    redCards: number;    
+    ratings: number[]; 
     averageRating: number;
     matchesPlayed: number;
 }
@@ -157,21 +283,21 @@ export interface PlayerStats {
     naturalFitness: number; // Vücut Zindeliği
     jumping: number;        // Zıplama
     
-    // Legacy support (to avoid breaking engine immediately)
+    // Legacy support
     shooting?: number;
     defending?: number;
 }
 
 export interface Injury {
     type: string; 
-    daysRemaining: number; // Changed from weeksRemaining to daysRemaining
+    daysRemaining: number; 
     description: string;
 }
 
 export interface PastInjury {
     type: string;
     week: number;
-    durationDays: number; // Changed from duration (weeks) to durationDays
+    durationDays: number;
 }
 
 export interface PlayerFaceData {
@@ -188,32 +314,34 @@ export interface Player {
     id: string;
     name: string;
     position: Position;
-    secondaryPosition?: Position; // NEW: Added secondary position
+    secondaryPosition?: Position; 
     skill: number;
-    potential: number; // NEW: Fixed Potential Ability
+    potential: number; 
     stats: PlayerStats; 
-    seasonStats: PlayerSeasonStats; // NEW
-    face: PlayerFaceData; // NEW: Layered face data
-    jersey?: string; // NEW: Specific jersey URL for the player
+    seasonStats: PlayerSeasonStats; 
+    face: PlayerFaceData; 
+    jersey?: string; 
     age: number;
-    height: number; // YENİ
-    preferredFoot: string; // YENİ
-    contractExpiry: number; // YENİ (Yıl)
+    height: number; 
+    preferredFoot: string; 
+    contractExpiry: number; 
     value: number;
-    wage?: number; // YENİ: Yıllık Maaş (M€) - Eğer undefined ise value üzerinden hesaplanır
+    wage?: number; 
     nationality: string;
     teamId: string;
+    clubName?: string; 
     morale: number;
-    condition: number; // NEW: Current Energy (0-100). stats.stamina is the Attribute.
+    condition: number; 
     suspendedUntilWeek?: number;
     injury?: Injury; 
     hasInjectionForNextMatch?: boolean; 
-    injurySusceptibility: number; // 0-100 (Higher is worse)
+    injurySusceptibility: number; 
     injuryHistory: PastInjury[];
-    lastInjuryDurationDays?: number; // Used to calculate recovery speed after injury
-    squadStatus?: string; // NEW: Manually assigned squad status (e.g., 'STAR', 'FIRST_XI')
-    nextNegotiationWeek?: number; // NEW: Cooldown for negotiations (Week Number)
-    activePromises?: string[]; // NEW: Promises made to the player
+    lastInjuryDurationDays?: number; 
+    squadStatus?: string; 
+    nextNegotiationWeek?: number; 
+    activePromises?: string[]; 
+    transferListed?: boolean; 
 }
 
 export interface FinancialRecords {
@@ -247,14 +375,13 @@ export interface HistoricalRanking {
 }
 
 export interface TransferRecord {
-    date: string; // Formatted date string e.g. "12 Tem"
+    date: string; 
     playerName: string;
     type: 'BOUGHT' | 'SOLD';
-    counterparty: string; // "From X" or "To X"
-    price: string; // Display string "12.5 M€"
+    counterparty: string; 
+    price: string; 
 }
 
-// NEW: Sponsor Structure
 export interface SponsorDeal {
     name: string;
     yearlyValue: number;
@@ -267,48 +394,78 @@ export interface TeamSponsors {
     sleeve: SponsorDeal;
 }
 
+export interface SetPieceTakers {
+    penalty?: string; 
+    freeKick?: string; 
+    corner?: string; 
+    captain?: string; 
+}
+
 export interface Team {
     id: string;
     name: string;
     colors: [string, string]; 
     logo?: string;
-    jersey?: string; // NEW: Base jersey URL for the team
-    championships: number; // CHANGED: Replaced stars with championships
-    domesticCups?: number; // NEW: Türkiye Kupası Sayısı
-    superCups?: number; // NEW: Süper Kupa Sayısı
-    europeanCups?: number; // NEW: Avrupa Kupası Sayısı
+    jersey?: string; 
+    championships: number; 
+    domesticCups?: number; 
+    superCups?: number; 
+    europeanCups?: number; 
     fanBase: number; 
     stadiumName: string;
-    stadiumCapacity: number; // NEW: Added stadium capacity
+    stadiumCapacity: number; 
     budget: number; 
-    initialDebt: number; // NEW: Fixed debt amount (M€)
-    wageBudget?: number; // NEW: Explicit Wage Budget Allocation to prevent reset bugs
+    initialDebt: number; 
+    wageBudget?: number; 
     players: Player[]; 
-    reputation: number; // NEW: Dynamic reputation value (base 1-5)
+    reputation: number; 
     
     // --- FINANCIALS ---
-    financialRecords: FinancialRecords; // Cumulative Season Data
-    transferHistory: TransferRecord[]; // NEW: Real transfer logs
-    sponsors: TeamSponsors; // NEW: Stored sponsor deals
+    financialRecords: FinancialRecords; 
+    transferHistory: TransferRecord[]; 
+    sponsors: TeamSponsors; 
 
-    // --- TACTICS ---
+    // --- TACTICS (UPDATED) ---
     formation: string; 
-    mentality: Mentality;
+    mentality: Mentality; // ADDED
+    tactic?: TacticStyle; // ADDED
+    attackStyle?: AttackStyle; // ADDED
+    pressingStyle?: PressingStyle; // ADDED
+    
+    // In Possession
     passing: PassingStyle;
     tempo: Tempo;
     width: Width;
+    attackingTransition: AttackingTransition;
     creative: CreativeFreedom;
-    finalThird: FinalThird;
-    crossing: Crossing;
+    setPiecePlay?: SetPiecePlay;
+    playStrategy?: PlayStrategy;
+    goalKickType?: GoalKickType;
+    gkDistributionTarget?: GKDistributionTarget;
+    supportRuns?: SupportRuns;
+    dribbling?: Dribbling;
+    focusArea?: FocusArea;
+    passTarget?: PassTarget;
+    patience?: Patience; // Final Third Patience
+    longShots?: LongShots;
+    crossing?: CrossingType;
+    gkDistSpeed?: GKDistributionSpeed;
+
+    // Out of Possession
+    pressingLine?: PressingLine;
     defLine: DefensiveLine;
+    defLineMobility?: DefLineMobility;
+    pressIntensity?: PressIntensity;
+    defensiveTransition?: DefensiveTransition;
     tackling: Tackling;
+    preventCrosses?: PreventCrosses;
     pressFocus: PressingFocus;
-    timeWasting: TimeWasting;
     
-    // Legacy support (optional or mapped)
-    tactic: TacticStyle; 
-    attackStyle: AttackStyle; 
-    pressingStyle: PressingStyle; 
+    // Legacy support fields (mapped to new ones where possible or kept for compatibility)
+    timeWasting?: TimeWasting; // UPDATED TYPE
+    finalThird?: any; // Mapped to Patience
+    
+    setPieceTakers?: SetPieceTakers; 
 
     stats: {
         played: number;
@@ -319,11 +476,11 @@ export interface Team {
         ga: number;
         points: number;
     };
-    strength: number; // Visible Strength (GTÜ)
-    rawStrength?: number; // Calculated Strength (THG) - Hidden base
-    strengthDelta?: number; // The constant difference (Delta)
+    strength: number; 
+    rawStrength?: number; 
+    strengthDelta?: number; 
     morale: number; 
-    leagueHistory?: HistoricalRanking[]; // NEW: Historical rankings
+    leagueHistory?: HistoricalRanking[]; 
 }
 
 export interface MatchEvent {
@@ -344,12 +501,6 @@ export interface PlayerPerformance {
     rating: number; 
     goals: number;
     assists: number;
-}
-
-export interface OpponentStatement {
-    managerName: string;
-    text: string;
-    mood: 'ANGRY' | 'HAPPY' | 'NEUTRAL';
 }
 
 export interface MatchStats {
@@ -373,7 +524,6 @@ export interface MatchStats {
     mvpPlayerName: string;
     homeRatings: PlayerPerformance[];
     awayRatings: PlayerPerformance[];
-    opponentStatement?: OpponentStatement;
     managerCards?: 'YELLOW' | 'RED' | null;
 }
 
@@ -386,7 +536,7 @@ export interface BettingOdds {
 export interface Fixture {
     id: string;
     week: number;
-    date: string; // ISO Date String
+    date: string; 
     homeTeamId: string;
     awayTeamId: string;
     played: boolean;
@@ -417,7 +567,7 @@ export interface InterviewOption {
             fans?: number;
             players?: number;
             referees?: number;
-            media?: number; // NEW: Media trust
+            media?: number; 
         };
     };
 }
@@ -429,13 +579,6 @@ export interface InterviewQuestion {
     options: InterviewOption[];
 }
 
-export interface HalftimeTalkOption {
-    id: string;
-    text: string;
-    style: 'AGGRESSIVE' | 'CALM' | 'MOTIVATIONAL';
-    effectDesc: string;
-}
-
 export interface ManagerStats {
     matchesManaged: number;
     wins: number;
@@ -444,22 +587,17 @@ export interface ManagerStats {
     goalsFor: number;
     goalsAgainst: number;
     trophies: number;
-    // Detailed Trophies for Power Calculation
     leagueTitles: number;
     domesticCups: number;
     europeanCups: number;
-    
     playersBought: number;
     playersSold: number;
-    moneySpent: number; // Total Cumulative
-    moneyEarned: number; // Total Cumulative
-    
-    // NEW: Monthly Trackers
+    moneySpent: number; 
+    moneyEarned: number; 
     transferSpendThisMonth: number;
     transferIncomeThisMonth: number;
-
     recordTransferFee: number;
-    careerEarnings: number; // NEW: Personal money earned by manager
+    careerEarnings: number; 
 }
 
 export interface ManagerProfile {
@@ -478,7 +616,7 @@ export interface ManagerProfile {
         fans: number; 
         players: number; 
         referees: number; 
-        media: number; // NEW: Media trust
+        media: number; 
     };
     playerRelations: { playerId: string; name: string; value: number }[]; 
     history: string[]; 
@@ -503,11 +641,19 @@ export interface Message {
     options: string[];
 }
 
-// NEW: Pending Transfer Interface
 export interface PendingTransfer {
     playerId: string;
     sourceTeamId: string;
     agreedFee: number;
+    date: string;
+}
+
+export interface IncomingOffer {
+    id: string;
+    playerId: string;
+    playerName: string;
+    fromTeamName: string;
+    amount: number;
     date: string;
 }
 
@@ -519,7 +665,6 @@ export interface SeasonChampion {
     season: string;
 }
 
-// --- NEW: SEASON SUMMARY TYPES ---
 export interface TransferImpact {
     name: string;
     fee: number;
@@ -541,11 +686,11 @@ export interface SeasonSummary {
         goalsAgainst: number;
         points: number;
     };
-    bestXI: Player[]; // Snapshot of players
+    bestXI: Player[]; 
     topScorer: { name: string, count: number };
     topAssister: { name: string, count: number };
     topRated: { name: string, rating: number };
-    trophiesWon: string[]; // "Lig Şampiyonluğu", "Türkiye Kupası" etc.
+    trophiesWon: string[]; 
     transfersIn: TransferImpact[];
 }
 
@@ -554,17 +699,18 @@ export interface GameState {
     manager: ManagerProfile | null; 
     myTeamId: string | null;
     currentWeek: number; 
-    currentDate: string; // ISO Date String
+    currentDate: string; 
     teams: Team[];
     fixtures: Fixture[];
-    messages: Message[]; // Updated to Message[]
+    messages: Message[]; 
     isGameStarted: boolean;
     transferList: Player[]; 
     trainingPerformed: boolean;
     news: NewsItem[]; 
-    playTime: number; // Seconds played
-    lastSeenInjuryCount: number; // For health center badge
-    pendingTransfers: PendingTransfer[]; // NEW: Queue for delayed transfers
-    seasonChampion?: SeasonChampion | null; // NEW: Stores the champion to trigger celebration
-    lastSeasonSummary?: SeasonSummary | null; // NEW: Stores last season data for modal
+    playTime: number; 
+    lastSeenInjuryCount: number; 
+    pendingTransfers: PendingTransfer[]; 
+    incomingOffers: IncomingOffer[]; 
+    seasonChampion?: SeasonChampion | null; 
+    lastSeasonSummary?: SeasonSummary | null; 
 }

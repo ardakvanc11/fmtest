@@ -29,7 +29,7 @@ export const INJURY_TYPES = [
 
 export const GAME_CALENDAR = {
     START_DATE: new Date(2025, 6, 1), // 1 July 2025 (Preparation)
-    LEAGUE_START_DATE: new Date(2025, 7, 8), // 8 Aug 2025 (Official Start)
+    LEAGUE_START_DATE: new Date(2025, 7, 8), // 8 Aug 2025 (Official Start Updated)
     SUMMER_TRANSFER_DEADLINE: new Date(2025, 8, 1), // 1 Sept 2025
     WINTER_TRANSFER_OPEN: new Date(2026, 0, 1), // 1 Jan 2026
     WINTER_TRANSFER_CLOSE: new Date(2026, 1, 1), // 1 Feb 2026

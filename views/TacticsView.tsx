@@ -1,55 +1,11 @@
 
 import React, { useState } from 'react';
-import { Team, Player, Mentality, Tempo, TimeWasting, PassingStyle, Width, CreativeFreedom, FinalThird, Crossing, DefensiveLine, Tackling, PressingFocus, Position } from '../types';
+import { Team, Player, Mentality, PassingStyle, Tempo, Width, AttackingTransition, CreativeFreedom, SetPiecePlay, PlayStrategy, GoalKickType, GKDistributionTarget, SupportRuns, Dribbling, FocusArea, PassTarget, Patience, LongShots, CrossingType, GKDistributionSpeed, PressingLine, DefensiveLine, DefLineMobility, PressIntensity, DefensiveTransition, Tackling, PreventCrosses, PressingFocus, Position, SetPieceTakers, TimeWasting } from '../types';
 import PitchVisual from '../components/shared/PitchVisual';
-import { Syringe, Ban, Zap } from 'lucide-react';
-
-interface PlayerListItemProps {
-    p: Player;
-    selectedPlayerId: string | null;
-    forcedSubstitutionPlayerId?: string | null;
-    currentWeek?: number;
-    onPlayerClick: (p: Player) => void;
-}
-
-const PlayerListItem: React.FC<PlayerListItemProps> = ({ p, selectedPlayerId, forcedSubstitutionPlayerId, currentWeek, onPlayerClick }) => {
-    const isSuspended = p.suspendedUntilWeek && currentWeek && p.suspendedUntilWeek > currentWeek;
-    const isForcedInjury = forcedSubstitutionPlayerId === p.id;
-    
-    const getPosBadgeColor = (pos: string) => {
-        if (pos === 'GK') return 'bg-yellow-600';
-        if (['SLB', 'STP', 'SGB'].includes(pos)) return 'bg-blue-600';
-        if (['OS', 'OOS'].includes(pos)) return 'bg-green-600';
-        return 'bg-red-600'; 
-    };
-
-    return (
-        <div onClick={() => onPlayerClick(p)} className={`flex items-center justify-between p-2 rounded border cursor-pointer transition mb-2 ${selectedPlayerId === p.id ? 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-500' : isForcedInjury ? 'bg-red-100 dark:bg-red-900/30 border-red-500 animate-pulse' : 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700'} ${(p.injury || isSuspended) && !isForcedInjury ? 'opacity-70' : ''}`}>
-            <div className="flex items-center gap-2 overflow-hidden">
-                <div className="flex flex-col gap-0.5">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white shrink-0 w-8 text-center ${getPosBadgeColor(p.position)}`}>{p.position}</span>
-                    {p.secondaryPosition && (
-                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded text-white shrink-0 w-8 text-center opacity-70 ${getPosBadgeColor(p.secondaryPosition)}`}>{p.secondaryPosition}</span>
-                    )}
-                </div>
-                <div className="flex flex-col min-w-0">
-                    <span className={`text-sm font-bold flex items-center gap-1 truncate ${selectedPlayerId === p.id ? 'text-yellow-600 dark:text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-                        {p.name}
-                        {(p.injury || isForcedInjury) && <Syringe size={12} className="text-red-500 animate-pulse shrink-0"/>}
-                        {isSuspended && <Ban size={12} className="text-red-600 shrink-0"/>}
-                    </span>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                        {p.age} Yaş 
-                        {p.injury ? ` • ${p.injury.daysRemaining} Gün Sakat` : ''}
-                        {isForcedInjury ? ' • SAKATLANDI!' : ''}
-                        {isSuspended ? ' • CEZALI' : ''}
-                    </span>
-                </div>
-            </div>
-            <div className="font-bold text-slate-900 dark:text-white text-sm pl-2">{p.skill}</div>
-        </div>
-    );
-};
+import { Syringe, Ban, Zap, Users, Target, Goal, Shield, Activity, Star, AlertTriangle, MoveRight, Gauge, Timer, MoveHorizontal, Flag, Sparkles, ArrowUpFromLine, GitCommit, MousePointerClick, Anchor, ArrowLeftRight, Crosshair, FastForward, ScanLine, ChevronUp, ChevronDown, Minus } from 'lucide-react';
+import TacticDetailModal from '../modals/TacticDetailModal';
+import { TACTICAL_DESCRIPTIONS } from '../data/tacticalDescriptions';
+import PlayerFace from '../components/shared/PlayerFace';
 
 interface TacticsViewProps {
     team: Team;
@@ -64,328 +20,509 @@ interface TacticsViewProps {
     forcedSubstitutionPlayerId?: string | null;
 }
 
-const TacticsView = ({ 
-    team, 
-    setTeam, 
-    compact = false,
-    isMatchActive = false,
-    subsUsed = 0,
-    maxSubs = 5,
-    onSubstitution,
-    currentMinute,
-    currentWeek,
-    forcedSubstitutionPlayerId
-}: TacticsViewProps) => {
-    const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
-    const [tab, setTab] = useState<'GENERAL' | 'ATTACK' | 'DEFENSE'>('GENERAL');
+const TacticalInstructionCard = ({ 
+    title, 
+    value, 
+    icon: Icon, 
+    options, 
+    tacticKey, 
+    onOpenModal,
+    colorClass = "text-fuchsia-400" 
+}: { 
+    title: string, 
+    value: string, 
+    icon: any, 
+    options: string[],
+    tacticKey: string, 
+    onOpenModal: (key: string, title: string, currentVal: string, opts: string[]) => void,
+    colorClass?: string
+}) => {
+    let displayValue = value;
+    let dataKey = tacticKey;
+    if (TACTICAL_DESCRIPTIONS[dataKey] && TACTICAL_DESCRIPTIONS[dataKey][value]) {
+        displayValue = TACTICAL_DESCRIPTIONS[dataKey][value].label;
+    }
 
-    // --- SMART AUTO PICK LOGIC ---
+    return (
+        <div 
+            onClick={() => onOpenModal(tacticKey, title, value, options)}
+            className="bg-[#1e232e] border border-slate-700 rounded-xl p-4 flex flex-col justify-between h-40 shadow-lg hover:border-white/50 cursor-pointer transition-all group relative overflow-hidden active:scale-95"
+        >
+            <Icon size={80} className={`absolute -right-4 -bottom-4 opacity-5 ${colorClass} group-hover:scale-110 transition-transform duration-500`} />
+            <div className={`text-xs font-bold uppercase tracking-wider ${colorClass} mb-2`}>{title}</div>
+            <div className="flex-1 flex flex-col items-center justify-center relative z-10">
+                <Icon size={32} className="text-slate-300 mb-2 group-hover:text-white transition-colors" />
+                <div className="text-center">
+                    <div className="text-white font-bold text-sm leading-tight group-hover:text-yellow-400 transition-colors">{displayValue}</div>
+                </div>
+            </div>
+            <div className="mt-3 flex justify-center">
+                <div className="text-[10px] text-slate-500 font-bold uppercase bg-slate-800 px-2 py-0.5 rounded border border-slate-700 group-hover:border-slate-500 transition-colors">
+                    Değiştir
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Re-designed Row for Right Sidebar (FM Style)
+interface CompactPlayerRowProps {
+    p: Player;
+    index: number;
+    onClick: (p: Player) => void;
+    isSelected: boolean;
+    label?: string;
+    currentWeek?: number;
+    isReserve?: boolean;
+}
+
+const CompactPlayerRow: React.FC<CompactPlayerRowProps> = ({ p, index, onClick, isSelected, label, currentWeek, isReserve }) => {
+    const isSuspended = p.suspendedUntilWeek && currentWeek && p.suspendedUntilWeek > currentWeek;
+    const currentCondition = p.condition !== undefined ? p.condition : p.stats.stamina;
+    
+    // Condition Bar Color
+    const getConditionColor = (cond: number) => cond >= 90 ? 'bg-green-500' : cond >= 75 ? 'bg-green-400' : cond >= 60 ? 'bg-yellow-500' : 'bg-red-500';
+    
+    // Morale Icon
+    const getMoraleIcon = (morale: number) => {
+        if (morale >= 90) return <ChevronUp size={14} className="text-green-500" strokeWidth={4} />;
+        if (morale >= 75) return <ChevronUp size={14} className="text-green-400" />;
+        if (morale >= 50) return <Minus size={14} className="text-yellow-500" />;
+        return <ChevronDown size={14} className="text-red-500" />;
+    };
+
+    // Position Badge Color
+    const getPosColor = (pos: string) => {
+        if (pos === 'GK') return 'bg-yellow-600 text-black';
+        if (['STP', 'SLB', 'SGB'].includes(pos)) return 'bg-blue-600 text-white';
+        if (['OS', 'OOS'].includes(pos)) return 'bg-green-600 text-white';
+        return 'bg-red-600 text-white';
+    };
+
+    const ratingColor = (r: number) => {
+        if (r >= 8.0) return 'bg-green-600 text-white';
+        if (r >= 7.0) return 'bg-green-500/20 text-green-400 border border-green-500/50';
+        if (r >= 6.0) return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50';
+        return 'bg-slate-700 text-slate-400';
+    };
+
+    const getSkillColorClass = (skill: number) => {
+        if (skill >= 85) return 'text-green-400';
+        if (skill >= 75) return 'text-blue-400';
+        if (skill >= 65) return 'text-yellow-400';
+        return 'text-slate-400';
+    };
+
+    return (
+        <div 
+            onClick={() => onClick(p)} 
+            className={`flex items-center gap-2 p-1.5 border-b border-slate-800/50 transition-all cursor-pointer group
+                ${isSelected 
+                    ? 'bg-yellow-600/20' 
+                    : 'hover:bg-slate-800 bg-slate-900'}
+                ${(p.injury || isSuspended) ? 'opacity-75' : ''}
+            `}
+        >
+            {/* Position */}
+            <div className="w-8 shrink-0 flex justify-center">
+                <span className={`w-7 h-5 flex items-center justify-center text-[9px] font-black rounded ${getPosColor(p.position)}`}>
+                    {p.position}
+                </span>
+            </div>
+
+            {/* Skill (Güç) */}
+            <div className="w-8 shrink-0 flex justify-center items-center font-black text-sm md:text-base">
+                <span className={getSkillColorClass(p.skill)}>{p.skill}</span>
+            </div>
+
+            {/* Face */}
+            <div className="w-8 h-8 shrink-0 rounded-full overflow-hidden border border-slate-600 bg-slate-700 shadow-sm relative">
+                <PlayerFace player={p} />
+                {/* Status Overlays */}
+                {p.injury && (
+                    <div className="absolute inset-0 bg-red-500/60 flex items-center justify-center backdrop-blur-[1px]">
+                        <Syringe size={14} className="text-white drop-shadow-md" />
+                    </div>
+                )}
+                {isSuspended && (
+                    <div className="absolute inset-0 bg-red-500/60 flex items-center justify-center backdrop-blur-[1px]">
+                        <Ban size={14} className="text-white drop-shadow-md" />
+                    </div>
+                )}
+            </div>
+
+            {/* Name */}
+            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                <span className={`text-xs font-bold truncate ${isSelected ? 'text-yellow-400' : 'text-slate-300 group-hover:text-white'}`}>
+                    {p.name}
+                </span>
+            </div>
+
+            {/* Condition (Knd) */}
+            <div className="w-12 shrink-0 flex flex-col gap-0.5 justify-center">
+                <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                    <div className={`h-full ${getConditionColor(currentCondition)}`} style={{ width: `${currentCondition}%` }}></div>
+                </div>
+                <span className="text-[9px] text-right text-slate-500 font-mono leading-none">{Math.round(currentCondition)}%</span>
+            </div>
+
+            {/* Morale (Mor) */}
+            <div className="w-6 shrink-0 flex justify-center items-center" title={`Moral: ${p.morale}`}>
+                {getMoraleIcon(p.morale)}
+            </div>
+
+            {/* Stats (Gol/Ast) */}
+            <div className="w-10 shrink-0 flex justify-center gap-1 text-[10px] font-mono">
+                <span className={`${p.seasonStats.goals > 0 ? 'text-green-400 font-bold' : 'text-slate-600'}`}>{p.seasonStats.goals}</span>
+                <span className="text-slate-700">/</span>
+                <span className={`${p.seasonStats.assists > 0 ? 'text-blue-400 font-bold' : 'text-slate-600'}`}>{p.seasonStats.assists}</span>
+            </div>
+
+            {/* Rating (Ort P) */}
+            <div className="w-10 shrink-0 flex justify-center">
+                <div className={`px-1.5 py-0.5 rounded text-[10px] font-bold min-w-[28px] text-center ${ratingColor(p.seasonStats.averageRating || 0)}`}>
+                    {p.seasonStats.averageRating ? p.seasonStats.averageRating.toFixed(1) : '-'}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Header for the player list
+const PlayerListHeader = () => (
+    <div className="flex items-center gap-2 p-2 px-3 bg-slate-950 border-b border-slate-800 text-[9px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10">
+        <div className="w-8 text-center">Poz</div>
+        <div className="w-8 text-center">Güç</div>
+        <div className="w-8 text-center"></div> {/* Face Placeholder */}
+        <div className="flex-1 pl-1">Oyuncu İsmi</div>
+        <div className="w-12 text-center">Knd</div>
+        <div className="w-6 text-center">Mor</div>
+        <div className="w-10 text-center">G/A</div>
+        <div className="w-10 text-center">Ort</div>
+    </div>
+);
+
+const TacticsView = ({ team, setTeam, compact = false, isMatchActive = false, subsUsed = 0, maxSubs = 5, onSubstitution, currentMinute, currentWeek, forcedSubstitutionPlayerId }: TacticsViewProps) => {
+    const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'XI' | 'TACTICS'>('XI');
+    const [tacticalSubTab, setTacticalSubTab] = useState<'POSSESSION' | 'DEFENSE' | 'KEEPER' | 'SET_PIECES'>('POSSESSION');
+
+    const [modalData, setModalData] = useState<{isOpen: boolean; key: string; title: string; currentVal: string; options: string[];}>({ isOpen: false, key: '', title: '', currentVal: '', options: [] });
+
+    const teamChemistry = Math.round((team.morale + team.strength) / 2);
+
+    const openTacticModal = (key: string, title: string, currentVal: string, options: string[]) => {
+        setModalData({ isOpen: true, key, title, currentVal, options });
+    };
+
+    const handleTacticChange = (newVal: string) => {
+        const key = modalData.key;
+        let update = {};
+        switch(key) {
+            case 'PASSING': update = { passing: newVal }; break;
+            case 'TEMPO': update = { tempo: newVal }; break;
+            case 'WIDTH': update = { width: newVal }; break;
+            case 'ATTACK_TRANSITION': update = { attackingTransition: newVal }; break;
+            case 'CREATIVE': update = { creative: newVal }; break;
+            case 'SET_PIECE': update = { setPiecePlay: newVal }; break;
+            case 'PLAY_STRATEGY': update = { playStrategy: newVal }; break;
+            case 'GOAL_KICK': update = { goalKickType: newVal }; break;
+            case 'GK_DIST_TARGET': update = { gkDistributionTarget: newVal }; break;
+            case 'SUPPORT_RUNS': update = { supportRuns: newVal }; break;
+            case 'DRIBBLING': update = { dribbling: newVal }; break;
+            case 'FOCUS_AREA': update = { focusArea: newVal }; break;
+            case 'PASS_TARGET': update = { passTarget: newVal }; break;
+            case 'PATIENCE': update = { patience: newVal }; break;
+            case 'LONG_SHOTS': update = { longShots: newVal }; break;
+            case 'CROSSING': update = { crossing: newVal }; break;
+            case 'GK_SPEED': update = { gkDistSpeed: newVal }; break;
+            case 'PRESS_LINE': update = { pressingLine: newVal }; break;
+            case 'DEF_LINE': update = { defLine: newVal }; break;
+            case 'DEF_MOBILITY': update = { defLineMobility: newVal }; break;
+            case 'PRESS_INTENSITY': update = { pressIntensity: newVal }; break;
+            case 'DEF_TRANSITION': update = { defensiveTransition: newVal }; break;
+            case 'TACKLING': update = { tackling: newVal }; break;
+            case 'PREVENT_CROSS': update = { preventCrosses: newVal }; break;
+            case 'PRESS_FOCUS': update = { pressFocus: newVal }; break;
+        }
+        setTeam({ ...team, ...update });
+    };
+
     const handleAutoPick = () => {
-        // 1. Separate unavailable players (Injured or Suspended)
         const unavailablePlayers: Player[] = [];
         const availablePool: Player[] = [];
-
         team.players.forEach(p => {
             const isInjured = p.injury && p.injury.daysRemaining > 0;
             const isSuspended = p.suspendedUntilWeek && currentWeek && p.suspendedUntilWeek > currentWeek;
-            
-            if (isInjured || isSuspended) {
-                unavailablePlayers.push(p);
-            } else {
-                availablePool.push(p);
-            }
+            if (isInjured || isSuspended) unavailablePlayers.push(p); else availablePool.push(p);
         });
-
-        // 2. Sort available players by skill DESC to ensure best players are picked
         availablePool.sort((a, b) => b.skill - a.skill);
-
         const newStartingXI: (Player | null)[] = new Array(11).fill(null);
-        
-        // 3. Define 4-4-2 Formation Requirements (Indices 0-10 match PitchVisual)
-        // Order: GK, SLB, STP, STP, SGB, SLK, OS, OS, SGK, SNT, SNT
-        const formationRequirements = [
-            [Position.GK],                          // 0: GK
-            [Position.SLB, Position.SGB],           // 1: SLB (Left Back) - Allow RB fallback
-            [Position.STP],                         // 2: STP
-            [Position.STP],                         // 3: STP
-            [Position.SGB, Position.SLB],           // 4: SGB (Right Back) - Allow LB fallback
-            [Position.SLK, Position.SGK, Position.OOS], // 5: SLK (Left Wing)
-            [Position.OS, Position.OOS],            // 6: OS
-            [Position.OS, Position.OOS],            // 7: OS
-            [Position.SGK, Position.SLK, Position.OOS], // 8: SGK (Right Wing)
-            [Position.SNT],                         // 9: SNT
-            [Position.SNT]                          // 10: SNT
-        ];
-
-        // 4. Fill Starting XI with Positional Preference
+        const formationRequirements = [[Position.GK],[Position.SLB, Position.SGB],[Position.STP],[Position.STP],[Position.SGB, Position.SLB],[Position.SLK, Position.SGK, Position.OOS],[Position.OS, Position.OOS],[Position.OS, Position.OOS],[Position.SGK, Position.SLK, Position.OOS],[Position.SNT],[Position.SNT]];
         formationRequirements.forEach((reqPosList, index) => {
-            // Try to find best player matching primary position
             let candidateIndex = availablePool.findIndex(p => reqPosList.includes(p.position));
-            
-            // If not found, try secondary position
-            if (candidateIndex === -1) {
-                candidateIndex = availablePool.findIndex(p => p.secondaryPosition && reqPosList.includes(p.secondaryPosition));
-            }
-
-            if (candidateIndex !== -1) {
-                newStartingXI[index] = availablePool[candidateIndex];
-                availablePool.splice(candidateIndex, 1); // Remove from pool
-            }
+            if (candidateIndex === -1) candidateIndex = availablePool.findIndex(p => p.secondaryPosition && reqPosList.includes(p.secondaryPosition));
+            if (candidateIndex !== -1) { newStartingXI[index] = availablePool[candidateIndex]; availablePool.splice(candidateIndex, 1); }
         });
-
-        // 5. Fill Empty Spots in XI with Best Remaining (Out of Position)
-        // This ensures we always have 11 players if available, even if positions don't match perfect
-        for (let i = 0; i < 11; i++) {
-            if (newStartingXI[i] === null) {
-                if (availablePool.length > 0) {
-                    newStartingXI[i] = availablePool[0];
-                    availablePool.shift();
-                }
-            }
-        }
-
-        // 6. Fill Bench (Next 7 best players)
+        for (let i = 0; i < 11; i++) { if (newStartingXI[i] === null && availablePool.length > 0) { newStartingXI[i] = availablePool[0]; availablePool.shift(); } }
         const bench = availablePool.splice(0, 7);
-
-        // 7. Reserves (Remaining healthy + All Unavailable)
-        // Unavailable players are pushed to the absolute end
-        const reserves = [...availablePool, ...unavailablePlayers];
-
-        // 8. Combine into final roster
-        // Filter out nulls in case squad size is < 11 (rare edge case)
-        const finalRoster = [...(newStartingXI.filter(p => p !== null) as Player[]), ...bench, ...reserves];
-
+        const finalRoster = [...(newStartingXI.filter(p => p !== null) as Player[]), ...bench, ...availablePool, ...unavailablePlayers];
         setTeam({ ...team, players: finalRoster });
     };
 
     const handlePlayerClick = (clickedPlayer: Player) => {
-        // Allow selection of any player, logic comes when swapping
-        
-        if (!selectedPlayerId) { 
-            setSelectedPlayerId(clickedPlayer.id); 
-        } else {
-            if (selectedPlayerId === clickedPlayer.id) { 
-                setSelectedPlayerId(null); 
-                return; 
-            }
-            
+        if (!selectedPlayerId) setSelectedPlayerId(clickedPlayer.id); 
+        else {
+            if (selectedPlayerId === clickedPlayer.id) { setSelectedPlayerId(null); return; }
             const idx1 = team.players.findIndex(p => p.id === selectedPlayerId);
             const idx2 = team.players.findIndex(p => p.id === clickedPlayer.id);
-            
             if (idx1 !== -1 && idx2 !== -1) {
-                const p1 = team.players[idx1];
-                const p2 = team.players[idx2];
-
-                // SUBSTITUTION LOGIC DURING MATCH
+                const p1 = team.players[idx1]; const p2 = team.players[idx2];
                 if (isMatchActive) {
-                    // Match Active: Can only swap if one is on pitch (0-10) and one is on bench (11-17)
-                    // Reserves (18+) cannot be used in match
-                    const isPitch1 = idx1 < 11;
-                    const isPitch2 = idx2 < 11;
-                    const isBench1 = idx1 >= 11 && idx1 < 18;
-                    const isBench2 = idx2 >= 11 && idx2 < 18;
-
+                    const isPitch1 = idx1 < 11; const isPitch2 = idx2 < 11; const isBench1 = idx1 >= 11 && idx1 < 18; const isBench2 = idx2 >= 11 && idx2 < 18;
                     if ((isPitch1 && isBench2) || (isPitch2 && isBench1)) {
-                        // Valid Sub
-                        if (subsUsed >= maxSubs) {
-                            alert(`Değişiklik hakkınız doldu! (Max: ${maxSubs})`);
-                            setSelectedPlayerId(null);
-                            return;
-                        }
-                        
-                        const pitchPlayer = isPitch1 ? team.players[idx1] : team.players[idx2];
-                        const benchPlayer = isPitch1 ? team.players[idx2] : team.players[idx1];
-
-                        // Morale Penalty for First Half Substitution
-                        if (currentMinute !== undefined && currentMinute <= 45 && !forcedSubstitutionPlayerId) {
-                            pitchPlayer.morale = Math.max(0, pitchPlayer.morale - 15);
-                            alert(`${pitchPlayer.name} ilk yarıda oyundan alındığı için tepkili! (Moral -15)`);
-                        }
-
-                        if (onSubstitution) {
-                            onSubstitution(benchPlayer, pitchPlayer);
-                        }
-                        
-                        const newPlayers = [...team.players];
-                        [newPlayers[idx1], newPlayers[idx2]] = [newPlayers[idx2], newPlayers[idx1]];
-                        setTeam({ ...team, players: newPlayers });
-
-                    } else if (isPitch1 && isPitch2) {
-                        // Positional Swap on Pitch - Allowed
-                        const newPlayers = [...team.players];
-                        [newPlayers[idx1], newPlayers[idx2]] = [newPlayers[idx2], newPlayers[idx1]];
-                        setTeam({ ...team, players: newPlayers });
-                    } else {
-                        // Invalid Sub (Bench to Bench, or involving Reserves during match)
-                        if (idx1 >= 18 || idx2 >= 18) {
-                            alert("Maç sırasında kadro dışı oyuncularla işlem yapamazsınız.");
-                        }
-                    }
+                        if (subsUsed >= maxSubs) { alert(`Değişiklik hakkınız doldu! (Max: ${maxSubs})`); setSelectedPlayerId(null); return; }
+                        if (onSubstitution) onSubstitution(isPitch1 ? p2 : p1, isPitch1 ? p1 : p2);
+                        const newPlayers = [...team.players]; [newPlayers[idx1], newPlayers[idx2]] = [newPlayers[idx2], newPlayers[idx1]]; setTeam({ ...team, players: newPlayers });
+                    } else if (isPitch1 && isPitch2) { const newPlayers = [...team.players]; [newPlayers[idx1], newPlayers[idx2]] = [newPlayers[idx2], newPlayers[idx1]]; setTeam({ ...team, players: newPlayers }); } 
+                    else { if (idx1 >= 18 || idx2 >= 18) alert("Maç sırasında kadro dışı oyuncularla işlem yapamazsınız."); }
                 } else {
-                    // PRE-MATCH: SWAP LOGIC (With Rules)
-                    
-                    const isTargetActive = idx2 < 18;
-                    const isSourceActive = idx1 < 18;
-                    
-                    // 1. Suspension Check
-                    // Moving P1 (who is suspended) TO Active Squad
-                    if (isTargetActive && p1.suspendedUntilWeek && currentWeek && p1.suspendedUntilWeek > currentWeek) {
-                        alert(`UYARI: ${p1.name} kırmızı kart cezalısı! Kadroya alamazsınız.`);
-                        setSelectedPlayerId(null);
-                        return;
-                    }
-                    // Moving P2 (who is suspended) TO Active Squad
-                    if (isSourceActive && p2.suspendedUntilWeek && currentWeek && p2.suspendedUntilWeek > currentWeek) {
-                        alert(`UYARI: ${p2.name} kırmızı kart cezalısı! Kadroya alamazsınız.`);
-                        setSelectedPlayerId(null);
-                        return;
-                    }
-
-                    // 2. Injury Check
-                    if (isTargetActive && p1.injury && p1.injury.daysRemaining > 0) {
-                         alert(`UYARI: ${p1.name} sakat (${p1.injury.daysRemaining} gün). Kadroya alamazsınız.`);
-                         setSelectedPlayerId(null);
-                         return;
-                    }
-                    if (isSourceActive && p2.injury && p2.injury.daysRemaining > 0) {
-                         alert(`UYARI: ${p2.name} sakat (${p2.injury.daysRemaining} gün). Kadroya alamazsınız.`);
-                         setSelectedPlayerId(null);
-                         return;
-                    }
-
-                    const newPlayers = [...team.players];
-                    [newPlayers[idx1], newPlayers[idx2]] = [newPlayers[idx2], newPlayers[idx1]];
-                    setTeam({ ...team, players: newPlayers });
+                    if (idx2 < 18 && p1.suspendedUntilWeek && currentWeek && p1.suspendedUntilWeek > currentWeek) { alert(`UYARI: ${p1.name} cezalı!`); setSelectedPlayerId(null); return; }
+                    if (idx1 < 18 && p2.suspendedUntilWeek && currentWeek && p2.suspendedUntilWeek > currentWeek) { alert(`UYARI: ${p2.name} cezalı!`); setSelectedPlayerId(null); return; }
+                    if (idx2 < 18 && p1.injury && p1.injury.daysRemaining > 0) { alert(`UYARI: ${p1.name} sakat!`); setSelectedPlayerId(null); return; }
+                    if (idx1 < 18 && p2.injury && p2.injury.daysRemaining > 0) { alert(`UYARI: ${p2.name} sakat!`); setSelectedPlayerId(null); return; }
+                    const newPlayers = [...team.players]; [newPlayers[idx1], newPlayers[idx2]] = [newPlayers[idx2], newPlayers[idx1]]; setTeam({ ...team, players: newPlayers });
                 }
             }
             setSelectedPlayerId(null);
         }
     };
 
-    const TacticSelect = ({ label, value, onChange, options }: any) => (
-        <div className="mb-4">
-            <label className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold block mb-2">{label}</label>
-            <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-white p-2 rounded border border-slate-300 dark:border-slate-600 focus:border-yellow-500 text-sm outline-none">
-                {Object.values(options).map((t: any) => <option key={t} value={t}>{t}</option>)}
-            </select>
-        </div>
-    );
+    const SetPieceSelector = ({ type, icon: Icon, title }: { type: keyof SetPieceTakers, icon: any, title: string }) => {
+        const selectedId = team.setPieceTakers?.[type];
+        const sortedCandidates = [...team.players].sort((a, b) => {
+            if (type === 'penalty') return b.stats.penalty - a.stats.penalty; if (type === 'freeKick') return b.stats.freeKick - a.stats.freeKick; if (type === 'corner') return b.stats.corners - a.stats.corners; return b.stats.leadership - a.stats.leadership;
+        });
+        return (
+            <div className="bg-[#1e232e] rounded-xl border border-slate-700 p-4 shadow-lg hover:border-slate-500 transition-colors">
+                <div className="flex items-center justify-between mb-4 border-b border-slate-700 pb-2"><h3 className="font-bold text-white flex items-center gap-2 text-sm uppercase tracking-wide"><Icon size={16} className="text-green-400"/> {title}</h3><div className="text-[10px] text-slate-400 font-bold uppercase">{selectedId ? 'Seçildi' : 'Seçilmedi'}</div></div>
+                <div className="h-64 overflow-y-auto custom-scrollbar space-y-1 pr-1">{sortedCandidates.map(p => { const isChosen = p.id === selectedId; let statVal = type === 'penalty' ? p.stats.penalty : type === 'freeKick' ? p.stats.freeKick : type === 'corner' ? p.stats.corners : p.stats.leadership; return (<div key={p.id} onClick={() => setTeam({...team, setPieceTakers: { ...team.setPieceTakers, [type]: p.id }})} className={`flex items-center justify-between p-2 rounded cursor-pointer transition border ${isChosen ? 'bg-green-900/30 border-green-500' : 'bg-slate-800/50 border-transparent hover:bg-slate-700'}`}><div className="flex items-center gap-2"><div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white ${p.position === 'GK' ? 'bg-yellow-600' : 'bg-blue-600'}`}>{p.position}</div><span className={`text-sm font-medium ${isChosen ? 'text-green-400 font-bold' : 'text-slate-300'}`}>{p.name}</span></div><div className={`text-sm font-black font-mono ${statVal >= 15 ? 'text-green-500' : statVal >= 10 ? 'text-yellow-500' : 'text-slate-500'}`}>{statVal}</div></div>); })}</div>
+            </div>
+        );
+    };
 
     return (
-        <div className="flex flex-col h-full gap-4 pb-20 md:pb-0">
-            {!compact && <div className="flex items-center justify-between shrink-0">
-                <h3 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white">İlk 11 ve Taktik</h3>
-                
-                <div className="flex items-center gap-2">
-                    {!isMatchActive && (
-                        <button 
-                            onClick={handleAutoPick}
-                            className="bg-purple-600 hover:bg-purple-500 text-white text-xs md:text-sm px-3 py-1.5 rounded font-bold flex items-center gap-2 shadow-lg transition-all"
-                        >
-                            <Zap size={14} className="fill-white"/> Hızlı Seçim
-                        </button>
-                    )}
-                    
-                    {isMatchActive ? (
-                        <div className="text-xs md:text-sm font-bold bg-slate-200 dark:bg-slate-700 px-3 py-1 rounded text-slate-800 dark:text-white">
-                            Değişiklik: <span className={`${subsUsed >= maxSubs ? 'text-red-500' : 'text-green-500'}`}>{subsUsed}</span>/{maxSubs}
-                        </div>
-                    ) : (
-                        <div className="text-xs text-slate-500 dark:text-slate-400 hidden md:block">Oyuncuya tıkla, sonra listeden seç.</div>
-                    )}
-                </div>
-            </div>}
+        <div className="flex flex-col h-full bg-slate-900 text-white">
+            {modalData.isOpen && <TacticDetailModal title={modalData.title} tacticKey={modalData.key} currentValue={modalData.currentVal} options={modalData.options} onSelect={handleTacticChange} onClose={() => setModalData({ ...modalData, isOpen: false })} />}
             
-            {/* 
-               Responsive Layout Fix: 
-               Default: Column (Stacked)
-               Landscape (Mobile Horizontal): Row (Side by Side)
-               LG (Desktop): Row (Side by Side)
-            */}
-            <div className="flex flex-col landscape:flex-row lg:flex-row gap-4 h-full overflow-hidden">
-                
-                {/* PITCH AREA */}
-                <div className="flex-none w-full landscape:w-1/2 lg:w-1/2 h-auto landscape:h-full lg:h-full lg:overflow-y-auto flex items-center justify-center">
-                    <PitchVisual players={team.players} onPlayerClick={handlePlayerClick} selectedPlayerId={selectedPlayerId} />
-                </div>
-
-                {/* RIGHT SIDEBAR (Taktikler + Liste) */}
-                <div className="flex-1 w-full landscape:w-1/2 lg:w-1/2 flex flex-col gap-4 overflow-hidden min-h-[300px]">
-                    
-                    {/* TACTICS TABS */}
-                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm shrink-0">
-                        <div className="flex border-b border-slate-200 dark:border-slate-700">
-                            <button onClick={() => setTab('GENERAL')} className={`flex-1 py-2 text-xs font-bold ${tab === 'GENERAL' ? 'bg-yellow-500 dark:bg-yellow-600 text-black' : 'text-slate-500 dark:text-slate-400 hover:text-black dark:hover:text-white'}`}>Genel</button>
-                            <button onClick={() => setTab('ATTACK')} className={`flex-1 py-2 text-xs font-bold ${tab === 'ATTACK' ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:text-black dark:hover:text-white'}`}>Hücum</button>
-                            <button onClick={() => setTab('DEFENSE')} className={`flex-1 py-2 text-xs font-bold ${tab === 'DEFENSE' ? 'bg-red-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:text-black dark:hover:text-white'}`}>Savunma</button>
+            {/* HEADER AREA */}
+            <div className="bg-slate-800 border-b border-slate-700 shrink-0 shadow-lg z-20">
+                <div className="px-6 py-4 flex flex-col lg:flex-row justify-between items-center gap-4">
+                    {/* Left: Title & Mode */}
+                    <div className="flex items-center gap-4 w-full lg:w-auto justify-between lg:justify-start">
+                        <div className="flex items-center gap-2">
+                            <Activity className="text-yellow-500" size={24}/>
+                            <h2 className="text-xl font-bold text-white uppercase tracking-wider">Taktik Merkezi</h2>
                         </div>
-                        <div className="p-4 space-y-4 max-h-40 md:max-h-48 overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-800">
-                            {tab === 'GENERAL' && <><TacticSelect label="Oyun Anlayışı" value={team.mentality} onChange={(v:any) => setTeam({...team, mentality: v})} options={Mentality} /><TacticSelect label="Oyun Temposu" value={team.tempo} onChange={(v:any) => setTeam({...team, tempo: v})} options={Tempo} /><TacticSelect label="Zaman Geçirme" value={team.timeWasting} onChange={(v:any) => setTeam({...team, timeWasting: v})} options={TimeWasting} /></>}
-                            {tab === 'ATTACK' && <><TacticSelect label="Pas Şekli" value={team.passing} onChange={(v:any) => setTeam({...team, passing: v})} options={PassingStyle} /><TacticSelect label="Hücum Genişliği" value={team.width} onChange={(v:any) => setTeam({...team, width: v})} options={Width} /><TacticSelect label="Yaratıcılık" value={team.creative} onChange={(v:any) => setTeam({...team, creative: v})} options={CreativeFreedom} /><TacticSelect label="Son 3. Bölge" value={team.finalThird} onChange={(v:any) => setTeam({...team, finalThird: v})} options={FinalThird} /><TacticSelect label="Ortalar" value={team.crossing} onChange={(v:any) => setTeam({...team, crossing: v})} options={Crossing} /></>}
-                            {tab === 'DEFENSE' && <><TacticSelect label="Savunma Hattı" value={team.defLine} onChange={(v:any) => setTeam({...team, defLine: v})} options={DefensiveLine} /><div className="bg-red-100 dark:bg-red-900/20 p-2 rounded border border-red-200 dark:border-red-500/50 mb-4"><TacticSelect label="Topa Müdahale (Sertlik)" value={team.tackling} onChange={(v:any) => setTeam({...team, tackling: v})} options={Tackling} /><p className="text-[10px] text-red-600 dark:text-red-300 mt-1">Dikkat: Sert oyun kart ve penaltı riskini artırır!</p></div><TacticSelect label="Pres Odağı" value={team.pressFocus} onChange={(v:any) => setTeam({...team, pressFocus: v})} options={PressingFocus} /></>}
-                        </div>
+                        {isMatchActive && (
+                            <div className="bg-slate-700 px-4 py-1.5 rounded-full border border-slate-600 text-xs font-bold text-slate-300 flex items-center gap-2">
+                                <Timer size={14} className="text-red-500"/>
+                                {currentMinute}' / Değişiklik: <span className={`${subsUsed >= maxSubs ? 'text-red-500' : 'text-green-500'}`}>{subsUsed}/{maxSubs}</span>
+                            </div>
+                        )}
                     </div>
 
-                    {/* BENCH & RESERVES LISTS */}
-                    <div className="flex-1 overflow-y-auto bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 shadow-sm custom-scrollbar min-h-[200px]">
-                        {/* Substitutes */}
-                        <h4 className="text-xs font-bold text-blue-600 dark:text-blue-400 mb-2 uppercase border-b border-blue-100 dark:border-blue-900 pb-1">Yedek Kulübesi (7 Kişi)</h4>
-                        <div className="mb-4">
-                            {team.players.slice(11, 18).map(p => 
-                                <PlayerListItem 
-                                    key={p.id} 
-                                    p={p} 
-                                    selectedPlayerId={selectedPlayerId} 
-                                    forcedSubstitutionPlayerId={forcedSubstitutionPlayerId} 
-                                    currentWeek={currentWeek} 
-                                    onPlayerClick={handlePlayerClick} 
-                                />
+                    {/* Right: Configuration Bar */}
+                    {activeTab === 'XI' && (
+                        <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto justify-center lg:justify-end bg-slate-900/50 p-2 rounded-lg border border-slate-700">
+                            {/* Formation */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase">Diziliş</span>
+                                <select value={team.formation} onChange={(e) => setTeam({...team, formation: e.target.value})} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs font-bold text-white outline-none hover:border-yellow-500 transition-colors">
+                                    <option value="4-4-2">4-4-2</option>
+                                    <option value="4-3-3">4-3-3</option>
+                                    <option value="4-2-3-1">4-2-3-1</option>
+                                    <option value="4-1-4-1">4-1-4-1</option>
+                                    <option value="3-5-2">3-5-2</option>
+                                    <option value="5-3-2">5-3-2</option>
+                                </select>
+                            </div>
+
+                            <div className="w-px h-6 bg-slate-700 mx-2"></div>
+
+                            {/* Mentality */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase">Anlayış</span>
+                                <select value={team.mentality} onChange={(e) => setTeam({...team, mentality: e.target.value as any})} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs font-bold text-white outline-none hover:border-yellow-500 transition-colors">
+                                    {Object.values(Mentality).map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="w-px h-6 bg-slate-700 mx-2"></div>
+
+                            {/* Chemistry */}
+                            <div className="flex items-center gap-3 pr-2">
+                                <div className="text-right">
+                                    <div className="text-[10px] font-bold text-slate-500 uppercase leading-none mb-0.5">Kimya</div>
+                                    <div className={`text-sm font-black leading-none ${teamChemistry > 80 ? 'text-green-500' : teamChemistry > 60 ? 'text-yellow-500' : 'text-red-500'}`}>{teamChemistry}%</div>
+                                </div>
+                                <div className="w-16 h-2 bg-slate-700 rounded-full overflow-hidden">
+                                    <div className={`h-full ${teamChemistry > 80 ? 'bg-green-500' : teamChemistry > 60 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{width: `${teamChemistry}%`}}></div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Main Tabs */}
+                <div className="flex px-6 gap-6">
+                    <button onClick={() => setActiveTab('XI')} className={`pb-3 text-sm font-bold uppercase tracking-wider border-b-4 transition-all ${activeTab === 'XI' ? 'border-yellow-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
+                        <Users size={16} className="inline mr-2 mb-0.5"/> Kadro & Saha
+                    </button>
+                    <button onClick={() => setActiveTab('TACTICS')} className={`pb-3 text-sm font-bold uppercase tracking-wider border-b-4 transition-all ${activeTab === 'TACTICS' ? 'border-blue-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
+                        <Shield size={16} className="inline mr-2 mb-0.5"/> Taktik Talimatlar
+                    </button>
+                </div>
+            </div>
+
+            {/* CONTENT AREA */}
+            <div className="flex-1 overflow-hidden relative">
+                
+                {activeTab === 'XI' && (
+                    <div className="h-full flex flex-col md:flex-row">
+                        
+                        {/* LEFT: PITCH (65%) */}
+                        <div className="w-full md:w-[65%] h-1/2 md:h-full bg-slate-900 border-r border-slate-800 relative shadow-inner p-4 md:p-8 flex items-center justify-center">
+                            <PitchVisual players={team.players} onPlayerClick={handlePlayerClick} selectedPlayerId={selectedPlayerId} formation={team.formation} />
+                        </div>
+
+                        {/* RIGHT: LIST (35%) */}
+                        <div className="w-full md:w-[35%] h-1/2 md:h-full bg-slate-900 flex flex-col border-l border-slate-800 shadow-xl z-10">
+                            
+                            {/* Scrollable Player List */}
+                            <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-900">
+                                {/* First 11 */}
+                                <div>
+                                    <div className="flex items-center justify-between px-3 py-2 bg-slate-950 border-b border-green-600/50 sticky top-0 z-20">
+                                        <h4 className="text-xs font-black text-green-500 uppercase tracking-wider">İLK 11</h4>
+                                        <span className="text-[9px] font-bold text-slate-500">11 Oyuncu</span>
+                                    </div>
+                                    <PlayerListHeader />
+                                    <div className="divide-y divide-slate-800/50">
+                                        {team.players.slice(0, 11).map((p, i) => 
+                                            <CompactPlayerRow key={p.id} p={p} index={i} onClick={handlePlayerClick} isSelected={selectedPlayerId === p.id} currentWeek={currentWeek} />
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Subs */}
+                                <div>
+                                    <div className="flex items-center justify-between px-3 py-2 bg-slate-950 border-b border-blue-600/50 mt-4 sticky top-0 z-20">
+                                        <h4 className="text-xs font-black text-blue-500 uppercase tracking-wider">YEDEKLER</h4>
+                                        <span className="text-[9px] font-bold text-slate-500">7 Oyuncu</span>
+                                    </div>
+                                    <PlayerListHeader />
+                                    <div className="divide-y divide-slate-800/50">
+                                        {team.players.slice(11, 18).map((p, i) => 
+                                            <CompactPlayerRow key={p.id} p={p} index={i} onClick={handlePlayerClick} isSelected={selectedPlayerId === p.id} label={`Y${i+1}`} currentWeek={currentWeek} />
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Reserves */}
+                                {!isMatchActive && (
+                                    <div>
+                                        <div className="flex items-center justify-between px-3 py-2 bg-slate-950 border-b border-slate-600/50 mt-4 sticky top-0 z-20">
+                                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider">KADRO DIŞI</h4>
+                                            <span className="text-[9px] font-bold text-slate-500">{team.players.length - 18} Oyuncu</span>
+                                        </div>
+                                        <PlayerListHeader />
+                                        <div className="divide-y divide-slate-800/50">
+                                            {team.players.slice(18).map((p, i) => 
+                                                <CompactPlayerRow key={p.id} p={p} index={i} onClick={handlePlayerClick} isSelected={selectedPlayerId === p.id} label="REZ" currentWeek={currentWeek} isReserve />
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Sticky Bottom Actions */}
+                            {!isMatchActive && (
+                                <div className="p-4 bg-slate-800 border-t border-slate-700 shadow-lg">
+                                    <button 
+                                        onClick={handleAutoPick} 
+                                        className="w-full bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 group"
+                                    >
+                                        <Zap size={18} className="fill-white group-hover:scale-110 transition-transform"/> 
+                                        OTOMATİK SEÇİM
+                                    </button>
+                                </div>
                             )}
                         </div>
-
-                        {/* Reserves */}
-                        {!isMatchActive && (
-                            <>
-                                <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase border-b border-slate-200 dark:border-slate-700 pb-1">Kadro Dışı (Rezerv)</h4>
-                                <div>
-                                    {team.players.slice(18).length > 0 ? (
-                                        team.players.slice(18).map(p => 
-                                            <PlayerListItem 
-                                                key={p.id} 
-                                                p={p} 
-                                                selectedPlayerId={selectedPlayerId} 
-                                                forcedSubstitutionPlayerId={forcedSubstitutionPlayerId} 
-                                                currentWeek={currentWeek} 
-                                                onPlayerClick={handlePlayerClick} 
-                                            />
-                                        )
-                                    ) : (
-                                        <div className="text-xs text-slate-400 italic p-2">Rezerv oyuncu yok.</div>
-                                    )}
-                                </div>
-                            </>
-                        )}
-                        
-                        {/* Pitch Players (For easy selection in forced sub scenario) */}
-                        {isMatchActive && forcedSubstitutionPlayerId && (
-                             <>
-                                <h4 className="text-xs font-bold text-red-600 dark:text-red-400 mb-2 uppercase border-b border-red-200 dark:border-red-900 pb-1 mt-4">Saha İçi</h4>
-                                <div className="mb-4">
-                                    {team.players.slice(0, 11).map(p => 
-                                        <PlayerListItem 
-                                            key={p.id} 
-                                            p={p} 
-                                            selectedPlayerId={selectedPlayerId} 
-                                            forcedSubstitutionPlayerId={forcedSubstitutionPlayerId} 
-                                            currentWeek={currentWeek} 
-                                            onPlayerClick={handlePlayerClick} 
-                                        />
-                                    )}
-                                </div>
-                            </>
-                        )}
                     </div>
-                </div>
+                )}
+
+                {activeTab === 'TACTICS' && (
+                    <div className="flex flex-col h-full bg-[#121519]">
+                        <div className="flex items-center justify-center p-4 gap-2 md:gap-4 bg-[#161a1f] border-b border-slate-700 overflow-x-auto no-scrollbar">
+                            <button onClick={() => setTacticalSubTab('POSSESSION')} className={`px-4 md:px-6 py-2 rounded-full font-bold text-xs md:text-sm transition-all whitespace-nowrap ${tacticalSubTab === 'POSSESSION' ? 'bg-fuchsia-600 text-white shadow-[0_0_15px_rgba(192,38,211,0.5)]' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>TOPA SAHİPKEN</button>
+                            <button onClick={() => setTacticalSubTab('DEFENSE')} className={`px-4 md:px-6 py-2 rounded-full font-bold text-xs md:text-sm transition-all whitespace-nowrap ${tacticalSubTab === 'DEFENSE' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)]' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>TOP RAKİPTEYKEN</button>
+                            <button onClick={() => setTacticalSubTab('KEEPER')} className={`px-4 md:px-6 py-2 rounded-full font-bold text-xs md:text-sm transition-all whitespace-nowrap ${tacticalSubTab === 'KEEPER' ? 'bg-orange-600 text-white shadow-[0_0_15px_rgba(234,88,12,0.5)]' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>KALECİ</button>
+                            <button onClick={() => setTacticalSubTab('SET_PIECES')} className={`px-4 md:px-6 py-2 rounded-full font-bold text-xs md:text-sm transition-all whitespace-nowrap ${tacticalSubTab === 'SET_PIECES' ? 'bg-green-600 text-white shadow-[0_0_15px_rgba(22,163,74,0.5)]' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>DURAN TOPLAR</button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar">
+                            {tacticalSubTab === 'POSSESSION' && (
+                                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4">
+                                    <TacticalInstructionCard title="Pas Anlayışı" icon={MoveRight} value={team.passing} options={Object.values(PassingStyle)} tacticKey="PASSING" onOpenModal={openTacticModal} />
+                                    <TacticalInstructionCard title="Tempo" icon={Gauge} value={team.tempo} options={Object.values(Tempo)} tacticKey="TEMPO" onOpenModal={openTacticModal} />
+                                    <TacticalInstructionCard title="Hücum Genişliği" icon={MoveHorizontal} value={team.width} options={Object.values(Width)} tacticKey="WIDTH" onOpenModal={openTacticModal} />
+                                    <TacticalInstructionCard title="Hücum Geçişi" icon={FastForward} value={team.attackingTransition} options={Object.values(AttackingTransition)} tacticKey="ATTACK_TRANSITION" onOpenModal={openTacticModal} />
+                                    <TacticalInstructionCard title="Yaratıcılık" icon={Sparkles} value={team.creative} options={Object.values(CreativeFreedom)} tacticKey="CREATIVE" onOpenModal={openTacticModal} />
+                                    <TacticalInstructionCard title="Oyun Stratejisi" icon={Crosshair} value={team.playStrategy || PlayStrategy.STANDARD} options={Object.values(PlayStrategy)} tacticKey="PLAY_STRATEGY" onOpenModal={openTacticModal} />
+                                    <TacticalInstructionCard title="Destek Koşuları" icon={ArrowUpFromLine} value={team.supportRuns || SupportRuns.BALANCED} options={Object.values(SupportRuns)} tacticKey="SUPPORT_RUNS" onOpenModal={openTacticModal} />
+                                    <TacticalInstructionCard title="Dripling" icon={MoveRight} value={team.dribbling || Dribbling.STANDARD} options={Object.values(Dribbling)} tacticKey="DRIBBLING" onOpenModal={openTacticModal} />
+                                    <TacticalInstructionCard title="Oynanacak Bölge" icon={ScanLine} value={team.focusArea || FocusArea.STANDARD} options={Object.values(FocusArea)} tacticKey="FOCUS_AREA" onOpenModal={openTacticModal} />
+                                    <TacticalInstructionCard title="Pas Karşılama" icon={Target} value={team.passTarget || PassTarget.STANDARD} options={Object.values(PassTarget)} tacticKey="PASS_TARGET" onOpenModal={openTacticModal} />
+                                    <TacticalInstructionCard title="Sabır (Son Bölge)" icon={Timer} value={team.patience || Patience.STANDARD} options={Object.values(Patience)} tacticKey="PATIENCE" onOpenModal={openTacticModal} />
+                                    <TacticalInstructionCard title="Uzaktan Şutlar" icon={Goal} value={team.longShots || LongShots.STANDARD} options={Object.values(LongShots)} tacticKey="LONG_SHOTS" onOpenModal={openTacticModal} />
+                                    <TacticalInstructionCard title="Orta Açış Şekli" icon={GitCommit} value={team.crossing} options={Object.values(CrossingType)} tacticKey="CROSSING" onOpenModal={openTacticModal} />
+                                </div>
+                            )}
+
+                            {tacticalSubTab === 'DEFENSE' && (
+                                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4">
+                                    <TacticalInstructionCard title="Baskı Hattı" icon={Users} value={team.pressingLine || PressingLine.MID} options={Object.values(PressingLine)} tacticKey="PRESS_LINE" onOpenModal={openTacticModal} colorClass="text-blue-400" />
+                                    <TacticalInstructionCard title="Savunma Hattı" icon={Anchor} value={team.defLine} options={Object.values(DefensiveLine)} tacticKey="DEF_LINE" onOpenModal={openTacticModal} colorClass="text-blue-400" />
+                                    <TacticalInstructionCard title="Hat Hareketliliği" icon={MoveHorizontal} value={team.defLineMobility || DefLineMobility.BALANCED} options={Object.values(DefLineMobility)} tacticKey="DEF_MOBILITY" onOpenModal={openTacticModal} colorClass="text-blue-400" />
+                                    <TacticalInstructionCard title="Pres Şiddeti" icon={Zap} value={team.pressIntensity || PressIntensity.STANDARD} options={Object.values(PressIntensity)} tacticKey="PRESS_INTENSITY" onOpenModal={openTacticModal} colorClass="text-blue-400" />
+                                    <TacticalInstructionCard title="Savunma Geçişi" icon={Shield} value={team.defensiveTransition || DefensiveTransition.STANDARD} options={Object.values(DefensiveTransition)} tacticKey="DEF_TRANSITION" onOpenModal={openTacticModal} colorClass="text-blue-400" />
+                                    <TacticalInstructionCard title="Topa Müdahale" icon={AlertTriangle} value={team.tackling} options={Object.values(Tackling)} tacticKey="TACKLING" onOpenModal={openTacticModal} colorClass="text-blue-400" />
+                                    <TacticalInstructionCard title="Rakibe Orta Fırsatı" icon={Ban} value={team.preventCrosses || PreventCrosses.STANDARD} options={Object.values(PreventCrosses)} tacticKey="PREVENT_CROSS" onOpenModal={openTacticModal} colorClass="text-blue-400" />
+                                    <TacticalInstructionCard title="Pres Odağı" icon={Target} value={team.pressFocus} options={Object.values(PressingFocus)} tacticKey="PRESS_FOCUS" onOpenModal={openTacticModal} colorClass="text-blue-400" />
+                                </div>
+                            )}
+
+                            {tacticalSubTab === 'KEEPER' && (
+                                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4">
+                                    <TacticalInstructionCard title="Aut Atışı" icon={Goal} value={team.goalKickType || GoalKickType.STANDARD} options={Object.values(GoalKickType)} tacticKey="GOAL_KICK" onOpenModal={openTacticModal} colorClass="text-orange-400" />
+                                    <TacticalInstructionCard title="Oyun Kurulumu Hedefi" icon={Target} value={team.gkDistributionTarget || GKDistributionTarget.CBS} options={Object.values(GKDistributionTarget)} tacticKey="GK_DIST_TARGET" onOpenModal={openTacticModal} colorClass="text-orange-400" />
+                                    <TacticalInstructionCard title="Oyuna Sokma Hızı" icon={Timer} value={team.gkDistSpeed || GKDistributionSpeed.STANDARD} options={Object.values(GKDistributionSpeed)} tacticKey="GK_SPEED" onOpenModal={openTacticModal} colorClass="text-orange-400" />
+                                </div>
+                            )}
+
+                            {tacticalSubTab === 'SET_PIECES' && (
+                                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4">
+                                    <TacticalInstructionCard title="Duran Top Stratejisi" icon={Activity} value={team.setPiecePlay || SetPiecePlay.RECYCLE} options={Object.values(SetPiecePlay)} tacticKey="SET_PIECE" onOpenModal={openTacticModal} colorClass="text-green-400" />
+                                    <SetPieceSelector type="freeKick" icon={Target} title="Serbest Vuruşçu" />
+                                    <SetPieceSelector type="corner" icon={Activity} title="Kornerci" />
+                                    <SetPieceSelector type="captain" icon={Star} title="Takım Kaptanı" />
+                                    <SetPieceSelector type="penalty" icon={Goal} title="Penaltıcı" />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

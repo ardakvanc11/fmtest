@@ -1,4 +1,5 @@
-import { Team, Player, Fixture, MatchEvent, MatchStats, Position, Message, TransferRecord, NewsItem, SeasonSummary, TransferImpact } from '../types';
+
+import { Team, Player, Fixture, MatchEvent, MatchStats, Position, Message, TransferRecord, NewsItem, SeasonSummary, TransferImpact, IncomingOffer } from '../types';
 import { generateId, generatePlayer, INJURY_TYPES, RIVALRIES, GAME_CALENDAR } from '../constants';
 import { FAN_NAMES, DERBY_TWEETS_WIN, DERBY_TWEETS_LOSS, FAN_TWEETS_WIN, FAN_TWEETS_LOSS, FAN_TWEETS_DRAW } from '../data/tweetPool';
 import { MATCH_INFO_MESSAGES } from '../data/infoPool';
@@ -17,7 +18,194 @@ import { calculateRating } from './ratingsAndStats'; // Import for use here
 import { getWeightedInjury } from './matchLogic'; 
 import { recalculateTeamStrength, calculateRawTeamStrength } from './teamCalculations';
 
-// ... (Rest of existing imports and functions: simulateAiDailyTransfers, processMatchPostGame, etc.)
+// --- NEW MECHANIC: DYNAMIC DEVELOPMENT & AGING ---
+export const simulatePlayerDevelopmentAndAging = (player: Player, trainingIntensity: boolean): Player => {
+    let newSkill = player.skill;
+    let stats = { ...player.stats };
+    let changed = false;
+
+    // 1. AGING (Regression) - Yaşlı oyuncular güç kaybeder
+    // Başlangıç: 30 Yaş
+    // Kritik: 35+ (Hızlanır)
+    // Çöküş: 38+ (Çok agresif düşüş)
+    if (player.age >= 30) {
+        let dropChance = 0;
+
+        if (player.age >= 38) {
+            dropChance = 0.05; // Günlük %5 (Çok hızlı - Ayda ~1.5 puan düşer)
+        } else if (player.age >= 35) {
+            dropChance = 0.015; // Günlük %1.5 (Hızlı)
+        } else if (player.age >= 33) {
+            dropChance = 0.005; // Günlük %0.5 (Orta)
+        } else {
+            dropChance = 0.001; // Günlük %0.1 (Yavaş - 30-32 yaş arası)
+        }
+
+        // Rastgele düşüş tetiklendi mi?
+        if (Math.random() < dropChance) {
+            // Düşecek özelliği seç (Yaşlılarda fiziksel özellikler daha çabuk ölür)
+            const physicals = ['pace', 'acceleration', 'stamina', 'agility', 'balance', 'naturalFitness'] as const;
+            
+            // %80 Fiziksel, %20 Teknik/Zihinsel düşüş (Eskiden %70 idi)
+            let targetStat: keyof typeof stats;
+            
+            if (Math.random() < 0.80) {
+                targetStat = physicals[Math.floor(Math.random() * physicals.length)];
+            } else {
+                const allKeys = Object.keys(stats) as (keyof typeof stats)[];
+                targetStat = allKeys[Math.floor(Math.random() * allKeys.length)];
+            }
+
+            // Özellik değerini düşür (Min 1)
+            // @ts-ignore
+            if (stats[targetStat] > 1) {
+                // @ts-ignore
+                stats[targetStat] = Math.max(1, stats[targetStat] - 1);
+                changed = true;
+                
+                // Genel Güç (Skill) düşüşü
+                // Yaşa göre OVR düşüş ihtimali
+                let ovrDropChance = 0.1;
+                if (player.age >= 38) ovrDropChance = 1.0; // 38+ ise özellik düştüğünde Skill KESİN düşer
+                else if (player.age >= 35) ovrDropChance = 0.7; // %70 ihtimalle düşer
+                else if (player.age >= 33) ovrDropChance = 0.4; // %40 ihtimalle düşer
+
+                if (Math.random() < ovrDropChance) {
+                    newSkill = Math.max(1, newSkill - 1);
+                }
+            }
+        }
+    }
+
+    // 2. DEVELOPMENT (Progression) - Gençler potansiyellerine koşar
+    // Şart: Skill < Potansiyel ve Yaş <= 29 (Prime dönemi sonu)
+    else if (player.skill < player.potential && player.age <= 29) {
+        let growthChance = 0.005; // Base %0.5 Günlük (24-29 yaş)
+
+        if (player.age <= 21) {
+            growthChance = 0.015; // Günlük %1.5 (Genç yetenek - Çok hızlı gelişim)
+        } else if (player.age <= 23) {
+            growthChance = 0.010; // Günlük %1.0 (Gelişim çağı)
+        }
+
+        // Antrenman yapıldıysa gelişim hızı artar (+%50)
+        if (trainingIntensity) {
+            growthChance *= 1.5;
+        }
+
+        // Oynama süresi faktörü (Basitleştirilmiş: Skill potansiyelden çok düşükse daha hızlı gelişir)
+        if ((player.potential - player.skill) > 10) {
+            growthChance *= 1.2;
+        }
+
+        if (Math.random() < growthChance) {
+            const allKeys = Object.keys(stats) as (keyof typeof stats)[];
+            const targetStat = allKeys[Math.floor(Math.random() * allKeys.length)];
+
+            // @ts-ignore
+            if (stats[targetStat] < 99) {
+                // @ts-ignore
+                stats[targetStat] = Math.min(99, stats[targetStat] + 1);
+                changed = true;
+
+                // Genel Güç Artışı
+                // Gençlerde gelişim OVR'ye daha hızlı yansır (%30 şans)
+                if (Math.random() < 0.30) {
+                    newSkill = Math.min(player.potential, newSkill + 1);
+                }
+            }
+        }
+    }
+
+    // 3. APPLY CHANGES & RECALCULATE VALUE
+    if (changed) {
+        // Legacy alanları güncelle
+        stats.shooting = stats.finishing;
+        stats.defending = Math.floor(((stats.marking || 50) + (stats.tackling || 50)) / 2);
+
+        // Yeni Piyasa Değeri Hesabı
+        const newValue = calculateMarketValue(player.position, newSkill, player.age);
+
+        return {
+            ...player,
+            skill: newSkill,
+            stats: stats,
+            value: newValue
+        };
+    }
+
+    return player;
+};
+
+// Generates incoming offers for user's team players
+export const generateAiOffersForUser = (myTeam: Team, currentDate: string): IncomingOffer[] => {
+    const newOffers: IncomingOffer[] = [];
+    
+    // Only proceed if window is open (check happens in gameStateLogic)
+    
+    // Iterate through all players
+    myTeam.players.forEach(p => {
+        let offerChance = 0;
+
+        // Base Chance for Transfer Listed Players: High
+        if (p.transferListed) {
+            offerChance = 0.15; // 15% daily chance
+        } 
+        // Small chance for unwanted players (Surplus) even if not listed
+        else if (p.squadStatus === 'SURPLUS') {
+            offerChance = 0.05; // Slightly higher than regular
+        }
+        // --- NEW: Chance for ANY unlisted player ---
+        // Good performance increases chance significantly
+        else {
+            offerChance = 0.005; // 0.5% base daily chance for random offers (Very low but possible)
+            
+            // If performing well, increase interest
+            if (p.seasonStats.averageRating > 7.0) {
+                offerChance += 0.01; // +1% chance
+            }
+            if (p.seasonStats.averageRating > 7.5) {
+                offerChance += 0.015; // +1.5% extra chance for stars
+            }
+            
+            // Young wonderkids attract more interest
+            if (p.age < 22 && p.potential > 85) {
+                offerChance += 0.01;
+            }
+        }
+
+        if (Math.random() < offerChance) {
+            // Generate Offer
+            // GENERIC CLUB NAME AS REQUESTED
+            const clubName = 'Yurt Dışı Kulübü';
+            
+            // Offer Amount
+            // If transfer listed, offers might be slightly below value
+            // If unsolicited star, offers might be above value
+            let offerAmount = p.value;
+            
+            if (p.transferListed) {
+                // 90% to 110% of value
+                offerAmount = p.value * (0.9 + Math.random() * 0.2);
+            } else {
+                // Unlisted players require tempting offers (110% to 160% of value)
+                offerAmount = p.value * (1.1 + Math.random() * 0.5);
+            }
+
+            newOffers.push({
+                id: generateId(),
+                playerId: p.id,
+                playerName: p.name,
+                fromTeamName: clubName,
+                amount: parseFloat(offerAmount.toFixed(1)),
+                date: currentDate
+            });
+        }
+    });
+
+    return newOffers;
+};
+
 // KEEP EXISTING simulateAiDailyTransfers
 export const simulateAiDailyTransfers = (teams: Team[], currentDate: string, currentWeek: number, myTeamId: string | null): { updatedTeams: Team[], newNews: NewsItem[] } => {
     const dateObj = new Date(currentDate);
@@ -483,7 +671,7 @@ export const resetForNewSeason = (teams: Team[]): Team[] => {
             // Aging: Players get 1 year older
             const newAge = p.age + 1;
             
-            // --- NEW POTENTIAL & SKILL AGING LOGIC ---
+            // --- NEW POTENTIAL & SKILL AGING LOGIC (SEASON RESET) ---
             let newSkill = p.skill;
             let newPotential = p.potential;
 
@@ -504,7 +692,7 @@ export const resetForNewSeason = (teams: Team[]): Team[] => {
             } 
             // 16-21: Potential remains high, they are still developing.
 
-            // 2. Skill Development / Regression
+            // 2. Skill Development / Regression (Aggressive End-of-Season Drop for Old Players)
             if (newAge <= 21) {
                 // Young growth
                 const growth = Math.floor(Math.random() * 3);
@@ -516,8 +704,14 @@ export const resetForNewSeason = (teams: Team[]): Team[] => {
                     newSkill = Math.min(newPotential, newSkill + growth);
                 }
             } else if (newAge > 32) {
-                // Decline
-                const decline = Math.floor(Math.random() * 2) + 1;
+                // Decline (More aggressive)
+                let declineBase = 1;
+                
+                if (newAge >= 38) declineBase = 4; // Çok hızlı düşüş
+                else if (newAge >= 35) declineBase = 3;
+                else declineBase = 1;
+
+                const decline = Math.floor(Math.random() * 2) + declineBase;
                 newSkill = Math.max(40, newSkill - decline);
             }
             
@@ -534,12 +728,6 @@ export const resetForNewSeason = (teams: Team[]): Team[] => {
             };
         });
 
-        // Clear Transfer History? Usually kept for history, but maybe we clear old ones to save space.
-        // Let's keep it but user wanted "reset". We can clear or keep. Let's keep for "History" tab but UI might filter.
-        // Actually, to keep it clean for "This Season", maybe we should archive it or filter by date in UI.
-        // For simplicity in this codebase, we will clear it to reflect "New Season" blank slate in Transfer tab if requested, 
-        // but typically history is eternal. The prompt says "reset fixture and standings".
-        // Let's CLEAR Transfer History for this specific implementation to fit "New Season" feeling cleanly.
         const newTransferHistory: TransferRecord[] = []; 
 
         return {

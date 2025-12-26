@@ -79,6 +79,9 @@ const Dashboard = ({
     // Financial Alert Check
     const isFinancialCrisis = myTeam ? myTeam.budget < 0 : false;
 
+    // Transfer Offer Count
+    const incomingOffersCount = state.incomingOffers ? state.incomingOffers.length : 0;
+
     // Mobile Menu State
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [confirmNewGame, setConfirmNewGame] = useState(false);
@@ -116,7 +119,7 @@ const Dashboard = ({
                         <NavItem id="squad" label="Kadro" icon={Users} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                         <NavItem id="tactics" label="Taktik" icon={Briefcase} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                         <NavItem id="health_center" label="Sağlık Merkezi" icon={Activity} badge={injuredCount} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
-                        <NavItem id="transfer" label="Transfer Merkezi" icon={DollarSign} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
+                        <NavItem id="transfer" label="Transfer Merkezi" icon={DollarSign} badge={incomingOffersCount} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                         <NavItem id="finance" label="Finans" icon={PieChart} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} isAlert={isFinancialCrisis} />
                         <NavItem id="my_team_detail" label="Takım Profili" icon={Shield} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                         <NavItem id="fixtures" label="Fikstür" icon={Calendar} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />

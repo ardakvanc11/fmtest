@@ -5,7 +5,7 @@ import { Team, Player, MatchEvent, MatchStats, Position, Tackling, PlayerPerform
 import { INJURY_TYPES, RIVALRIES } from '../constants';
 import { MATCH_INFO_MESSAGES } from '../data/infoPool';
 import { GOAL_TEXTS, SAVE_TEXTS, MISS_TEXTS, FOUL_TEXTS, YELLOW_CARD_TEXTS, YELLOW_CARD_AGGRESSIVE_TEXTS, OFFSIDE_TEXTS, CORNER_TEXTS } from '../data/eventTexts';
-import { calculateTeamStrength } from './teamCalculations';
+import { calculateTeamStrength, calculateRawTeamStrength } from './teamCalculations';
 import { calculateRating, determineMVP, calculateRatingsFromEvents } from './ratingsAndStats';
 import { fillTemplate, pick } from './helpers';
 
@@ -54,32 +54,62 @@ export const generateRandomPlayerRatings = (players: Player[], teamGoals: number
     return ratings;
 };
 
+// YENİLENMİŞ MANTIK: İstatistikler artık skorla tutarlı üretiliyor.
 export const generateMatchStats = (homePlayers: Player[], awayPlayers: Player[], hScore: number, aScore: number): MatchStats => {
     const homeRatings = generateRandomPlayerRatings(homePlayers, hScore, aScore, hScore > aScore, hScore === aScore);
     const awayRatings = generateRandomPlayerRatings(awayPlayers, aScore, hScore, aScore > hScore, hScore === aScore);
 
-    const hStr = calculateTeamStrength({ players: homePlayers, morale: 50 } as any);
-    const aStr = calculateTeamStrength({ players: awayPlayers, morale: 50 } as any);
+    // FIX: Use calculateRawTeamStrength directly on player lists to avoid NaN
+    const hStr = calculateRawTeamStrength(homePlayers);
+    const aStr = calculateRawTeamStrength(awayPlayers);
 
-    let homePossession = 50 + ((hStr - aStr) / 2);
-    homePossession = Math.min(80, Math.max(20, homePossession + (Math.random() * 10 - 5)));
+    // 1. Topla Oynama (Güç farkına dayalı)
+    let homePossession = 50 + ((hStr - aStr) / 2.5);
+    // Rastgelelik ekle ama sınırla
+    homePossession += (Math.random() * 10 - 5);
+    homePossession = Math.min(80, Math.max(20, Math.round(homePossession)));
     
     const possessionAdvantage = homePossession - 50; 
-    
-    const homeShotBonus = possessionAdvantage > 0 ? Math.ceil(possessionAdvantage / 3.0) : 0;
-    const awayShotBonus = possessionAdvantage < 0 ? Math.ceil(Math.abs(possessionAdvantage) / 3.0) : 0;
 
-    const hShots = hScore + Math.floor(Math.random() * 4) + homeShotBonus + (hStr > aStr ? 2 : 0);
-    const aShots = aScore + Math.floor(Math.random() * 4) + awayShotBonus + (aStr > hStr ? 2 : 0);
-    
-    const hTarget = Math.min(hShots, hScore + Math.floor(Math.random() * (hShots - hScore)));
-    const aTarget = Math.min(aShots, aScore + Math.floor(Math.random() * (aShots - aScore)));
+    // 2. Kurtarışlar (Saves) - Gol olamayan isabetli şutlar
+    // Güçlü takımlar daha çok pozisyona girer, rakip kaleci daha çok kurtarış yapar.
+    const calculateSaves = (attackerStr: number, defenderStr: number) => {
+        const baseSaves = Math.floor(Math.random() * 4); // 0-3 arası şans faktörü
+        const pressure = attackerStr > defenderStr ? (attackerStr - defenderStr) / 5 : 0; // Güç farkı baskısı
+        return Math.floor(baseSaves + pressure);
+    };
 
-    const hCorners = Math.floor(Math.random() * 6) + (possessionAdvantage > 5 ? 3 : 0);
-    const aCorners = Math.floor(Math.random() * 6) + (possessionAdvantage < -5 ? 3 : 0);
+    const hSaves = calculateSaves(aStr, hStr); // Ev sahibinin kurtardığı (Deplasmanın kaçırdığı)
+    const aSaves = calculateSaves(hStr, aStr); // Deplasmanın kurtardığı (Ev sahibinin kaçırdığı)
+
+    // 3. İsabetli Şutlar (Goller + Kurtarışlar)
+    // Mantık: Gol sayısı, isabetli şut sayısından fazla olamaz.
+    const hTarget = hScore + aSaves; 
+    const aTarget = aScore + hSaves;
+
+    // 4. İsabetsiz Şutlar (Dışarı Giden)
+    // Topla oynama ve güce göre üretkenlik
+    const calculateMisses = (possession: number, strength: number) => {
+        const base = 2;
+        const creationFactor = (strength / 20) + (possession / 15); 
+        const variance = Math.floor(Math.random() * 5);
+        return Math.floor(base + creationFactor + variance) - (strength > 85 ? 2 : 0); // İyi takımlar daha az ıska geçer
+    };
+
+    const hMisses = calculateMisses(homePossession, hStr);
+    const aMisses = calculateMisses(100 - homePossession, aStr);
+
+    // 5. Toplam Şutlar
+    const hShots = hTarget + hMisses;
+    const aShots = aTarget + aMisses;
+
+    // 6. Kornerler (Şut ve baskı ile orantılı)
+    const hCorners = Math.floor(hShots / 3) + (possessionAdvantage > 10 ? 2 : 0) + Math.floor(Math.random() * 3);
+    const aCorners = Math.floor(aShots / 3) + (possessionAdvantage < -10 ? 2 : 0) + Math.floor(Math.random() * 3);
     
-    const hFouls = Math.floor(Math.random() * 15);
-    const aFouls = Math.floor(Math.random() * 15);
+    // 7. Fauller (Zayıf takım daha çok faul yapmaya meyilli)
+    const hFouls = Math.floor(Math.random() * 10) + (hStr < aStr ? 3 : 0);
+    const aFouls = Math.floor(Math.random() * 10) + (aStr < hStr ? 3 : 0);
 
     const hRed = Math.random() < 0.04 ? 1 : 0;
     const aRed = Math.random() < 0.04 ? 1 : 0;
@@ -87,8 +117,8 @@ export const generateMatchStats = (homePlayers: Player[], awayPlayers: Player[],
     const mvpInfo = determineMVP(homeRatings, awayRatings);
 
     return {
-        homePossession: Math.round(homePossession),
-        awayPossession: Math.round(100 - homePossession),
+        homePossession,
+        awayPossession: 100 - homePossession,
         homeShots: hShots,
         awayShots: aShots,
         homeShotsOnTarget: hTarget,
@@ -97,10 +127,10 @@ export const generateMatchStats = (homePlayers: Player[], awayPlayers: Player[],
         awayCorners: aCorners,
         homeFouls: hFouls,
         awayFouls: aFouls,
-        homeOffsides: Math.floor(Math.random() * 5),
-        awayOffsides: Math.floor(Math.random() * 5),
-        homeYellowCards: Math.floor(Math.random() * 4),
-        awayYellowCards: Math.floor(Math.random() * 4),
+        homeOffsides: Math.floor(Math.random() * 4) + (hStr > aStr ? 1 : 0),
+        awayOffsides: Math.floor(Math.random() * 4) + (aStr > hStr ? 1 : 0),
+        homeYellowCards: Math.floor(Math.random() * 3) + (hFouls > 10 ? 2 : 0),
+        awayYellowCards: Math.floor(Math.random() * 3) + (aFouls > 10 ? 2 : 0),
         homeRedCards: hRed,
         awayRedCards: aRed,
         mvpPlayerId: mvpInfo.id,
@@ -135,20 +165,38 @@ export const getWeightedInjury = () => {
 };
 
 export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: number, awayScore: number, stats: MatchStats, events: MatchEvent[] } => {
-    const homeStr = calculateTeamStrength(home) + 5; 
+    const homeStr = calculateTeamStrength(home) + 5; // Home advantage
     const awayStr = calculateTeamStrength(away);
-    const luckHome = Math.random() * 20;
-    const luckAway = Math.random() * 20;
-    const diff = (homeStr + luckHome) - (awayStr + luckAway);
     
-    let homeScore = 0;
-    let awayScore = 0;
+    // Daha gerçekçi skor dağılımı için Weighted Random
+    // Güç farkı olasılıkları etkiler ama garantilemez.
+    const diff = homeStr - awayStr;
     
-    if (diff > 15) { homeScore = Math.floor(Math.random() * 4) + 2; awayScore = Math.floor(Math.random() * 2); }
-    else if (diff > 5) { homeScore = Math.floor(Math.random() * 3) + 1; awayScore = Math.floor(Math.random() * 2); }
-    else if (diff < -15) { homeScore = Math.floor(Math.random() * 2); awayScore = Math.floor(Math.random() * 4) + 2; }
-    else if (diff < -5) { homeScore = Math.floor(Math.random() * 2); awayScore = Math.floor(Math.random() * 3) + 1; }
-    else { homeScore = Math.floor(Math.random() * 3); awayScore = Math.floor(Math.random() * 3); }
+    // Beklenen gol sayıları (Lambda for Poisson distribution approximation)
+    let lambdaHome = 1.3;
+    let lambdaAway = 1.0;
+
+    // Güç farkına göre gol beklentisini ayarla
+    if (diff > 20) { lambdaHome = 2.5; lambdaAway = 0.5; }
+    else if (diff > 10) { lambdaHome = 1.9; lambdaAway = 0.8; }
+    else if (diff > 0) { lambdaHome = 1.5; lambdaAway = 1.1; }
+    else if (diff > -10) { lambdaHome = 1.1; lambdaAway = 1.4; }
+    else { lambdaHome = 0.7; lambdaAway = 2.1; }
+
+    // Poisson benzeri dağılım fonksiyonu
+    const getScore = (lambda: number) => {
+        const L = Math.exp(-lambda);
+        let p = 1.0;
+        let k = 0;
+        do {
+            k++;
+            p *= Math.random();
+        } while (p > L);
+        return k - 1;
+    };
+
+    const homeScore = getScore(lambdaHome);
+    const awayScore = getScore(lambdaAway);
 
     const events: MatchEvent[] = [];
 
@@ -156,8 +204,8 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
         const xi = team.players.slice(0, 11);
         const fwds = xi.filter(p => [Position.SNT, Position.SLK, Position.SGK].includes(p.position));
         const mids = xi.filter(p => [Position.OS, Position.OOS].includes(p.position));
-        const defs = xi.filter(p => [Position.STP, Position.SLB, Position.SGB].includes(p.position));
         
+        // Golcü havuzunu oluştur (Forvetler daha ağırlıklı)
         const scorerPool = [...fwds, ...fwds, ...fwds, ...mids, ...mids, ...xi];
         
         // Goals
@@ -168,8 +216,11 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
             
             const isPenalty = Math.random() < 0.10;
             
+            // Dakika dağılımı (daha gerçekçi olması için sortlanacak)
+            const minute = Math.floor(Math.random() * 90) + 1;
+
             events.push({
-                minute: Math.floor(Math.random() * 90) + 1,
+                minute,
                 type: 'GOAL',
                 description: isPenalty ? 'Penaltı Golü' : 'Gol',
                 teamName: team.name,
@@ -180,7 +231,7 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
         }
 
         // Yellow Cards
-        const yellowCount = Math.floor(Math.random() * 4);
+        const yellowCount = Math.floor(Math.random() * 3);
         for(let i=0; i<yellowCount; i++) {
             const sinner = xi[Math.floor(Math.random() * xi.length)];
             events.push({
@@ -192,8 +243,8 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
             });
         }
 
-        // Red Cards
-        if(Math.random() < 0.05) {
+        // Red Cards (Nadir)
+        if(Math.random() < 0.03) {
             const sinner = xi[Math.floor(Math.random() * xi.length)];
             events.push({
                 minute: Math.floor(Math.random() * 90) + 1,
@@ -204,9 +255,8 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
             });
         }
 
-        // --- ADDED: INJURY LOGIC FOR BACKGROUND SIM ---
-        // 25% chance per team per match to have an injury (Approx 1 injury every 2 games)
-        if (Math.random() < 0.25) {
+        // Injuries (Nadir)
+        if (Math.random() < 0.15) {
             const victim = xi[Math.floor(Math.random() * xi.length)];
             const injuryType = getWeightedInjury();
             events.push({
@@ -224,8 +274,10 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
 
     events.sort((a,b) => a.minute - b.minute);
 
+    // İstatistikleri oluştur (Artık skora göre tutarlı)
     const stats = generateMatchStats(home.players, away.players, homeScore, awayScore);
     
+    // Ratingleri oluştur
     const { homeRatings, awayRatings } = calculateRatingsFromEvents(home, away, events, homeScore, awayScore);
     const mvpInfo = determineMVP(homeRatings, awayRatings);
     
@@ -296,8 +348,7 @@ export const simulateMatchStep = (
             weight += (p.injurySusceptibility || 10) / 5;
             
             // CRITICAL: Low condition players (< 50%) get massively increased weight
-            // This aligns with the "3% risk" requirement logic by making them highly likely to be the victim if an injury event triggers.
-            if (currentCondition < 50) weight += 200; // Was 40, increased significantly to prioritize exhausted players
+            if (currentCondition < 50) weight += 200; 
             else if (currentCondition < 70) weight += 15; 
             else if (currentCondition < 90) weight += 5;  
 
@@ -344,16 +395,8 @@ export const simulateMatchStep = (
     const awayExhausted = away.players.slice(0, 11).filter(p => (p.condition !== undefined ? p.condition : p.stats.stamina) < 50).length;
     const totalExhausted = homeExhausted + awayExhausted;
     
-    // INCREASED INJURY PROBABILITY FOR LIVE MATCH
-    // Base 0.01 per minute.
-    // Requirement: Players < 50% condition raise risk to ~3% for that player.
-    // We achieve this by increasing the GLOBAL injury event probability based on how many exhausted players are on pitch.
-    // If 1 exhausted player: Prob increases by 0.03.
-    // If 0 exhausted players: Prob stays base 0.01.
-    // We iterate to sum up risk.
     const baseInjuryProb = 0.01;
-    const exhaustedRiskAdder = 0.025; // Adds ~2.5% risk per exhausted player per check roughly
-    
+    const exhaustedRiskAdder = 0.025;
     const calculatedInjuryProb = baseInjuryProb + (totalExhausted * exhaustedRiskAdder);
 
     const PROB_GOAL = currentGoalProb;
@@ -396,12 +439,7 @@ export const simulateMatchStep = (
         };
     } 
     else if (eventRoll < T_INJURY) {
-        // If we hit injury event, we select team then player.
-        // We need to bias selection towards the exhausted player if they exist.
-        
         let activeTeam = null;
-        
-        // If home has exhausted players and away doesn't, bias home.
         if (homeExhausted > 0 && awayExhausted === 0) activeTeam = home;
         else if (awayExhausted > 0 && homeExhausted === 0) activeTeam = away;
         else activeTeam = Math.random() < 0.5 ? home : away;

@@ -1,16 +1,18 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Player, Team } from '../types';
 import { ChevronLeft, DollarSign, Calendar, Plus, Minus, Briefcase, TrendingUp, AlertCircle, CheckCircle2, XCircle, ChevronDown, Lock, AlertTriangle, List, Clock, Percent } from 'lucide-react';
 import PlayerFace from '../components/shared/PlayerFace';
 
 interface TransferOfferNegotiationViewProps {
     player: Player;
-    targetTeam: Team; // The team owning the player
+    targetTeam: Team; // The team owning the player (Buy Mode) OR the team buying (Sell Mode)
     myTeamBudget: number;
     myTeam?: Team; // NEW: To access swap players
     onClose: () => void;
     onFinish: (success: boolean, agreedFee: number) => void;
+    mode?: 'BUY' | 'SELL'; // NEW: Negotiation Mode
+    initialOfferAmount?: number; // NEW: For Sell Mode (AI's starting offer)
 }
 
 const SELL_CLAUSES = [
@@ -42,12 +44,12 @@ const LOAN_OPTIONS = [
     { id: 'AGAINST_PARENT', label: 'Kiralayan Kulübe Karşı Oynayabilir', type: 'bool' }
 ];
 
-const TransferOfferNegotiationView: React.FC<TransferOfferNegotiationViewProps> = ({ player, targetTeam, myTeamBudget, myTeam, onClose, onFinish }) => {
+const TransferOfferNegotiationView: React.FC<TransferOfferNegotiationViewProps> = ({ player, targetTeam, myTeamBudget, myTeam, onClose, onFinish, mode = 'BUY', initialOfferAmount = 0 }) => {
     // State
     const [offerType, setOfferType] = useState<'TRANSFER' | 'LOAN'>('TRANSFER');
     
     // Transfer States
-    const [fee, setFee] = useState<number>(player.value);
+    const [fee, setFee] = useState<number>(mode === 'SELL' ? initialOfferAmount : player.value);
     const [activeClauses, setActiveClauses] = useState<Record<string, number | string>>({});
     
     // Loan States
@@ -64,11 +66,18 @@ const TransferOfferNegotiationView: React.FC<TransferOfferNegotiationViewProps> 
     // Cancel Warning State
     const [showCancelWarning, setShowCancelWarning] = useState(false);
 
+    // Initial message for Sell Mode
+    useEffect(() => {
+        if (mode === 'SELL') {
+            setFeedback(`Karşı kulüp ilk teklif olarak ${initialOfferAmount.toFixed(1)} M€ önerdi.`);
+        }
+    }, [mode, initialOfferAmount]);
+
     // Handlers
     const handleFeeChange = (val: number) => {
         setFee(parseFloat(Math.max(0, val).toFixed(2)));
         setStatus('OPEN');
-        setFeedback(null);
+        // Keep feedback visible in Sell mode if it was initial
     };
 
     const handleLoanFeeChange = (val: number) => {
@@ -132,7 +141,8 @@ const TransferOfferNegotiationView: React.FC<TransferOfferNegotiationViewProps> 
     const handleSubmit = () => {
         const impact = calculateBudgetImpact();
         
-        if (impact > myTeamBudget) {
+        // Budget check only relevant in BUY mode
+        if (mode === 'BUY' && impact > myTeamBudget) {
             setFeedback("Bütçeniz bu teklifi karşılamak için yetersiz.");
             return;
         }
@@ -140,51 +150,91 @@ const TransferOfferNegotiationView: React.FC<TransferOfferNegotiationViewProps> 
         // --- NEGOTIATION LOGIC ---
 
         if (offerType === 'TRANSFER') {
-            // ... (Existing Transfer Logic) ...
-            let valuation = player.value;
-            if (player.age < 23) valuation *= 1.35;
-            else if (player.age < 28) valuation *= 1.15;
-            if (player.skill > 80) valuation *= 1.4;
-            else if (player.skill > 75) valuation *= 1.2;
-            if (targetTeam.players.length < 20) valuation *= 1.2;
-
-            if (activeClauses['INSTALLMENTS']) {
-                const months = activeClauses['INSTALLMENTS'] as number;
-                const interestFactor = 1 + (months * 0.005); 
-                valuation *= interestFactor;
-                if (months >= 36 && Math.random() < 0.4) {
-                    setStatus('REJECTED');
-                    setFeedback("Kulüp bu kadar uzun vadeli ödeme planını kabul etmiyor.");
-                    return;
-                }
-            }
-
-            let clauseValue = 0;
-            if (activeClauses['SELL_ON_FEE']) clauseValue += (player.value * ((activeClauses['SELL_ON_FEE'] as number) / 100) * 0.5); 
-            if (activeClauses['SUCCESS_BONUS']) clauseValue += ((activeClauses['SUCCESS_BONUS'] as number) * 0.20); 
             
-            const totalOfferValue = fee + clauseValue;
-            const ratio = totalOfferValue / valuation;
+            if (mode === 'BUY') {
+                // ... (Existing Buying Logic) ...
+                let valuation = player.value;
+                if (player.age < 23) valuation *= 1.35;
+                else if (player.age < 28) valuation *= 1.15;
+                if (player.skill > 80) valuation *= 1.4;
+                else if (player.skill > 75) valuation *= 1.2;
+                if (targetTeam.players.length < 20) valuation *= 1.2;
 
-            if (ratio >= 0.95) {
-                setStatus('ACCEPTED');
-                setFeedback("Teklif kabul edildi! Kulüp, oyuncu ile görüşmenize izin verdi.");
-            } else if (ratio >= 0.65) { 
-                const gap = valuation - totalOfferValue;
-                const yieldFactor = Math.max(0.1, (ratio - 0.5)); 
-                const targetTotal = valuation - (gap * yieldFactor);
-                let counterFee = targetTotal - clauseValue;
-                counterFee = Math.max(counterFee, fee + 0.5);
-                counterFee = Math.ceil(counterFee * 10) / 10;
-                if (counterFee > valuation) counterFee = valuation;
+                if (activeClauses['INSTALLMENTS']) {
+                    const months = activeClauses['INSTALLMENTS'] as number;
+                    const interestFactor = 1 + (months * 0.005); 
+                    valuation *= interestFactor;
+                    if (months >= 36 && Math.random() < 0.4) {
+                        setStatus('REJECTED');
+                        setFeedback("Kulüp bu kadar uzun vadeli ödeme planını kabul etmiyor.");
+                        return;
+                    }
+                }
 
-                setFee(parseFloat(counterFee.toFixed(2)));
-                setStatus('COUNTER');
-                setFeedback(`Teklif yetersiz bulundu. Kulüp ${counterFee.toFixed(1)} M€ talep ediyor.`);
+                let clauseValue = 0;
+                if (activeClauses['SELL_ON_FEE']) clauseValue += (player.value * ((activeClauses['SELL_ON_FEE'] as number) / 100) * 0.5); 
+                if (activeClauses['SUCCESS_BONUS']) clauseValue += ((activeClauses['SUCCESS_BONUS'] as number) * 0.20); 
+                
+                const totalOfferValue = fee + clauseValue;
+                const ratio = totalOfferValue / valuation;
+
+                if (ratio >= 0.95) {
+                    setStatus('ACCEPTED');
+                    setFeedback("Teklif kabul edildi! Kulüp, oyuncu ile görüşmenize izin verdi.");
+                } else if (ratio >= 0.65) { 
+                    const gap = valuation - totalOfferValue;
+                    const yieldFactor = Math.max(0.1, (ratio - 0.5)); 
+                    const targetTotal = valuation - (gap * yieldFactor);
+                    let counterFee = targetTotal - clauseValue;
+                    counterFee = Math.max(counterFee, fee + 0.5);
+                    counterFee = Math.ceil(counterFee * 10) / 10;
+                    if (counterFee > valuation) counterFee = valuation;
+
+                    setFee(parseFloat(counterFee.toFixed(2)));
+                    setStatus('COUNTER');
+                    setFeedback(`Teklif yetersiz bulundu. Kulüp ${counterFee.toFixed(1)} M€ talep ediyor.`);
+                } else {
+                    setStatus('REJECTED');
+                    setHasBeenRejected(true);
+                    setFeedback("Bu teklif oyuncumuzun değerini yansıtmaktan çok uzak. Reddedildi.");
+                }
             } else {
-                setStatus('REJECTED');
-                setHasBeenRejected(true);
-                setFeedback("Bu teklif oyuncumuzun değerini yansıtmaktan çok uzak. Reddedildi.");
+                // --- SELL MODE LOGIC ---
+                // User is asking 'fee'. AI wants to pay 'initialOfferAmount' or slightly more.
+                // AI Max Willingness
+                const maxWilling = initialOfferAmount * 1.15; // 15% Stretch
+                const absoluteLimit = player.value * 1.1; // Hard cap around 110% of value
+                
+                const finalMax = Math.min(maxWilling, absoluteLimit);
+                
+                if (fee <= initialOfferAmount * 1.02) {
+                    // Asking basically what they offered -> Accepted
+                    setStatus('ACCEPTED');
+                    setFeedback("Teklifiniz kabul edildi. Kulüp bu şartlarda anlaşmaya vardı.");
+                } else if (fee <= finalMax) {
+                    // Asking a bit more, but within stretch -> Counter or Accept
+                    if (Math.random() < 0.4) {
+                        setStatus('ACCEPTED');
+                        setFeedback("Zorlu pazarlık sonucu teklifiniz kabul edildi.");
+                    } else {
+                        // Counter halfway
+                        const counter = (fee + initialOfferAmount) / 2;
+                        setFee(parseFloat(counter.toFixed(2)));
+                        setStatus('COUNTER');
+                        setFeedback(`Kulüp bu rakamı yüksek buluyor. ${counter.toFixed(1)} M€ teklif ediyorlar.`);
+                    }
+                } else {
+                    // Asking too much -> Reject or Counter at max
+                    if (Math.random() < 0.5) {
+                        setFee(parseFloat(finalMax.toFixed(2)));
+                        setStatus('COUNTER');
+                        setFeedback(`Bütçemizi çok aşıyor. Son teklifimiz ${finalMax.toFixed(1)} M€.`);
+                    } else {
+                        setStatus('REJECTED');
+                        setHasBeenRejected(true);
+                        setFeedback("İstenen bonservis bedeli bütçemizin çok üzerinde. Görüşmeleri sonlandırıyoruz.");
+                    }
+                }
             }
 
         } else {
@@ -200,7 +250,7 @@ const TransferOfferNegotiationView: React.FC<TransferOfferNegotiationViewProps> 
             // Diğerleri (Joker, Rotasyon, Hamle, İhtiyaç Yok) kiralanabilir.
             const isImportantStatus = playerStatus && nonLoanableStatuses.includes(playerStatus);
 
-            if (isImportantStatus) {
+            if (mode === 'BUY' && isImportantStatus) {
                 setStatus('REJECTED');
                 setHasBeenRejected(true);
                 
@@ -215,6 +265,7 @@ const TransferOfferNegotiationView: React.FC<TransferOfferNegotiationViewProps> 
             }
 
             // Eğer yukarıdaki engeli geçerse (yani Joker, Rotasyon vb. ise) pazarlık başlar.
+            // ... (Rest of Loan Logic remains same as it was primarily Buy focused, Sell Loan Logic handled implicitly or not used heavily yet)
             
             // 1. Base Reluctance
             let reluctance = 0;
@@ -329,7 +380,9 @@ const TransferOfferNegotiationView: React.FC<TransferOfferNegotiationViewProps> 
             <div className="w-80 bg-[#161a1f] border-r border-[#2c333a] flex flex-col z-20 shrink-0">
                 {/* Header */}
                 <div className="p-4 border-b border-[#2c333a] bg-[#121519]">
-                    <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Transfer Hedefi</h2>
+                    <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+                        {mode === 'BUY' ? 'Transfer Hedefi' : 'Satış Görüşmesi'}
+                    </h2>
                 </div>
 
                 {/* Player Card */}
@@ -356,7 +409,7 @@ const TransferOfferNegotiationView: React.FC<TransferOfferNegotiationViewProps> 
                         <div className="bg-[#1f252b] p-3 rounded-lg space-y-2 text-sm border border-slate-700">
                             <div className="flex justify-between">
                                 <span className="text-slate-400">Kulüp</span>
-                                <span className="font-bold text-slate-200">{targetTeam.name}</span>
+                                <span className="font-bold text-slate-200">{mode === 'BUY' ? targetTeam.name : 'Bizim Takım'}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-slate-400">Statü</span>
@@ -385,21 +438,23 @@ const TransferOfferNegotiationView: React.FC<TransferOfferNegotiationViewProps> 
                         </div>
                     </div>
 
-                    <div>
-                        <h3 className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-2">
-                            <DollarSign size={14}/> Bütçe Durumu
-                        </h3>
-                        <div className="bg-[#1f252b] p-3 rounded-lg space-y-2 text-sm border border-slate-700">
-                            <div className="flex justify-between">
-                                <span className="text-slate-400">Transfer Bütçesi</span>
-                                <span className={`font-bold ${myTeamBudget < fee ? 'text-red-400' : 'text-green-400'}`}>{myTeamBudget.toFixed(1)} M€</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-slate-400">Maaş Bütçesi</span>
-                                <span className="font-bold text-slate-200">Uygun</span>
+                    {mode === 'BUY' && (
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-2">
+                                <DollarSign size={14}/> Bütçe Durumu
+                            </h3>
+                            <div className="bg-[#1f252b] p-3 rounded-lg space-y-2 text-sm border border-slate-700">
+                                <div className="flex justify-between">
+                                    <span className="text-slate-400">Transfer Bütçesi</span>
+                                    <span className={`font-bold ${myTeamBudget < fee ? 'text-red-400' : 'text-green-400'}`}>{myTeamBudget.toFixed(1)} M€</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-400">Maaş Bütçesi</span>
+                                    <span className="font-bold text-slate-200">Uygun</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                     
                     {feedback && (
                         <div className={`p-3 rounded-lg border text-sm ${status === 'ACCEPTED' ? 'bg-green-900/20 border-green-600 text-green-400' : status === 'REJECTED' ? 'bg-red-900/20 border-red-600 text-red-400' : 'bg-yellow-900/20 border-yellow-600 text-yellow-400'}`}>
@@ -418,22 +473,27 @@ const TransferOfferNegotiationView: React.FC<TransferOfferNegotiationViewProps> 
                 {/* Header */}
                 <div className="h-16 bg-[#161a1f] border-b border-[#2c333a] flex items-center justify-between px-6">
                     <h1 className="text-xl font-bold text-white flex items-center gap-3">
-                        <span className="text-yellow-500">{player.name}</span> için {targetTeam.name}'e teklif yapın.
+                        <span className="text-yellow-500">{player.name}</span> 
+                        {mode === 'BUY' ? ` için ${targetTeam.name}'e teklif yapın.` : ` için ${targetTeam.name} ile görüşün.`}
                     </h1>
-                    <div className="flex bg-[#262c33] rounded-lg p-1">
-                        <button 
-                            onClick={() => { setOfferType('TRANSFER'); setStatus('OPEN'); setFeedback(null); }}
-                            className={`px-4 py-1.5 rounded-md text-sm font-bold transition ${offerType === 'TRANSFER' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            Transfer Teklifi
-                        </button>
-                        <button 
-                            onClick={() => { setOfferType('LOAN'); setStatus('OPEN'); setFeedback(null); }}
-                            className={`px-4 py-1.5 rounded-md text-sm font-bold transition ${offerType === 'LOAN' ? 'bg-cyan-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            Kiralık Teklifi
-                        </button>
-                    </div>
+                    
+                    {/* Mode Switcher only in Buy Mode (Sell mode is usually fixed to Transfer) */}
+                    {mode === 'BUY' && (
+                        <div className="flex bg-[#262c33] rounded-lg p-1">
+                            <button 
+                                onClick={() => { setOfferType('TRANSFER'); setStatus('OPEN'); setFeedback(null); }}
+                                className={`px-4 py-1.5 rounded-md text-sm font-bold transition ${offerType === 'TRANSFER' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                Transfer Teklifi
+                            </button>
+                            <button 
+                                onClick={() => { setOfferType('LOAN'); setStatus('OPEN'); setFeedback(null); }}
+                                className={`px-4 py-1.5 rounded-md text-sm font-bold transition ${offerType === 'LOAN' ? 'bg-cyan-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                Kiralık Teklifi
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Content */}
@@ -809,8 +869,8 @@ const TransferOfferNegotiationView: React.FC<TransferOfferNegotiationViewProps> 
                     
                     <div className="flex-1 px-6">
                         <div className="text-xs text-slate-500 uppercase font-bold mb-1">Bütçe Etkisi</div>
-                        <div className="text-sm font-bold text-slate-300">
-                            -{calculateBudgetImpact().toFixed(2)} M€ 
+                        <div className={`text-sm font-bold ${mode === 'SELL' ? 'text-green-400' : 'text-slate-300'}`}>
+                            {mode === 'SELL' ? '+' : '-'}{calculateBudgetImpact().toFixed(2)} M€ 
                             <span className="text-slate-500 ml-1">(Bu sezon)</span>
                         </div>
                         {offerType === 'LOAN' && (
@@ -847,7 +907,7 @@ const TransferOfferNegotiationView: React.FC<TransferOfferNegotiationViewProps> 
                                 onClick={handleSubmit}
                                 className="px-8 py-3 rounded-lg font-bold bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/20 flex items-center gap-2"
                             >
-                                <Briefcase size={20}/> Teklif Yap
+                                <Briefcase size={20}/> {mode === 'SELL' ? 'Karşı Teklif Sun' : 'Teklif Yap'}
                             </button>
                         )}
                     </div>

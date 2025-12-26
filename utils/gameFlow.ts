@@ -1,5 +1,7 @@
+
 import { Player, Team, Position } from '../types';
 import { generatePlayer } from '../constants';
+import { calculateMarketValue } from '../data/playerConstants';
 import { calculateTeamStrength } from './teamCalculations';
 
 export const generateTransferMarket = (count: number, dateStr: string): Player[] => {
@@ -19,14 +21,64 @@ export const generateTransferMarket = (count: number, dateStr: string): Player[]
         const randomPos = positions[Math.floor(Math.random() * positions.length)];
         
         // 80% chance for low tier (40-65), 20% chance for high tier (70-85)
-        const isStar = Math.random() > 0.8;
+        const isStar = Math.random() > 0.85; 
         const targetSkill = isStar 
             ? Math.floor(Math.random() * 16) + 70 // 70-85
             : Math.floor(Math.random() * 26) + 40; // 40-65
 
-        // Transfer market players can be foreign without restriction
-        const player = generatePlayer(randomPos, targetSkill, 'free_agent', true);
+        // --- NEW AGE & STATUS LOGIC ---
+        // 1. Determine Age Profile Distribution
+        // 15% Young (18-22), 60% Prime (23-32), 25% Veteran (33-39)
+        const ageRoll = Math.random();
+        let age: number;
         
+        if (ageRoll < 0.15) {
+            age = Math.floor(Math.random() * (22 - 18 + 1)) + 18;
+        } else if (ageRoll < 0.75) {
+            age = Math.floor(Math.random() * (32 - 23 + 1)) + 23;
+        } else {
+            age = Math.floor(Math.random() * (39 - 33 + 1)) + 33;
+        }
+
+        // 2. Determine Club Status based on Age
+        let isFreeAgent = false;
+
+        if (age >= 33) {
+            // USER REQUEST: 33-39 Age -> 70% Club, 30% Free Agent
+            isFreeAgent = Math.random() < 0.30;
+        } else {
+            // Under 33 -> Mostly Club (95%), Rare Free Agent (5%)
+            isFreeAgent = Math.random() < 0.05;
+        }
+
+        const teamId = isFreeAgent ? 'free_agent' : 'foreign';
+        const clubName = isFreeAgent ? 'Serbest' : 'Yurt Dışı Kulübü';
+
+        // Generate Player with calculated params
+        const player = generatePlayer(randomPos, targetSkill, teamId, true, undefined, clubName);
+        
+        // Override Age and Potential logic based on specific transfer market generation
+        player.age = age;
+
+        if (age > 30) {
+            player.potential = player.skill; // Veterans have no potential growth
+        } else if (age <= 21 && player.potential < player.skill + 5) {
+            // Ensure young market players have some potential appeal, BUT STRICTLY CAP
+            const boost = Math.floor(Math.random() * 6) + 3; // +3 to +8 growth
+            // STRICT CAP: Never exceed 94 unless base skill is somehow higher
+            // Even 93-94 should be ultra rare
+            let newPot = player.skill + boost;
+            if (newPot > 92) {
+                // If RNG hits high, clamp it aggressively
+                if (Math.random() > 0.95) newPot = 93; // Very rare
+                else newPot = 90;
+            }
+            player.potential = Math.min(94, Math.max(player.potential, newPot));
+        }
+
+        // Recalculate Value based on new Age & Status
+        player.value = calculateMarketValue(player.position, player.skill, player.age);
+
         let marketValue = (player.value * (0.8 + Math.random() * 0.4));
         marketValue = marketValue * priceMultiplier;
         

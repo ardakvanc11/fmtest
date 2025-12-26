@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, PendingTransfer, SponsorDeal } from '../types';
+import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, PendingTransfer, SponsorDeal, IncomingOffer } from '../types';
 import { FileWarning, LogOut, Trophy, Building2, BarChart3, ArrowRightLeft, Wallet, Clock, TrendingUp, TrendingDown, Crown } from 'lucide-react';
 
 // Views
@@ -81,9 +80,12 @@ interface MainContentProps {
     handleCancelTransfer: (playerId: string) => void; 
     handleUpdateSponsor: (type: 'main' | 'stadium' | 'sleeve', deal: SponsorDeal) => void;
     handleTakeEmergencyLoan: (amount: number) => void; // NEW
+    handleAcceptOffer: (offer: IncomingOffer) => void; // NEW
+    handleRejectOffer: (offer: IncomingOffer) => void; // NEW
     negotiatingTransferPlayer: Player | null; 
     setNegotiatingTransferPlayer: React.Dispatch<React.SetStateAction<Player | null>>; 
     incomingTransfer: PendingTransfer | null; 
+    setIncomingTransfer: React.Dispatch<React.SetStateAction<PendingTransfer | null>>;
     myTeam?: Team;
     injuredBadgeCount: number;
     isTransferWindowOpen: boolean;
@@ -137,9 +139,12 @@ const MainContent: React.FC<MainContentProps> = (props) => {
         handleCancelTransfer,
         handleUpdateSponsor,
         handleTakeEmergencyLoan,
+        handleAcceptOffer,
+        handleRejectOffer,
         negotiatingTransferPlayer,
         setNegotiatingTransferPlayer,
         incomingTransfer,
+        setIncomingTransfer,
         myTeam,
         injuredBadgeCount,
         isTransferWindowOpen
@@ -159,6 +164,10 @@ const MainContent: React.FC<MainContentProps> = (props) => {
     
     // State for Contract Negotiation (With Own Players)
     const [negotiatingPlayer, setNegotiatingPlayer] = useState<Player | null>(null);
+    
+    // State for Negotiation Mode (Buying vs Selling)
+    const [negotiationMode, setNegotiationMode] = useState<'BUY' | 'SELL'>('BUY');
+    const [initialSellOffer, setInitialSellOffer] = useState<number>(0);
 
     // Function to handle budget updates from Finance View
     const handleBudgetUpdate = (newTransferBudget: number, newWageBudget: number) => {
@@ -232,20 +241,89 @@ const MainContent: React.FC<MainContentProps> = (props) => {
 
     // NEW: Transfer Negotiation Handler (Navigates to new View)
     const handleStartTransferNegotiation = (player: Player) => {
-        setNegotiatingTransferPlayer(player);
-        navigateTo('transfer_negotiation');
+        setNegotiationMode('BUY');
+        setInitialSellOffer(0);
+        if (player.teamId === 'free_agent') {
+            // Direct contract for free agents, skip club negotiation
+            
+            // Simulating a "Transfer Agreed at 0 Fee" to trigger contract flow
+            const dummyTransfer: PendingTransfer = {
+                playerId: player.id,
+                sourceTeamId: 'free_agent',
+                agreedFee: 0,
+                date: gameState.currentDate
+            };
+            setIncomingTransfer(dummyTransfer);
+            
+            // Navigate to contract directly
+            navigateTo('contract_negotiation');
+        } else {
+            setNegotiatingTransferPlayer(player);
+            navigateTo('transfer_negotiation');
+        }
     }
 
+    const handleNegotiateOffer = (offer: IncomingOffer) => {
+        if (!myTeam) return;
+        const player = myTeam.players.find(p => p.id === offer.playerId);
+        if (player) {
+            setNegotiatingTransferPlayer(player);
+            setNegotiationMode('SELL');
+            setInitialSellOffer(offer.amount);
+            
+            // We need to set a temporary target team for the negotiation view
+            // Since `offer` only has teamName, we construct a dummy one if real one not found
+            // Real one likely doesn't exist in `gameState.teams` if it's a foreign AI offer.
+            // Logic handled in `getTargetTeamForNegotiation` using a dummy generator if needed.
+            
+            // Wait, TransferOfferNegotiationView needs a `targetTeam` object.
+            // We will create a dummy one on the fly inside MainContent render logic or pass a specialized object.
+            // For now relying on existing logic.
+            
+            navigateTo('transfer_negotiation');
+        }
+    };
+
     const handleFinishTransferNegotiation = (success: boolean, fee: number) => {
-        if (success && negotiatingTransferPlayer) {
-            handleTransferOfferSuccess(negotiatingTransferPlayer, fee);
-        } else if (!success && negotiatingTransferPlayer) {
-            // Failed transfer offer
-            const cooldown = 3;
-            handlePlayerUpdate(negotiatingTransferPlayer.id, {
-                nextNegotiationWeek: gameState.currentWeek + cooldown
-            });
-            alert(`Kulüp ile anlaşma sağlanamadı. ${cooldown} hafta boyunca yeni teklif yapılamaz.`);
+        if (negotiationMode === 'BUY') {
+            if (success && negotiatingTransferPlayer) {
+                handleTransferOfferSuccess(negotiatingTransferPlayer, fee);
+            } else if (!success && negotiatingTransferPlayer) {
+                // Failed transfer offer
+                const cooldown = 3;
+                handlePlayerUpdate(negotiatingTransferPlayer.id, {
+                    nextNegotiationWeek: gameState.currentWeek + cooldown
+                });
+                alert(`Kulüp ile anlaşma sağlanamadı. ${cooldown} hafta boyunca yeni teklif yapılamaz.`);
+            }
+        } else {
+            // SELL MODE
+            if (negotiatingTransferPlayer) {
+                // Find the original offer to ensure we remove the correct notification
+                const originalOffer = gameState.incomingOffers.find(o => o.playerId === negotiatingTransferPlayer.id);
+
+                if (success) {
+                    // Manually trigger sell logic with agreed fee
+                    // Construct a final offer object using the ORIGINAL ID if available, to clear the list correctly
+                    const finalOffer: IncomingOffer = {
+                        id: originalOffer ? originalOffer.id : 'simulated_' + Date.now(),
+                        playerId: negotiatingTransferPlayer.id,
+                        playerName: negotiatingTransferPlayer.name,
+                        fromTeamName: originalOffer ? originalOffer.fromTeamName : 'Karşı Kulüp',
+                        amount: fee,
+                        date: gameState.currentDate
+                    };
+                    
+                    handleAcceptOffer(finalOffer);
+                    
+                } else {
+                    // Failed sell negotiation - Remove the offer because the deal collapsed
+                    alert("Anlaşma sağlanamadı. Karşı kulüp masadan kalktı.");
+                    if (originalOffer) {
+                        handleRejectOffer(originalOffer);
+                    }
+                }
+            }
         }
         setNegotiatingTransferPlayer(null);
         goBack();
@@ -271,6 +349,48 @@ const MainContent: React.FC<MainContentProps> = (props) => {
 
     const handleCloseSeasonSummary = () => {
         setGameState(prev => ({ ...prev, lastSeasonSummary: null }));
+    };
+
+    // Helper to provide a fallback team for foreign/free players in negotiation view
+    const getTargetTeamForNegotiation = (teamId: string) => {
+        const found = gameState.teams.find(t => t.id === teamId);
+        if (found) return found;
+        
+        // Check if we are in SELL mode and have an active offer for the player
+        if (negotiationMode === 'SELL' && negotiatingTransferPlayer) {
+            const offer = gameState.incomingOffers.find(o => o.playerId === negotiatingTransferPlayer.id);
+            const teamName = offer ? offer.fromTeamName : 'Talip Kulüp';
+            
+            return {
+                id: 'buying_ai_team',
+                name: teamName,
+                logo: '',
+                colors: ['bg-slate-700', 'text-white'],
+                players: [],
+                championships: 0, fanBase: 0, stadiumName: '', stadiumCapacity: 0, budget: 1000, initialDebt: 0, 
+                reputation: 0, financialRecords: { income: {} as any, expense: {} as any }, 
+                transferHistory: [], sponsors: {} as any, formation: '', mentality: {} as any, passing: {} as any, 
+                tempo: {} as any, width: {} as any, creative: {} as any, finalThird: {} as any, crossing: {} as any, 
+                defLine: {} as any, tackling: {} as any, pressFocus: {} as any, timeWasting: {} as any, 
+                tactic: {} as any, attackStyle: {} as any, pressingStyle: {} as any, stats: {} as any, strength: 0, morale: 0
+            } as unknown as Team;
+        }
+        
+        // Dummy team for foreign clubs (Buying)
+        return {
+            id: teamId,
+            name: teamId === 'free_agent' ? 'Serbest' : 'Yurt Dışı Kulübü',
+            logo: '', // Empty logo
+            colors: ['bg-slate-700', 'text-white'],
+            players: new Array(25).fill({}), // Mock array to simulate squad size
+            // Minimal dummy props to satisfy Team type where needed
+            championships: 0, fanBase: 0, stadiumName: '', stadiumCapacity: 0, budget: 0, initialDebt: 0, 
+            reputation: 0, financialRecords: { income: {} as any, expense: {} as any }, 
+            transferHistory: [], sponsors: {} as any, formation: '', mentality: {} as any, passing: {} as any, 
+            tempo: {} as any, width: {} as any, creative: {} as any, finalThird: {} as any, crossing: {} as any, 
+            defLine: {} as any, tackling: {} as any, pressFocus: {} as any, timeWasting: {} as any, 
+            tactic: {} as any, attackStyle: {} as any, pressingStyle: {} as any, stats: {} as any, strength: 0, morale: 0
+        } as unknown as Team;
     };
 
     if (currentView === 'intro') return <IntroScreen onStart={handleStart} />;
@@ -470,6 +590,10 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     onBuy={handleBuyPlayer}
                     onSell={handleSellPlayer}
                     onPlayerClick={handleShowPlayerDetail}
+                    incomingOffers={gameState.incomingOffers || []}
+                    onAcceptOffer={handleAcceptOffer}
+                    onRejectOffer={handleRejectOffer}
+                    onNegotiateOffer={handleNegotiateOffer} // NEW
                 />
             )}
 
@@ -571,7 +695,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
             {currentView === 'transfer_negotiation' && negotiatingTransferPlayer && myTeam && (
                 <TransferOfferNegotiationView
                     player={negotiatingTransferPlayer}
-                    targetTeam={gameState.teams.find(t => t.id === negotiatingTransferPlayer.teamId)!}
+                    targetTeam={getTargetTeamForNegotiation(negotiatingTransferPlayer.teamId)}
                     myTeamBudget={myTeam.budget}
                     myTeam={myTeam} 
                     onClose={() => {
@@ -579,6 +703,8 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                         goBack();
                     }}
                     onFinish={handleFinishTransferNegotiation}
+                    mode={negotiationMode} // Pass mode
+                    initialOfferAmount={initialSellOffer} // Pass offer
                 />
             )}
 

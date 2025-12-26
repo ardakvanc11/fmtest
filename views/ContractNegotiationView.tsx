@@ -59,9 +59,12 @@ const ContractNegotiationView: React.FC<ContractNegotiationViewProps> = ({ playe
     // Base Values - Use actual wage if exists, or robust calculation
     const baseWage = player.wage !== undefined ? player.wage : calculatePlayerWage(player);
     
+    // 36+ Age Rule: Max 1 Year Contract
+    const maxYears = player.age >= 36 ? 1 : 5;
+
     // Offer Values
     const [wage, setWage] = useState(baseWage); 
-    const [years, setYears] = useState(3);
+    const [years, setYears] = useState(player.age >= 36 ? 1 : 3);
     const [role, setRole] = useState(player.squadStatus || 'FIRST_XI');
     const [promises, setPromises] = useState<string[]>([]);
     
@@ -354,18 +357,32 @@ const ContractNegotiationView: React.FC<ContractNegotiationViewProps> = ({ playe
                         </div>
 
                         {/* DURATION SELECTOR */}
-                        <div className="flex items-center justify-between group">
-                            <div className="flex items-center gap-4">
-                                <Calendar className="text-slate-500" size={20}/>
-                                <span className="font-bold text-slate-200 w-32">Sözleşme Süresi</span>
-                            </div>
-                            <div className="flex-1 ml-4 flex items-center gap-2">
-                                <button onClick={() => setYears(Math.max(1, years - 1))} className="p-2 bg-[#1a1f24] rounded border border-slate-600 hover:border-slate-400"><Minus size={14}/></button>
-                                <div className="flex-1 bg-[#1a1f24] border border-slate-600 rounded p-2 text-center text-white font-bold text-sm">
-                                    {years} Yıl (Bitiş: {2025 + years})
+                        <div className="flex flex-col">
+                            <div className="flex items-center justify-between group">
+                                <div className="flex items-center gap-4">
+                                    <Calendar className="text-slate-500" size={20}/>
+                                    <span className="font-bold text-slate-200 w-32">Sözleşme Süresi</span>
                                 </div>
-                                <button onClick={() => setYears(Math.min(5, years + 1))} className="p-2 bg-[#1a1f24] rounded border border-slate-600 hover:border-slate-400"><Plus size={14}/></button>
+                                <div className="flex-1 ml-4 flex items-center gap-2">
+                                    <button onClick={() => setYears(Math.max(1, years - 1))} className="p-2 bg-[#1a1f24] rounded border border-slate-600 hover:border-slate-400"><Minus size={14}/></button>
+                                    <div className="flex-1 bg-[#1a1f24] border border-slate-600 rounded p-2 text-center text-white font-bold text-sm">
+                                        {years} Yıl (Bitiş: {2025 + years})
+                                    </div>
+                                    <button 
+                                        onClick={() => setYears(Math.min(maxYears, years + 1))} 
+                                        disabled={years >= maxYears}
+                                        className={`p-2 bg-[#1a1f24] rounded border border-slate-600 ${years >= maxYears ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-400'}`}
+                                    >
+                                        <Plus size={14}/>
+                                    </button>
+                                </div>
                             </div>
+                            {/* Age Restriction Info */}
+                            {player.age >= 36 && (
+                                <div className="text-[10px] text-orange-400 mt-1 text-right w-full font-medium pr-1">
+                                    36+ yaş kuralı: Maksimum 1 yıllık sözleşme.
+                                </div>
+                            )}
                         </div>
 
                         {/* WAGE SELECTOR */}
