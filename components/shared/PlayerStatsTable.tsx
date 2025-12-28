@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Player } from '../../types';
 import { Trophy, Globe, Shield, Star } from 'lucide-react';
@@ -24,7 +25,7 @@ const PlayerStatsTable: React.FC<PlayerStatsTableProps> = ({ player }) => {
     const rows = [
         {
             id: 'LEAGUE',
-            name: 'Süper Toto Ligi',
+            name: 'Türkiye Hayvanlar Ligi',
             icon: <Trophy size={14} className="text-yellow-600 dark:text-yellow-500" />,
             stats: {
                 apps: stats.matchesPlayed,
@@ -37,20 +38,20 @@ const PlayerStatsTable: React.FC<PlayerStatsTableProps> = ({ player }) => {
         },
         {
             id: 'CUP',
-            name: 'Türkiye Kupası',
+            name: 'Hayvanlar Kupası',
             icon: <Shield size={14} className="text-blue-600 dark:text-blue-500" />,
             stats: { apps: 0, goals: 0, assists: 0, yel: 0, red: 0, rating: 0 }
         },
         {
-            id: 'EURO',
-            name: 'Avrupa Kupası',
-            icon: <Globe size={14} className="text-purple-600 dark:text-purple-500" />,
+            id: 'SUPER',
+            name: 'Hayvanlar Süper Kupası',
+            icon: <Star size={14} className="text-red-600 dark:text-red-500" />,
             stats: { apps: 0, goals: 0, assists: 0, yel: 0, red: 0, rating: 0 }
         },
         {
-            id: 'SUPER',
-            name: 'Süper Kupa',
-            icon: <Star size={14} className="text-red-600 dark:text-red-500" />,
+            id: 'EURO',
+            name: 'Avrupa Hayvanlar Ligi',
+            icon: <Globe size={14} className="text-purple-600 dark:text-purple-500" />,
             stats: { apps: 0, goals: 0, assists: 0, yel: 0, red: 0, rating: 0 }
         }
     ];

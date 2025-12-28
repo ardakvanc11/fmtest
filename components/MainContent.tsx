@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, PendingTransfer, SponsorDeal, IncomingOffer } from '../types';
 import { FileWarning, LogOut, Trophy, Building2, BarChart3, ArrowRightLeft, Wallet, Clock, TrendingUp, TrendingDown, Crown } from 'lucide-react';
@@ -21,7 +22,8 @@ import MatchSimulation from '../views/MatchSimulation';
 import PostMatchInterview from '../views/PostMatchInterview';
 import HealthCenterView from '../views/HealthCenterView';
 import ContractNegotiationView from '../views/ContractNegotiationView'; 
-import TransferOfferNegotiationView from '../views/TransferOfferNegotiationView'; 
+import TransferOfferNegotiationView from '../views/TransferOfferNegotiationView';
+import LeagueCupView from '../views/LeagueCupView'; // New View
 
 // Layouts & Modals
 import Dashboard from '../layout/Dashboard';
@@ -270,16 +272,6 @@ const MainContent: React.FC<MainContentProps> = (props) => {
             setNegotiatingTransferPlayer(player);
             setNegotiationMode('SELL');
             setInitialSellOffer(offer.amount);
-            
-            // We need to set a temporary target team for the negotiation view
-            // Since `offer` only has teamName, we construct a dummy one if real one not found
-            // Real one likely doesn't exist in `gameState.teams` if it's a foreign AI offer.
-            // Logic handled in `getTargetTeamForNegotiation` using a dummy generator if needed.
-            
-            // Wait, TransferOfferNegotiationView needs a `targetTeam` object.
-            // We will create a dummy one on the fly inside MainContent render logic or pass a specialized object.
-            // For now relying on existing logic.
-            
             navigateTo('transfer_negotiation');
         }
     };
@@ -536,6 +528,19 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     playTime={gameState.playTime}
                     onRetire={handleRetire}
                     onTerminateContract={handleTerminateContract}
+                />
+            )}
+            
+            {currentView === 'competitions' && myTeam && (
+                <LeagueCupView 
+                    teams={gameState.teams}
+                    fixtures={gameState.fixtures}
+                    myTeamId={myTeam.id}
+                    currentWeek={gameState.currentWeek}
+                    currentDate={gameState.currentDate}
+                    onTeamClick={handleShowTeamDetail}
+                    onFixtureClick={(f) => setSelectedFixtureForDetail(f)}
+                    myTeam={myTeam}
                 />
             )}
             

@@ -17,7 +17,8 @@ import {
     calculateRawTeamStrength,
     calculateManagerSalary,
     generateStarSoldRiotTweets,
-    calculatePlayerWage
+    calculatePlayerWage,
+    calculateMonthlyNetFlow
 } from '../utils/gameEngine';
 import { addDays, isSameDay } from '../utils/calendarAndFixtures';
 import { INITIAL_MESSAGES } from '../data/messagePool';
@@ -557,9 +558,31 @@ export const useGameState = () => {
         if (!gameState.myTeamId) return;
         const myTeam = gameState.teams.find(t => t.id === gameState.myTeamId)!;
         if (myTeam.players.length <= 16) { alert("Kadro derinliği çok düşük, oyuncu satamazsınız!"); return; }
+        
+        // --- NEW: Financial Status Based Transfer Fee Retention ---
+        const monthlyNet = calculateMonthlyNetFlow(myTeam, gameState.fixtures, gameState.currentDate, gameState.manager!);
+        let injectionRate = 0.5; // Riskli default
+        let statusLabel = 'Riskli (%50)';
+        
+        if (monthlyNet > 10) { injectionRate = 1.0; statusLabel = 'Zengin (%100)'; }
+        else if (monthlyNet > 0) { injectionRate = 0.8; statusLabel = 'Güvende (%80)'; }
+        else if (monthlyNet >= -5) { injectionRate = 0.6; statusLabel = 'Dengeli (%60)'; }
+
+        const budgetAddition = player.value * injectionRate;
+        const retainedAmount = player.value - budgetAddition;
+
         const financials = { ...myTeam.financialRecords };
+        // Accounting still shows full income
         financials.income.transfers += player.value;
-        let updatedTeam = { ...myTeam, budget: myTeam.budget + player.value, players: myTeam.players.filter(p => p.id !== player.id), financialRecords: financials };
+        
+        // Budget only gets percentage
+        let updatedTeam = { 
+            ...myTeam, 
+            budget: myTeam.budget + budgetAddition, 
+            players: myTeam.players.filter(p => p.id !== player.id), 
+            financialRecords: financials 
+        };
+        
         const impact = calculateTransferStrengthImpact(myTeam.strength, player.skill, false);
         const newVisibleStrength = Math.min(100, Math.max(0, myTeam.strength + impact));
         updatedTeam.strength = Number(newVisibleStrength.toFixed(1));
@@ -590,21 +613,41 @@ export const useGameState = () => {
             riotNews = generateStarSoldRiotTweets(gameState.currentWeek, myTeam, player.name);
         }
         setGameState(prev => ({ ...prev, teams: prev.teams.map(t => t.id === myTeam.id ? updatedTeam : t), manager: updatedManager, news: [...riotNews, ...prev.news] }));
-        if (isStarPlayer) alert(`TARAFTAR TEPKİLİ!\n\nTakımın yıldızı ${player.name} satıldığı için taraftarlar sosyal medyada tepki gösterdi. Güven seviyeniz düştü (-3).`);
-        else alert(`${player.name} satıldı! Gelir: ${player.value} M€`);
+        
+        let msg = `${player.name} satıldı! Bonservis: ${player.value} M€\n\nFinansal Durum: ${statusLabel}\nBütçeye Eklenen: ${budgetAddition.toFixed(1)} M€`;
+        if (retainedAmount > 0) {
+            msg += `\n(Yönetim ${retainedAmount.toFixed(1)} M€ tutara borçlar ve giderler için el koydu.)`;
+        }
+        
+        if (isStarPlayer) msg += `\n\nTARAFTAR TEPKİLİ! Takımın yıldızı satıldığı için güven seviyeniz düştü (-3).`;
+        
+        alert(msg);
     };
 
     const handleAcceptOffer = (offer: IncomingOffer) => {
         // Find actual player
         const player = gameState.teams.find(t => t.id === gameState.myTeamId)?.players.find(p => p.id === offer.playerId);
         if (player) {
-            // Re-use logic but force the specific amount
             const myTeam = gameState.teams.find(t => t.id === gameState.myTeamId)!;
+            
+            // --- NEW: Financial Status Based Transfer Fee Retention ---
+            const monthlyNet = calculateMonthlyNetFlow(myTeam, gameState.fixtures, gameState.currentDate, gameState.manager!);
+            let injectionRate = 0.5; // Riskli default
+            let statusLabel = 'Riskli (%50)';
+            
+            if (monthlyNet > 10) { injectionRate = 1.0; statusLabel = 'Zengin (%100)'; }
+            else if (monthlyNet > 0) { injectionRate = 0.8; statusLabel = 'Güvende (%80)'; }
+            else if (monthlyNet >= -5) { injectionRate = 0.6; statusLabel = 'Dengeli (%60)'; }
+
+            const budgetAddition = offer.amount * injectionRate;
+            const retainedAmount = offer.amount - budgetAddition;
+
             const financials = { ...myTeam.financialRecords };
             financials.income.transfers += offer.amount;
+            
             let updatedTeam = { 
                 ...myTeam, 
-                budget: myTeam.budget + offer.amount, 
+                budget: myTeam.budget + budgetAddition, 
                 players: myTeam.players.filter(p => p.id !== player.id), 
                 financialRecords: financials 
             };
@@ -639,7 +682,11 @@ export const useGameState = () => {
                 };
             });
             
-            alert(`${player.name}, ${offer.fromTeamName} takımına satıldı! Gelir: ${offer.amount} M€`);
+            let msg = `${player.name}, ${offer.fromTeamName} takımına satıldı! Gelir: ${offer.amount} M€\n\nFinansal Durum: ${statusLabel}\nBütçeye Eklenen: ${budgetAddition.toFixed(1)} M€`;
+            if (retainedAmount > 0) {
+                msg += `\n(Yönetim ${retainedAmount.toFixed(1)} M€ tutara borçlar ve giderler için el koydu.)`;
+            }
+            alert(msg);
         }
     };
 

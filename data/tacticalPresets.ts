@@ -1,0 +1,114 @@
+
+import { 
+    GameSystem, Team, Mentality, PassingStyle, Tempo, Width, 
+    AttackingTransition, CreativeFreedom, SetPiecePlay, PlayStrategy, 
+    GoalKickType, GKDistributionTarget, SupportRuns, Dribbling, 
+    FocusArea, PassTarget, Patience, LongShots, CrossingType, 
+    GKDistributionSpeed, PressingLine, DefensiveLine, DefLineMobility, 
+    PressIntensity, DefensiveTransition, Tackling, PreventCrosses, 
+    PressingFocus, TimeWasting
+} from '../types';
+
+export const TACTICAL_PRESETS: Record<GameSystem, Partial<Team>> = {
+    [GameSystem.POSSESSION]: {
+        gameSystem: GameSystem.POSSESSION,
+        formation: '4-1-4-1',
+        mentality: Mentality.STANDARD,
+        passing: PassingStyle.SHORT,
+        tempo: Tempo.SLOW,
+        width: Width.STANDARD,
+        attackingTransition: AttackingTransition.KEEP_SHAPE,
+        defensiveTransition: DefensiveTransition.COUNTER_PRESS,
+        creative: CreativeFreedom.CREATIVE,
+        pressingLine: PressingLine.HIGH,
+        defLine: DefensiveLine.HIGH,
+        pressIntensity: PressIntensity.HIGH,
+        dribbling: Dribbling.DISCOURAGE,
+        patience: Patience.WORK_INTO_BOX,
+        gkDistributionTarget: GKDistributionTarget.CBS,
+        goalKickType: GoalKickType.SHORT
+    },
+    [GameSystem.GEGENPRESS]: {
+        gameSystem: GameSystem.GEGENPRESS,
+        formation: '4-2-3-1',
+        mentality: Mentality.ATTACKING,
+        passing: PassingStyle.STANDARD,
+        tempo: Tempo.HIGH,
+        width: Width.NARROW,
+        attackingTransition: AttackingTransition.PUSH_FORWARD,
+        defensiveTransition: DefensiveTransition.COUNTER_PRESS,
+        pressingLine: PressingLine.HIGH,
+        defLine: DefensiveLine.VERY_HIGH,
+        defLineMobility: DefLineMobility.STEP_UP,
+        pressIntensity: PressIntensity.VERY_HIGH,
+        preventCrosses: PreventCrosses.ALLOW_CROSS, // Force inside
+        pressFocus: PressingFocus.CENTER,
+        tackling: Tackling.AGGRESSIVE
+    },
+    [GameSystem.TIKI_TAKA]: {
+        gameSystem: GameSystem.TIKI_TAKA,
+        formation: '4-3-3',
+        mentality: Mentality.ATTACKING,
+        passing: PassingStyle.EXTREME_SHORT,
+        tempo: Tempo.SLOW,
+        width: Width.NARROW,
+        attackingTransition: AttackingTransition.KEEP_SHAPE,
+        defensiveTransition: DefensiveTransition.COUNTER_PRESS,
+        dribbling: Dribbling.DISCOURAGE,
+        patience: Patience.WORK_INTO_BOX,
+        passTarget: PassTarget.FEET,
+        pressingLine: PressingLine.HIGH,
+        defLine: DefensiveLine.HIGH
+    },
+    [GameSystem.VERTICAL_TIKI_TAKA]: {
+        gameSystem: GameSystem.VERTICAL_TIKI_TAKA,
+        formation: '4-1-4-1', // or 4-4-2 diamond if supported
+        mentality: Mentality.ATTACKING,
+        passing: PassingStyle.SHORT,
+        tempo: Tempo.HIGH,
+        width: Width.VERY_NARROW,
+        attackingTransition: AttackingTransition.STANDARD,
+        passTarget: PassTarget.SPACE,
+        focusArea: FocusArea.CENTER
+    },
+    [GameSystem.WING_PLAY]: {
+        gameSystem: GameSystem.WING_PLAY,
+        formation: '4-4-2',
+        mentality: Mentality.STANDARD,
+        passing: PassingStyle.STANDARD,
+        tempo: Tempo.STANDARD,
+        width: Width.WIDE,
+        focusArea: FocusArea.BOTH_WINGS,
+        crossing: CrossingType.HIGH,
+        supportRuns: SupportRuns.BALANCED,
+        gkDistributionTarget: GKDistributionTarget.WINGS
+    },
+    [GameSystem.LONG_BALL]: {
+        gameSystem: GameSystem.LONG_BALL,
+        formation: '4-4-2',
+        mentality: Mentality.DEFENSIVE,
+        passing: PassingStyle.PUMP_BALL,
+        tempo: Tempo.HIGH,
+        width: Width.NARROW,
+        gkDistributionTarget: GKDistributionTarget.STRIKER,
+        goalKickType: GoalKickType.LONG,
+        playStrategy: PlayStrategy.BREAK_PRESS,
+        defLine: DefensiveLine.DEEP,
+        defLineMobility: DefLineMobility.DROP_BACK
+    },
+    [GameSystem.HARAMBALL]: {
+        gameSystem: GameSystem.HARAMBALL,
+        formation: '5-3-2',
+        mentality: Mentality.VERY_DEFENSIVE,
+        passing: PassingStyle.DIRECT,
+        tempo: Tempo.VERY_SLOW,
+        width: Width.VERY_NARROW,
+        defLine: DefensiveLine.VERY_DEEP,
+        pressingLine: PressingLine.LOW,
+        pressIntensity: PressIntensity.VERY_LOW,
+        timeWasting: TimeWasting.ALWAYS,
+        defensiveTransition: DefensiveTransition.REGROUP,
+        tackling: Tackling.AGGRESSIVE, // Park bus but hit hard
+        preventCrosses: PreventCrosses.STOP_CROSS
+    }
+};

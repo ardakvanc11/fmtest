@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
-import { Team, Player, Mentality, PassingStyle, Tempo, Width, AttackingTransition, CreativeFreedom, SetPiecePlay, PlayStrategy, GoalKickType, GKDistributionTarget, SupportRuns, Dribbling, FocusArea, PassTarget, Patience, LongShots, CrossingType, GKDistributionSpeed, PressingLine, DefensiveLine, DefLineMobility, PressIntensity, DefensiveTransition, Tackling, PreventCrosses, PressingFocus, Position, SetPieceTakers, TimeWasting } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Team, Player, Mentality, PassingStyle, Tempo, Width, AttackingTransition, CreativeFreedom, SetPiecePlay, PlayStrategy, GoalKickType, GKDistributionTarget, SupportRuns, Dribbling, FocusArea, PassTarget, Patience, LongShots, CrossingType, GKDistributionSpeed, PressingLine, DefensiveLine, DefLineMobility, PressIntensity, DefensiveTransition, Tackling, PreventCrosses, PressingFocus, Position, SetPieceTakers, TimeWasting, GameSystem } from '../types';
 import PitchVisual from '../components/shared/PitchVisual';
-import { Syringe, Ban, Zap, Users, Target, Goal, Shield, Activity, Star, AlertTriangle, MoveRight, Gauge, Timer, MoveHorizontal, Flag, Sparkles, ArrowUpFromLine, GitCommit, MousePointerClick, Anchor, ArrowLeftRight, Crosshair, FastForward, ScanLine, ChevronUp, ChevronDown, Minus } from 'lucide-react';
+import { Syringe, Ban, Zap, Users, Target, Goal, Shield, Activity, Star, AlertTriangle, MoveRight, Gauge, Timer, MoveHorizontal, Flag, Sparkles, ArrowUpFromLine, GitCommit, MousePointerClick, Anchor, ArrowLeftRight, Crosshair, FastForward, ScanLine, ChevronUp, ChevronDown, Minus, RefreshCw, LayoutTemplate } from 'lucide-react';
 import TacticDetailModal from '../modals/TacticDetailModal';
 import { TACTICAL_DESCRIPTIONS } from '../data/tacticalDescriptions';
 import PlayerFace from '../components/shared/PlayerFace';
+import { TACTICAL_PRESETS } from '../data/tacticalPresets';
 
 interface TacticsViewProps {
     team: Team;
@@ -202,17 +203,108 @@ const PlayerListHeader = () => (
     </div>
 );
 
+const SystemSelectionModal = ({ onClose, onSelect }: { onClose: () => void, onSelect: (sys: GameSystem) => void }) => {
+    return (
+        <div className="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
+            <div className="w-full max-w-5xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="p-6 bg-slate-800 border-b border-slate-700">
+                    <h2 className="text-3xl font-bold text-white mb-1 uppercase tracking-widest font-teko">Oyun Sistemi Seçimi</h2>
+                    <p className="text-slate-400 text-sm">Takımının futbol felsefesini belirle. Formasyon ve talimatlar buna göre ayarlanacak.</p>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {Object.values(GameSystem).map(sys => {
+                        let icon = <Activity size={32}/>;
+                        let desc = "";
+                        let color = "bg-slate-700";
+                        
+                        switch(sys) {
+                            case GameSystem.POSSESSION: 
+                                icon = <RefreshCw size={32}/>; 
+                                desc = "Topu kontrol et, rakibi koştur.";
+                                color = "bg-blue-600";
+                                break;
+                            case GameSystem.GEGENPRESS:
+                                icon = <Zap size={32}/>;
+                                desc = "Kaybettiğin an bas, nefes aldırma.";
+                                color = "bg-red-600";
+                                break;
+                            case GameSystem.TIKI_TAKA:
+                                icon = <LayoutTemplate size={32}/>;
+                                desc = "Kısa paslarla sabırlı hücum.";
+                                color = "bg-cyan-600";
+                                break;
+                            case GameSystem.VERTICAL_TIKI_TAKA:
+                                icon = <ArrowUpFromLine size={32}/>;
+                                desc = "Merkezden hızlı ve teknik geçişler.";
+                                color = "bg-indigo-600";
+                                break;
+                            case GameSystem.WING_PLAY:
+                                icon = <MoveHorizontal size={32}/>;
+                                desc = "Çizgiye in ve orta aç.";
+                                color = "bg-green-600";
+                                break;
+                            case GameSystem.LONG_BALL:
+                                icon = <ArrowUpFromLine size={32} className="rotate-45"/>;
+                                desc = "Risk alma, forvetlere şişir.";
+                                color = "bg-orange-600";
+                                break;
+                            case GameSystem.HARAMBALL:
+                                icon = <Shield size={32}/>;
+                                desc = "Otobüsü çek, 0-0'a yat.";
+                                color = "bg-slate-500 border-2 border-slate-400";
+                                break;
+                        }
+
+                        return (
+                            <button 
+                                key={sys}
+                                onClick={() => onSelect(sys)}
+                                className="relative group overflow-hidden rounded-xl border border-slate-700 hover:border-yellow-500 transition-all shadow-lg hover:shadow-yellow-900/20 text-left bg-slate-800"
+                            >
+                                <div className={`h-24 ${color} flex items-center justify-center text-white group-hover:scale-105 transition-transform duration-500`}>
+                                    {icon}
+                                </div>
+                                <div className="p-4">
+                                    <h3 className="font-bold text-white text-lg leading-tight mb-1">{sys}</h3>
+                                    <p className="text-xs text-slate-400">{desc}</p>
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const TacticsView = ({ team, setTeam, compact = false, isMatchActive = false, subsUsed = 0, maxSubs = 5, onSubstitution, currentMinute, currentWeek, forcedSubstitutionPlayerId }: TacticsViewProps) => {
     const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'XI' | 'TACTICS'>('XI');
     const [tacticalSubTab, setTacticalSubTab] = useState<'POSSESSION' | 'DEFENSE' | 'KEEPER' | 'SET_PIECES'>('POSSESSION');
+    const [showSystemSelector, setShowSystemSelector] = useState(false);
 
     const [modalData, setModalData] = useState<{isOpen: boolean; key: string; title: string; currentVal: string; options: string[];}>({ isOpen: false, key: '', title: '', currentVal: '', options: [] });
+
+    // Initial check for system selection
+    useEffect(() => {
+        if (!team.gameSystem && !isMatchActive) {
+            setShowSystemSelector(true);
+        }
+    }, [team.gameSystem, isMatchActive]);
 
     const teamChemistry = Math.round((team.morale + team.strength) / 2);
 
     const openTacticModal = (key: string, title: string, currentVal: string, options: string[]) => {
         setModalData({ isOpen: true, key, title, currentVal, options });
+    };
+
+    const handleApplySystem = (system: GameSystem) => {
+        const preset = TACTICAL_PRESETS[system];
+        if (preset) {
+            setTeam({ ...team, ...preset });
+            setShowSystemSelector(false);
+        }
     };
 
     const handleTacticChange = (newVal: string) => {
@@ -312,7 +404,11 @@ const TacticsView = ({ team, setTeam, compact = false, isMatchActive = false, su
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-900 text-white">
+        <div className="flex flex-col h-full bg-slate-900 text-white relative">
+            {showSystemSelector && !isMatchActive && (
+                <SystemSelectionModal onClose={() => setShowSystemSelector(false)} onSelect={handleApplySystem} />
+            )}
+
             {modalData.isOpen && <TacticDetailModal title={modalData.title} tacticKey={modalData.key} currentValue={modalData.currentVal} options={modalData.options} onSelect={handleTacticChange} onClose={() => setModalData({ ...modalData, isOpen: false })} />}
             
             {/* HEADER AREA */}
@@ -322,8 +418,21 @@ const TacticsView = ({ team, setTeam, compact = false, isMatchActive = false, su
                     <div className="flex items-center gap-4 w-full lg:w-auto justify-between lg:justify-start">
                         <div className="flex items-center gap-2">
                             <Activity className="text-yellow-500" size={24}/>
-                            <h2 className="text-xl font-bold text-white uppercase tracking-wider">Taktik Merkezi</h2>
+                            <div>
+                                <h2 className="text-xl font-bold text-white uppercase tracking-wider leading-none">Taktik Merkezi</h2>
+                                {team.gameSystem && <span className="text-[10px] text-slate-400 font-bold uppercase">{team.gameSystem}</span>}
+                            </div>
                         </div>
+                        
+                        {!isMatchActive && (
+                            <button 
+                                onClick={() => setShowSystemSelector(true)}
+                                className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg transition-all"
+                            >
+                                <LayoutTemplate size={14}/> Sistem Değiştir
+                            </button>
+                        )}
+
                         {isMatchActive && (
                             <div className="bg-slate-700 px-4 py-1.5 rounded-full border border-slate-600 text-xs font-bold text-slate-300 flex items-center gap-2">
                                 <Timer size={14} className="text-red-500"/>

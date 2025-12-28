@@ -96,6 +96,13 @@ const PitchVisual = ({ players, onPlayerClick, selectedPlayerId, formation = '4-
     // Default to 4-4-2 if formation not found
     const positions = FORMATIONS[formation] || FORMATIONS['4-4-2'];
 
+    const getPosBadgeColor = (pos: string) => {
+        if (pos === 'GK') return 'bg-yellow-500 text-black border-yellow-300';
+        if (['SLB', 'STP', 'SGB'].includes(pos)) return 'bg-blue-600 text-white border-blue-400';
+        if (['OS', 'OOS'].includes(pos)) return 'bg-green-600 text-white border-green-400';
+        return 'bg-red-600 text-white border-red-400';
+    };
+
     return (
         <div className="relative w-full h-full bg-[#1a4a35] overflow-hidden rounded-xl border border-slate-700 shadow-2xl select-none">
              {/* Realistic Grass Pattern */}
@@ -131,7 +138,12 @@ const PitchVisual = ({ players, onPlayerClick, selectedPlayerId, formation = '4-
                          {/* Player Card Container */}
                          <div className={`relative flex flex-col items-center shadow-xl drop-shadow-2xl`}>
                             
-                            {/* Rating Badge */}
+                            {/* Position Badge (Top Left) */}
+                            <div className={`absolute -top-2 -left-2 w-7 h-7 rounded-full flex items-center justify-center font-bold text-[9px] border-2 shadow-md z-30 ${getPosBadgeColor(p.position)}`}>
+                                {p.position}
+                            </div>
+
+                            {/* Rating Badge (Top Right) */}
                             <div className={`absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center font-black text-xs border-2 shadow-md z-30
                                 ${p.skill >= 85 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-black border-yellow-200' : 
                                   p.skill >= 75 ? 'bg-gradient-to-br from-slate-300 to-slate-400 text-black border-slate-100' :

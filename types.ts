@@ -221,6 +221,17 @@ export enum PressingStyle {
     DROP_DEEP = 'Geride Karşıla'
 }
 
+// --- NEW GAME SYSTEM ENUM ---
+export enum GameSystem {
+    POSSESSION = 'Topa Sahip Ol',
+    GEGENPRESS = 'Gegenpress',
+    TIKI_TAKA = 'Tiki Taka',
+    VERTICAL_TIKI_TAKA = 'Dikey Tiki Taka',
+    WING_PLAY = 'Kanat Oyunu',
+    LONG_BALL = 'Uzun Top',
+    HARAMBALL = 'Haramball (Otobüsü Çek)'
+}
+
 // --- INTERFACES ---
 
 export interface HalftimeTalkOption {
@@ -426,11 +437,12 @@ export interface Team {
     sponsors: TeamSponsors; 
 
     // --- TACTICS (UPDATED) ---
+    gameSystem?: GameSystem; // NEW FIELD
     formation: string; 
-    mentality: Mentality; // ADDED
-    tactic?: TacticStyle; // ADDED
-    attackStyle?: AttackStyle; // ADDED
-    pressingStyle?: PressingStyle; // ADDED
+    mentality: Mentality; 
+    tactic?: TacticStyle; 
+    attackStyle?: AttackStyle; 
+    pressingStyle?: PressingStyle; 
     
     // In Possession
     passing: PassingStyle;
@@ -446,7 +458,7 @@ export interface Team {
     dribbling?: Dribbling;
     focusArea?: FocusArea;
     passTarget?: PassTarget;
-    patience?: Patience; // Final Third Patience
+    patience?: Patience; 
     longShots?: LongShots;
     crossing?: CrossingType;
     gkDistSpeed?: GKDistributionSpeed;
@@ -461,9 +473,9 @@ export interface Team {
     preventCrosses?: PreventCrosses;
     pressFocus: PressingFocus;
     
-    // Legacy support fields (mapped to new ones where possible or kept for compatibility)
-    timeWasting?: TimeWasting; // UPDATED TYPE
-    finalThird?: any; // Mapped to Patience
+    // Legacy support fields
+    timeWasting?: TimeWasting; 
+    finalThird?: any; 
     
     setPieceTakers?: SetPieceTakers; 
 
