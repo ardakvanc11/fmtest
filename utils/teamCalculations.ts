@@ -1,5 +1,5 @@
 
-import { Team, Position, Fixture, BettingOdds, ManagerStats, Player, ManagerProfile } from '../types';
+import { Team, Position, Fixture, BettingOdds, ManagerStats, Player, ManagerProfile, PlayerStats } from '../types';
 
 // --- CONSTANTS FOR WEIGHTED CALCULATIONS ---
 
@@ -35,15 +35,142 @@ const getPokForPosition = (pos: Position): number => {
     }
 };
 
+// --- MEVKİ BAZLI STAT AĞIRLIKLARI (POSITION-BASED STAT WEIGHTS) ---
+// Maps Position -> { Attribute: Weight }
+// Based on the specific prompt requirements
+const STAT_WEIGHTS: Partial<Record<Position, Partial<Record<keyof PlayerStats, number>>>> = {
+    [Position.GK]: {
+        positioning: 1.4, // Pozisyon Alma
+        agility: 1.4,     // Refleks (Mapped to Agility)
+        concentration: 1.3, // Konsantrasyon
+        composure: 1.2,   // Soğukkanlılık
+        leadership: 1.1,  // Liderlik
+        passing: 0.8,     // Pas
+        technique: 0.7,   // Teknik
+        pace: 0.6         // Hız
+    },
+    [Position.STP]: {
+        marking: 1.4,     // Markaj
+        tackling: 1.3,    // Top Kapma
+        positioning: 1.3, // Pozisyon Alma
+        physical: 1.2,    // Güç
+        heading: 1.2,     // Kafa Vuruşu
+        concentration: 1.2, // Konsantrasyon
+        passing: 0.8,     // Pas
+        technique: 0.7,   // Teknik
+        pace: 0.8         // Hız
+    },
+    [Position.SLB]: {
+        stamina: 1.4,     // Dayanıklılık
+        pace: 1.3,        // Hız
+        agility: 1.2,     // Çeviklik
+        crossing: 1.2,    // Orta Yapma
+        marking: 1.1,     // Markaj
+        tackling: 1.1,    // Top Kapma
+        passing: 1.0,     // Pas
+        technique: 0.9    // Teknik
+    },
+    [Position.SGB]: {
+        stamina: 1.4,     // Dayanıklılık
+        pace: 1.3,        // Hız
+        agility: 1.2,     // Çeviklik
+        crossing: 1.2,    // Orta Yapma
+        marking: 1.1,     // Markaj
+        tackling: 1.1,    // Top Kapma
+        passing: 1.0,     // Pas
+        technique: 0.9    // Teknik
+    },
+    // DM (Defansif Orta Saha - Using OS base but weighted for DM roles if generic OS)
+    [Position.OS]: {
+        // For generic OS, we prioritize Passing/Vision but include defensive stats for DM logic
+        passing: 1.4,     
+        vision: 1.3,
+        decisions: 1.3,   // Karar Alma
+        technique: 1.2,
+        stamina: 1.1,
+        positioning: 1.1, // DM Critical
+        tackling: 1.0,    // DM Critical
+        physical: 1.0     // DM Critical
+    },
+    [Position.OOS]: {
+        vision: 1.4,      // Vizyon
+        technique: 1.3,   // Teknik
+        dribbling: 1.3,   // Dripling
+        decisions: 1.2,   // Karar Alma
+        composure: 1.1,   // Soğukkanlılık
+        longShots: 1.1,   // Uzaktan Şut
+        passing: 1.2      // Pas
+    },
+    [Position.SLK]: {
+        pace: 1.4,        // Hız
+        dribbling: 1.4,   // Dripling
+        agility: 1.3,     // Çeviklik
+        crossing: 1.2,    // Orta Yapma
+        technique: 1.1,   // Teknik
+        decisions: 1.1,   // Karar Alma
+        finishing: 0.9    // Bitiricilik
+    },
+    [Position.SGK]: {
+        pace: 1.4,        // Hız
+        dribbling: 1.4,   // Dripling
+        agility: 1.3,     // Çeviklik
+        crossing: 1.2,    // Orta Yapma
+        technique: 1.1,   // Teknik
+        decisions: 1.1,   // Karar Alma
+        finishing: 0.9    // Bitiricilik
+    },
+    [Position.SNT]: {
+        finishing: 1.4,   // Bitiricilik
+        positioning: 1.3, // Pozisyon Alma
+        composure: 1.3,   // Soğukkanlılık
+        heading: 1.2,     // Kafa Vuruşu
+        physical: 1.1,    // Güç
+        technique: 1.0,   // Teknik
+        passing: 0.7      // Pas
+    }
+};
+
+/**
+ * Calculates the Effective Skill of a player based on their position's stat weights.
+ * This determines how good a player actually is in the match engine vs their raw OVR.
+ */
+export const calculateEffectiveSkill = (player: Player): number => {
+    const weights = STAT_WEIGHTS[player.position] || {};
+    let totalScore = 0;
+    let totalWeight = 0;
+
+    // Use raw skill as baseline if no weights found (fallback)
+    if (Object.keys(weights).length === 0) return player.skill;
+
+    for (const [statKey, weight] of Object.entries(weights)) {
+        // @ts-ignore
+        let statValue = player.stats[statKey] || 10; // Default to 10 (avg) if missing
+        
+        // Convert 1-20 attribute to 1-100 scale for consistency with OVR
+        // (Stat * 5) converts 20 -> 100
+        totalScore += (statValue * 5) * weight;
+        totalWeight += weight;
+    }
+
+    if (totalWeight === 0) return player.skill;
+
+    // Calculate weighted average (The "Perfomance Skill")
+    const weightedAvg = totalScore / totalWeight;
+    
+    // Blend with original skill (OVR) to ensure general quality (Reputation/Mental intangible) is still respected 
+    // 80% Weighted Stats (Performance), 20% Raw Skill (Star Power)
+    return (weightedAvg * 0.8) + (player.skill * 0.2);
+};
+
 /**
  * Calculates the RAW Weighted Team Strength (THG) based on squad roles.
- * Does not apply the "Visible Strength" (GTÜ) delta logic.
+ * UPDATED: Uses `calculateEffectiveSkill` instead of raw `skill`.
  */
 export const calculateRawTeamStrength = (players: Player[]): number => {
     if (players.length === 0) return 0;
 
-    // 1. Sort all players by skill (descending)
-    const sorted = [...players].sort((a, b) => b.skill - a.skill);
+    // 1. Sort all players by EFFECTIVE skill (descending)
+    const sorted = [...players].sort((a, b) => calculateEffectiveSkill(b) - calculateEffectiveSkill(a));
 
     // 2. Identify Starters (Best fitting 4-4-2)
     // We assume a standard structure for calculation stability:
@@ -97,7 +224,8 @@ export const calculateRawTeamStrength = (players: Player[]): number => {
     const addToCalc = (p: Player, roleCoef: number) => {
         const pok = getPokForPosition(p.position);
         const weight = pok * roleCoef;
-        const contribution = p.skill * weight;
+        const effectiveSkill = calculateEffectiveSkill(p); // Use new weighted skill
+        const contribution = effectiveSkill * weight;
         
         totalContribution += contribution;
         totalWeight += weight;
@@ -153,7 +281,8 @@ export const recalculateTeamStrength = (team: Team): Team => {
 };
 
 export const calculateTeamStrength = (team: Team): number => {
-    return team.strength;
+    // Return calculated raw strength to make the simulation use the new attributes
+    return calculateRawTeamStrength(team.players);
 };
 
 /**
@@ -239,8 +368,9 @@ export const calculateForm = (teamId: string, fixtures: Fixture[]): string[] => 
 };
 
 export const calculateOdds = (home: Team, away: Team): BettingOdds => {
-    const hStr = home.strength + 5; 
-    const aStr = away.strength;
+    // UPDATED: Use Raw Team Strength which now incorporates Attribute Weights
+    const hStr = calculateRawTeamStrength(home.players) + 5; 
+    const aStr = calculateRawTeamStrength(away.players);
     
     if (hStr + aStr === 0) return { home: 1, draw: 1, away: 1 };
 
@@ -301,11 +431,7 @@ export const calculateManagerSalary = (strength: number): number => {
     return 0.10; 
 };
 
-/**
- * NEW: Applies reputation changes based on season-end performance.
- */
 export const applySeasonEndReputationUpdates = (teams: Team[]): Team[] => {
-    // 1. Sort teams to get final league positions
     const standings = [...teams].sort((a, b) => {
         if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points;
         return (b.stats.gf - b.stats.ga) - (a.stats.gf - a.stats.ga);
@@ -313,53 +439,37 @@ export const applySeasonEndReputationUpdates = (teams: Team[]): Team[] => {
 
     return teams.map(team => {
         const rank = standings.findIndex(t => t.id === team.id) + 1;
-        const isRelegated = rank >= 16; // Bottom 3 in 18-team league
+        const isRelegated = rank >= 16; 
         const strength = team.strength;
         let repChange = 0;
 
-        // Rule 1: Strength > 80 cases
         if (strength > 80) {
             if (rank > 10) repChange -= 0.1;
             if (isRelegated) repChange -= 1.0;
         }
-
-        // Rule 2: Strength > 75 cases
         if (strength > 75) {
             if (rank > 15) repChange -= 0.1;
         }
-
-        // Rule 3: Strength < 80 and Relegated
         if (strength < 80 && isRelegated) {
             repChange -= 0.3;
         }
-
-        // Rule 4: Strength 74-80 and Top 3
         if (strength >= 74 && strength <= 80 && rank <= 3) {
             repChange += 0.1;
         }
-
-        // Rule 5: Strength 70-74 and Top 5
         if (strength >= 70 && strength < 74 && rank <= 5) {
             repChange += 0.1;
         }
-
-        // Rule 6: Strength 60-70 and Top 5
         if (strength >= 60 && strength < 70 && rank <= 5) {
             repChange += 0.1;
         }
 
         const newRep = Number((team.reputation + repChange).toFixed(1));
-        // Clamp reputation between 0.1 and 5.0
         const finalRep = Math.min(5.0, Math.max(0.1, newRep));
 
         return { ...team, reputation: finalRep };
     });
 };
 
-/**
- * Calculates Team Reputation stars based on championships and strength.
- * UPDATED: Now fallback/multiplier logic if needed, but primarily displays team.reputation.
- */
 export const calculateTeamReputation = (team: Team): number => {
     return team.reputation || 1;
 };
@@ -374,8 +484,6 @@ export const calculateMonthlyNetFlow = (team: Team, fixtures: Fixture[], current
     const strengthFactor = team.strength / 100;
     const fanFactor = team.fanBase / 1000000;
 
-    // UPDATED: Use Real Sponsor Data from Team Object
-    // Sum annual values
     const annualSponsorIncome = 
         (team.sponsors.main.yearlyValue) + 
         (team.sponsors.stadium.yearlyValue) + 
@@ -407,9 +515,7 @@ export const calculateMonthlyNetFlow = (team: Team, fixtures: Fixture[], current
 
     const totalIncome = inc_Sponsor + inc_Merch + inc_Trade + inc_TV + inc_Gate + inc_Loca + inc_Transfers;
 
-    // Use calculatePlayerWage for robust calculation
     const totalAnnualWages = team.players.reduce((acc, p) => {
-        // Use set wage if exists, else calculate dynamic
         return acc + (p.wage !== undefined ? p.wage : calculatePlayerWage(p));
     }, 0);
     
@@ -418,8 +524,6 @@ export const calculateMonthlyNetFlow = (team: Team, fixtures: Fixture[], current
     const exp_Stadium = (team.stadiumCapacity / 100000) * 0.5;
     const exp_Academy = strengthFactor * 0.4;
     
-    const totalSquadValue = team.players.reduce((sum, p) => sum + p.value, 0);
-    // NEW: Use fixed initialDebt for repayment calculation. 60 months (5 years) term.
     const exp_Debt = (team.initialDebt || 0) / 60;
     
     const exp_Transfers = manager && manager.contract.teamName === team.name ? (manager.stats.transferSpendThisMonth || 0) : 0;

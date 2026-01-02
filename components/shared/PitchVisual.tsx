@@ -18,12 +18,12 @@ const FORMATIONS: Record<string, { left: string, bottom: string }[]> = {
         { left: '38%', bottom: '25%' },   // LCB
         { left: '62%', bottom: '25%' },   // RCB
         { left: '85%', bottom: '25%' },   // RB
-        { left: '15%', bottom: '60%' },   // LM
-        { left: '38%', bottom: '50%' },   // LCM
-        { left: '62%', bottom: '50%' },   // RCM
-        { left: '85%', bottom: '60%' },   // RM
-        { left: '35%', bottom: '85%' },   // LST
-        { left: '65%', bottom: '85%' }    // RST
+        { left: '15%', bottom: '55%' },   // LM (Aşağı çekildi)
+        { left: '38%', bottom: '45%' },   // LCM
+        { left: '62%', bottom: '45%' },   // RCM
+        { left: '85%', bottom: '55%' },   // RM (Aşağı çekildi)
+        { left: '35%', bottom: '78%' },   // LST (Aşağı çekildi)
+        { left: '65%', bottom: '78%' }    // RST (Aşağı çekildi)
     ],
     '4-3-3': [
         { left: '50%', bottom: '8%' },   // GK
@@ -31,12 +31,12 @@ const FORMATIONS: Record<string, { left: string, bottom: string }[]> = {
         { left: '38%', bottom: '25%' },   // LCB
         { left: '62%', bottom: '25%' },   // RCB
         { left: '85%', bottom: '25%' },   // RB
-        { left: '50%', bottom: '45%' },   // DM
-        { left: '30%', bottom: '60%' },   // LCM
-        { left: '70%', bottom: '60%' },   // RCM
-        { left: '15%', bottom: '78%' },   // LW
-        { left: '85%', bottom: '78%' },   // RW
-        { left: '50%', bottom: '88%' }    // ST
+        { left: '50%', bottom: '42%' },   // DM
+        { left: '30%', bottom: '55%' },   // LCM
+        { left: '70%', bottom: '55%' },   // RCM
+        { left: '15%', bottom: '72%' },   // LW (Aşağı çekildi)
+        { left: '85%', bottom: '72%' },   // RW (Aşağı çekildi)
+        { left: '50%', bottom: '80%' }    // ST (Aşağı çekildi)
     ],
     '4-2-3-1': [
         { left: '50%', bottom: '8%' },   // GK
@@ -44,12 +44,12 @@ const FORMATIONS: Record<string, { left: string, bottom: string }[]> = {
         { left: '38%', bottom: '25%' },   // LCB
         { left: '62%', bottom: '25%' },   // RCB
         { left: '85%', bottom: '25%' },   // RB
-        { left: '35%', bottom: '45%' },   // LDM
-        { left: '65%', bottom: '45%' },   // RDM
-        { left: '15%', bottom: '70%' },   // LAM
-        { left: '50%', bottom: '70%' },   // CAM
-        { left: '85%', bottom: '70%' },   // RAM
-        { left: '50%', bottom: '88%' }    // ST
+        { left: '35%', bottom: '42%' },   // LDM
+        { left: '65%', bottom: '42%' },   // RDM
+        { left: '15%', bottom: '65%' },   // LAM (Aşağı çekildi)
+        { left: '50%', bottom: '65%' },   // CAM (Aşağı çekildi)
+        { left: '85%', bottom: '65%' },   // RAM (Aşağı çekildi)
+        { left: '50%', bottom: '80%' }    // ST (Aşağı çekildi)
     ],
     '4-1-4-1': [
         { left: '50%', bottom: '8%' },   // GK
@@ -57,25 +57,25 @@ const FORMATIONS: Record<string, { left: string, bottom: string }[]> = {
         { left: '38%', bottom: '25%' },   // LCB
         { left: '62%', bottom: '25%' },   // RCB
         { left: '85%', bottom: '25%' },   // RB
-        { left: '50%', bottom: '40%' },   // DM
-        { left: '15%', bottom: '65%' },   // LM
-        { left: '35%', bottom: '60%' },   // LCM
-        { left: '65%', bottom: '60%' },   // RCM
-        { left: '85%', bottom: '65%' },   // RM
-        { left: '50%', bottom: '85%' }    // ST
+        { left: '50%', bottom: '38%' },   // DM
+        { left: '15%', bottom: '60%' },   // LM (Aşağı çekildi)
+        { left: '35%', bottom: '55%' },   // LCM
+        { left: '65%', bottom: '55%' },   // RCM
+        { left: '85%', bottom: '60%' },   // RM (Aşağı çekildi)
+        { left: '50%', bottom: '78%' }    // ST (Aşağı çekildi)
     ],
     '3-5-2': [
         { left: '50%', bottom: '8%' },   // GK
         { left: '25%', bottom: '22%' },   // LCB
         { left: '50%', bottom: '22%' },   // CB
         { left: '75%', bottom: '22%' },   // RCB
-        { left: '10%', bottom: '55%' },   // LWB
-        { left: '90%', bottom: '55%' },   // RWB
-        { left: '35%', bottom: '45%' },   // LCM
-        { left: '65%', bottom: '45%' },   // RCM
-        { left: '50%', bottom: '65%' },   // AM
-        { left: '35%', bottom: '85%' },   // LST
-        { left: '65%', bottom: '85%' }    // RST
+        { left: '10%', bottom: '50%' },   // LWB
+        { left: '90%', bottom: '50%' },   // RWB
+        { left: '35%', bottom: '42%' },   // LCM
+        { left: '65%', bottom: '42%' },   // RCM
+        { left: '50%', bottom: '60%' },   // AM (Aşağı çekildi)
+        { left: '35%', bottom: '78%' },   // LST (Aşağı çekildi)
+        { left: '65%', bottom: '78%' }    // RST (Aşağı çekildi)
     ],
     '5-3-2': [
         { left: '50%', bottom: '8%' },   // GK
@@ -84,11 +84,11 @@ const FORMATIONS: Record<string, { left: string, bottom: string }[]> = {
         { left: '50%', bottom: '22%' },   // CB
         { left: '70%', bottom: '22%' },   // RCB
         { left: '90%', bottom: '28%' },   // RWB
-        { left: '35%', bottom: '50%' },   // LCM
-        { left: '50%', bottom: '45%' },   // CM
-        { left: '65%', bottom: '50%' },   // RCM
-        { left: '40%', bottom: '85%' },   // LST
-        { left: '60%', bottom: '85%' }    // RST
+        { left: '35%', bottom: '48%' },   // LCM
+        { left: '50%', bottom: '42%' },   // CM
+        { left: '65%', bottom: '48%' },   // RCM
+        { left: '40%', bottom: '78%' },   // LST (Aşağı çekildi)
+        { left: '60%', bottom: '78%' }    // RST (Aşağı çekildi)
     ]
 };
 

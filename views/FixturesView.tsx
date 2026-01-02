@@ -231,6 +231,7 @@ const FixturesView = ({
                         allFixtures={fixtures}
                         variant="embedded" // New embedded mode
                         myTeamId={myTeamId} // Pass user team ID for filtering
+                        onTeamClick={onTeamClick} // Pass the click handler
                     />
                 ) : (
                     <div className="h-full flex items-center justify-center text-slate-500 flex-col gap-4">

@@ -1,8 +1,9 @@
 
-import { Team, Position, Mentality, PassingStyle, Tempo, Width, CreativeFreedom, DefensiveLine, Tackling, PressingFocus, TimeWasting, TacticStyle, AttackStyle, PressingStyle, AttackingTransition, SetPiecePlay, PlayStrategy, GoalKickType, GKDistributionTarget, SupportRuns, Dribbling, FocusArea, PassTarget, Patience, LongShots, CrossingType, GKDistributionSpeed, PressingLine, DefLineMobility, PressIntensity, DefensiveTransition, PreventCrosses } from '../types';
+import { Team, Position, Mentality, PassingStyle, Tempo, Width, CreativeFreedom, DefensiveLine, Tackling, PressingFocus, TimeWasting, TacticStyle, AttackStyle, PressingStyle, AttackingTransition, SetPiecePlay, PlayStrategy, GoalKickType, GKDistributionTarget, SupportRuns, Dribbling, FocusArea, PassTarget, Patience, LongShots, CrossingType, GKDistributionSpeed, PressingLine, DefLineMobility, PressIntensity, DefensiveTransition, PreventCrosses, ClubStaff } from '../types';
 import { generateId } from './gameConstants';
-import { generatePlayer } from './playerConstants';
+import { generatePlayer, FIRST_NAMES, LAST_NAMES } from './playerConstants';
 import { calculateRawTeamStrength } from '../utils/teamCalculations';
+import { getRandomSponsorForReputation } from './sponsorData';
 
 // User Defined Teams with provided Imgur Logos and Stadium Capacities
 export const TEAM_TEMPLATES = [
@@ -555,6 +556,35 @@ export const RIVALRIES = [
     ['Bedirspor', 'Yakhubspor']
 ];
 
+// Random Facility Name Generator
+const FACILITY_SUFFIXES = ['Tesisleri', 'Kamp Merkezi', 'Akademisi', 'Kompleksi'];
+const getFacilityName = (teamName: string, type: 'Training' | 'Youth') => {
+    const randomName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)] + ' ' + LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+    const suffix = FACILITY_SUFFIXES[Math.floor(Math.random() * FACILITY_SUFFIXES.length)];
+    if (type === 'Training') return `${randomName} ${suffix}`;
+    return `${teamName} ${randomName} Altyapı ${suffix}`;
+};
+
+// Staff Generator
+const generateStaff = (reputation: number): ClubStaff[] => {
+    const roles = ['Sportif Direktör', 'Baş Scout', 'Altyapı Sorumlusu', 'Baş Fizyoterapist'];
+    return roles.map(role => {
+        const name = `${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]} ${LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)]}`;
+        // Higher rep means better staff generally
+        const baseRating = reputation * 15 + 20; 
+        const rating = Math.min(100, Math.max(1, Math.floor(baseRating + (Math.random() * 30 - 10))));
+        const age = Math.floor(Math.random() * 30) + 35;
+        
+        return {
+            role,
+            name,
+            rating,
+            age,
+            nationality: 'Türkiye'
+        };
+    });
+};
+
 export const initializeTeams = (): Team[] => {
     return TEAM_TEMPLATES.map((tmpl) => {
         const teamId = generateId();
@@ -573,7 +603,6 @@ export const initializeTeams = (): Team[] => {
             return p;
         }
         
-        // ... (Player Creation Logic remains the same) ...
         const gk = createPlayer(Position.GK, tmpl.targetStrength);
         const slb = createPlayer(Position.SLB, tmpl.targetStrength);
         const stp1 = createPlayer(Position.STP, tmpl.targetStrength);
@@ -607,14 +636,17 @@ export const initializeTeams = (): Team[] => {
         const totalValue = players.reduce((sum, p) => sum + p.value, 0);
         const estimatedWages = totalValue * 0.005 * 52; 
 
-        const strengthFactor = tmpl.targetStrength / 100;
-        const fanFactor = tmpl.fans / 1000000;
-        const totalMonthlySponsorValue = ((tmpl.championships * 2) + (fanFactor * 0.5)) / 12;
-        const annualTotal = totalMonthlySponsorValue * 12;
-        const mainSponsorValue = Number((annualTotal * 0.6).toFixed(2));
-        const stadiumSponsorValue = Number((annualTotal * 0.3).toFixed(2));
-        const sleeveSponsorValue = Number((annualTotal * 0.1).toFixed(2));
+        // Generate Sponsors based on Reputation
+        const mainSponsor = getRandomSponsorForReputation(tmpl.baseReputation, 'main');
+        const stadiumSponsor = getRandomSponsorForReputation(tmpl.baseReputation, 'stadium');
+        const sleeveSponsor = getRandomSponsorForReputation(tmpl.baseReputation, 'sleeve');
 
+        // Generate Board & Staff
+        const presidentName = `${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]} ${LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)]}`;
+        
+        // Facility Levels based on target strength (roughly)
+        const facLevel = Math.max(1, Math.min(20, Math.floor(tmpl.targetStrength / 5)));
+        
         return {
             id: teamId,
             name: tmpl.name,
@@ -636,9 +668,24 @@ export const initializeTeams = (): Team[] => {
             leagueHistory: tmpl.leagueHistory || [], 
             
             sponsors: {
-                main: { name: 'HAYVANLAR HOLDING', yearlyValue: mainSponsorValue, expiryYear: 2026 },
-                stadium: { name: tmpl.stadium, yearlyValue: stadiumSponsorValue, expiryYear: 2026 },
-                sleeve: { name: 'Süper Toto', yearlyValue: sleeveSponsorValue, expiryYear: 2026 }
+                main: { name: mainSponsor.name, yearlyValue: mainSponsor.value, expiryYear: 2026 },
+                stadium: { name: stadiumSponsor.name, yearlyValue: stadiumSponsor.value, expiryYear: 2026 },
+                sleeve: { name: sleeveSponsor.name, yearlyValue: sleeveSponsor.value, expiryYear: 2026 }
+            },
+
+            // New Management Data
+            board: {
+                presidentName,
+                expectations: tmpl.targetStrength > 80 ? 'Şampiyonluk' : tmpl.targetStrength > 75 ? 'Üst Sıralar' : 'Ligde Kalmak',
+                patience: Math.floor(Math.random() * 10) + 10 // 10-20
+            },
+            staff: generateStaff(tmpl.baseReputation),
+            facilities: {
+                trainingCenterName: getFacilityName(tmpl.name, 'Training'),
+                trainingLevel: facLevel,
+                youthAcademyName: getFacilityName(tmpl.name, 'Youth'),
+                youthLevel: Math.max(1, facLevel - 2), // Youth slightly worse usually
+                corporateLevel: facLevel
             },
 
             financialRecords: {
@@ -647,11 +694,8 @@ export const initializeTeams = (): Team[] => {
             },
             transferHistory: [], 
             
-            // --- NEW TACTICAL DEFAULTS ---
             formation: '4-4-2',
             mentality: Mentality.STANDARD,
-            
-            // Possession
             passing: PassingStyle.STANDARD,
             tempo: Tempo.STANDARD,
             width: Width.STANDARD,
@@ -669,8 +713,6 @@ export const initializeTeams = (): Team[] => {
             longShots: LongShots.STANDARD,
             crossing: CrossingType.STANDARD,
             gkDistSpeed: GKDistributionSpeed.STANDARD,
-
-            // Out of Possession
             pressingLine: PressingLine.MID,
             defLine: DefensiveLine.STANDARD,
             defLineMobility: DefLineMobility.BALANCED,
@@ -679,9 +721,7 @@ export const initializeTeams = (): Team[] => {
             tackling: Tackling.STANDARD,
             preventCrosses: PreventCrosses.STANDARD,
             pressFocus: PressingFocus.BALANCED,
-            
             timeWasting: TimeWasting.SOMETIMES,
-            
             tactic: TacticStyle.BALANCED,
             attackStyle: AttackStyle.MIXED,
             pressingStyle: PressingStyle.BALANCED,

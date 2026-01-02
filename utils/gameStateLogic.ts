@@ -1,4 +1,5 @@
 
+
 import { GameState, Team, MatchEvent, MatchStats, SeasonSummary, SeasonChampion, IncomingOffer } from '../types';
 import { 
     simulateAiDailyTransfers, 
@@ -13,6 +14,8 @@ import {
     recalculateTeamStrength,
     simulatePlayerDevelopmentAndAging,
     generateAiOffersForUser, // NEW IMPORT
+    getAssistantTrainingConfig, // NEW IMPORT
+    applyTraining // NEW IMPORT
 } from './gameEngine';
 import { isSameDay, addDays, isTransferWindowOpen, generateFixtures } from './calendarAndFixtures';
 import { getWeightedInjury } from './matchLogic';
@@ -52,6 +55,7 @@ export const processNextDayLogic = (
     let updatedTeams = [...currentState.teams];
     let updatedFixtures = [...currentState.fixtures];
     let updatedManager = currentState.manager ? { ...currentState.manager } : null;
+    let lastTrainingReport = currentState.lastTrainingReport; // Default to old report if no training today
 
     // Negatif Bütçe Cezası
     if (currentState.myTeamId && updatedManager) {
@@ -182,15 +186,30 @@ export const processNextDayLogic = (
          return { ...team, stats: { played, won, drawn, lost, gf, ga, points } };
     });
 
-    // Oyuncu İyileşmesi, Rastgele Sakatlıklar VE GELİŞİM/YAŞLANMA
+    // Oyuncu İyileşmesi, Rastgele Sakatlıklar, GELİŞİM/YAŞLANMA ve OTOMATİK ANTRENMAN
     updatedTeams = updatedTeams.map(t => {
-        // Takımın o gün antrenman yapıp yapmadığını kontrol et (Burada basitçe myTeam ise gameState'den, AI ise varsayılan true/false)
         const isMyTeam = t.id === currentState.myTeamId;
-        const didTrain = isMyTeam ? currentState.trainingPerformed : true; // AI takımları varsayılan olarak antrenman yapıyor sayılır
+        
+        let didTrain = isMyTeam ? currentState.trainingPerformed : true; // Default AI always trains
+        let currentTeam = t;
+
+        // --- AUTOMATIC TRAINING LOGIC FOR USER TEAM ---
+        if (isMyTeam && updatedManager && t.isTrainingDelegated) {
+            // If delegated, we force a training session for the user team right here
+            const aiConfig = getAssistantTrainingConfig(t, updatedManager);
+            const { updatedTeam, report } = applyTraining(t, aiConfig);
+            
+            // Recalculate strength after training
+            const recalculated = recalculateTeamStrength(updatedTeam);
+            
+            currentTeam = recalculated;
+            lastTrainingReport = report;
+            didTrain = true; // Mark as trained so development happens properly
+        }
 
         return {
-            ...t,
-            players: t.players.map(p => {
+            ...currentTeam,
+            players: currentTeam.players.map(p => {
                 let newP = { ...p };
                 
                 // 1. Injury Recovery
@@ -218,9 +237,13 @@ export const processNextDayLogic = (
                     }
                 }
                 
-                // 3. Condition Recovery
+                // 3. Condition Recovery (UPDATED FOR FASTER RECOVERY)
                 if (!newP.injury) {
-                    const baseRecovery = newP.stats.stamina / 4;
+                    // Temel iyileşme hızını artırdık.
+                    // Eskiden: stamina / 4 (Ortalama 3-4 puan/gün) -> 10 günde full.
+                    // Yeni: 10 + (stamina / 2) (Ortalama 15-20 puan/gün) -> 3-4 günde full.
+                    const baseRecovery = 10 + (newP.stats.stamina * 0.5);
+                    
                     let durationMultiplier = 1.0;
                     const lastDur = newP.lastInjuryDurationDays || 0;
                     if (lastDur > 0) {
@@ -228,8 +251,11 @@ export const processNextDayLogic = (
                         else if (lastDur >= 56) durationMultiplier = 0.45;
                         else if (lastDur >= 28) durationMultiplier = 0.7;
                     }
-                    if (isMyTeam && currentState.trainingPerformed) durationMultiplier *= 0.8; 
-                    else durationMultiplier *= 1.1; 
+                    
+                    // Antrenman yapıldıysa iyileşme yavaşlar, dinlenildiyse bonus alır
+                    if (didTrain) durationMultiplier *= 0.5; 
+                    else durationMultiplier *= 1.2; 
+
                     newP.condition = Math.min(100, (newP.condition || 0) + baseRecovery * durationMultiplier);
                 }
 
@@ -330,6 +356,7 @@ export const processNextDayLogic = (
         transferList: newTransferList,
         trainingPerformed: false,
         seasonChampion: seasonChampion,
+        lastTrainingReport: lastTrainingReport, // Persist or update report
         incomingOffers: newIncomingOffers
     };
 };

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { GameState } from '../types';
 import { getFormattedDate, isSameDay } from '../utils/calendarAndFixtures';
-import { Home, Users, Briefcase, DollarSign, Calendar, Dumbbell, Smartphone, Save, RotateCcw, X, Menu, ChevronLeft, ChevronRight, PlayCircle, Sun, Moon, Activity, PieChart, Shield, AlertCircle, Trophy } from 'lucide-react';
+import { Home, Users, Briefcase, DollarSign, Calendar, Dumbbell, Smartphone, Save, RotateCcw, X, Menu, ChevronLeft, ChevronRight, PlayCircle, Sun, Moon, Activity, PieChart, Shield, AlertCircle, Trophy, TrendingUp } from 'lucide-react';
 
 const NavItem = ({ id, label, icon: Icon, badge, onClick, currentView, isMatchMode, isAlert }: any) => (
     <button 
@@ -125,6 +125,7 @@ const Dashboard = ({
                         <NavItem id="finance" label="Finans" icon={PieChart} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} isAlert={isFinancialCrisis} />
                         <NavItem id="my_team_detail" label="Takım Profili" icon={Shield} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                         <NavItem id="training" label="Antrenman" icon={Dumbbell} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
+                        <NavItem id="development" label="Gelişim Merkezi" icon={TrendingUp} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                     </nav>
 
                     {/* Footer Notification */}

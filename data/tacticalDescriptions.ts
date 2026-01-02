@@ -12,167 +12,146 @@ export const TACTICAL_DESCRIPTIONS: Record<string, Record<string, TacticDetail>>
     'PASSING': {
         [PassingStyle.EXTREME_SHORT]: {
             label: 'Aşırı Kısa Pas',
-            description: 'Oyuncular risk almaktan kaçınır ve her zaman en yakın takım arkadaşına oynar. Tiki-taka için idealdir.',
-            pros: ['Topa sahip olma maksimuma çıkar.', 'Top kaybı azalır.'],
-            cons: ['Oyun sıkışabilir.', 'Hücum yavaşlar.']
+            description: 'Oyuncu uzun pas opsiyonunu neredeyse hiç düşünmez. En yakın 1-2 opsiyon dışında pas denemez. Baskı altındayken bile geri pas tercih edilir.',
+            pros: ['Pas deneme süresi uzar.', 'Top kaybı azalır (eğer pres yoksa).'],
+            cons: ['Rakip presi yüksekse arka bölgede top kaybı riski artar.', 'Şut sayısı düşer.']
         },
         [PassingStyle.SHORT]: {
             label: 'Kısa Pas',
-            description: 'Topu yere indirip kısa, güvenli paslarla oyun kurmaya yönlendirilir.',
-            pros: ['Oyunun kontrolü elimizde olur.', 'Rakibi yorar.'],
+            description: 'Oyuncular yakın + orta mesafeyi dengeler. Oyun merkezden akar.',
+            pros: ['Oyun kontrolü.', 'Merkez hakimiyeti.'],
             cons: ['Hücum temposu düşebilir.']
         },
         [PassingStyle.STANDARD]: {
             label: 'Standart',
-            description: 'Dengeli bir yaklaşım.',
-            pros: ['Esneklik sağlar.'],
-            cons: ['Belirgin bir kimlik oluşturmaz.']
+            description: 'Oyuncu profiline göre davranış sergilenir.',
+            pros: ['Esneklik.'],
+            cons: ['Belirgin bir stil yok.']
         },
         [PassingStyle.DIRECT]: {
             label: 'Dikine Uzun',
-            description: 'Topu kazanır kazanmaz en hızlı şekilde rakip kaleye gitmeye odaklanır.',
-            pros: ['Hızlı hücum fırsatları.', 'Rakibi hazırlıksız yakalar.'],
+            description: 'Oyuncu ilk boşluk gördüğünde ileri oynar. Orta saha pas bağlantıları azalır.',
+            pros: ['Hücum geçişleri hızlanır.', 'Şut süresi kısalır.'],
             cons: ['Top kaybı artar.']
         },
         [PassingStyle.PUMP_BALL]: {
             label: 'İleri Şişir',
-            description: 'Orta sahayı pas geçip topu doğrudan forvetlere uzun vurur.',
-            pros: ['Baskıdan çabuk çıkılır.', 'Kaos yaratır.'],
-            cons: ['Topun hakimiyeti tamamen rakibe geçebilir.']
+            description: 'Savunma -> orta saha pas bağlantısı iptal edilir. Her top forvet hattına gönderilmeye çalışılır.',
+            pros: ['Presi kırar.', 'Fiziksel forveti parlatır.'],
+            cons: ['Topa sahip olma % ciddi düşer.', 'OOS/OS etkisi düşer.', 'Rakip ikinci topları toplar.']
         }
     },
     'TEMPO': {
         [Tempo.VERY_SLOW]: {
             label: 'Çok Düşük',
-            description: 'Oyun adeta durma noktasına gelir. Amaç topu tutmak ve zaman öldürmektir.',
-            pros: ['Skoru korumak için mükemmel.', 'Kondisyon harcanmaz.'],
-            cons: ['Rakip savunma tamamen yerleşir.', 'Gol atmak çok zordur.']
+            description: 'Oyuncu bilerek gecikir. Şut ve dripling kararları ertelenir.',
+            pros: ['Pas yüzdesi artar.'],
+            cons: ['Pozisyon üretimi ciddi şekilde düşer.']
         },
         [Tempo.SLOW]: {
             label: 'Düşük',
-            description: 'Sabırlı oyun. Boşluk bulana kadar paslaşılır.',
-            pros: ['Top kontrolü artar.'],
-            cons: ['Heyecan düşer.']
+            description: 'Sabırlı set oyunu.',
+            pros: ['Top kontrolü.'],
+            cons: ['Yavaş hücum.']
         },
         [Tempo.STANDARD]: {
             label: 'Standart',
-            description: 'Dengeli tempo.',
-            pros: ['Duruma göre hızlanır.'],
+            description: 'Oyuncu profili belirleyicidir.',
+            pros: ['Denge.'],
             cons: ['Yok.']
         },
         [Tempo.HIGH]: {
             label: 'Yüksek',
-            description: 'Topu hızlı dolaştırır ve rakibi hataya zorlar.',
+            description: 'Karar alma süresi kısalır. Risk alma artar.',
             pros: ['Rakip dengesiz yakalanır.'],
-            cons: ['Pas hatası riski artar.']
+            cons: ['Karar alma düşükse pas/şut hatası artar.']
         },
         [Tempo.BEAST_MODE]: {
             label: 'Hayvan Gibi',
-            description: 'Oyuncular ciğerleri patlayana kadar koşar ve oyunu hızlandırır.',
-            pros: ['Rakibi boğar.', 'Taraftarı coşturur.'],
-            cons: ['Kondisyon 60. dakikada biter.', 'Sakatlık riski çok yüksek.']
+            description: 'Her oyuncu maksimum efor sarf eder. Pres + tempo birleşir.',
+            pros: ['Rakip hata yapar.', 'Baskın oyun.'],
+            cons: ['55-65 dk sonrası teknik düşüş.', 'Konsantrasyon kaybı.', 'Sakatlık ihtimali artar.']
         }
     },
     'WIDTH': {
         [Width.VERY_NARROW]: {
             label: 'Çok Dar Alan',
-            description: 'Tüm takım merkeze yığılır.',
-            pros: ['Merkezde mutlak üstünlük.'],
-            cons: ['Kanatlar otobana döner.']
+            description: 'Kanatlar merkeze yaklaşır, bekler içe girer.',
+            pros: ['Merkez kalabalık olur.'],
+            cons: ['Kanattan gol yeme riski artar.']
         },
         [Width.NARROW]: {
             label: 'Dar Alan',
-            description: 'Merkez ağırlıklı oyun.',
+            description: 'Merkezi kapatır.',
             pros: ['Kısa pasa uygun.'],
             cons: ['Genişlik kullanılamaz.']
         },
         [Width.STANDARD]: {
             label: 'Standart',
-            description: 'Dengeli saha kullanımı.',
-            pros: ['Denge.'],
+            description: 'Dengeli.',
+            pros: ['Normal.'],
             cons: ['Yok.']
         },
         [Width.WIDE]: {
             label: 'Geniş Alan',
-            description: 'Kanat oyuncuları çizgiye basar.',
-            pros: ['Rakip savunma açılır.'],
-            cons: ['Merkezde boşluklar olabilir.']
+            description: 'Kanatları kullanır.',
+            pros: ['Rakibi açar.'],
+            cons: ['Merkez boşalabilir.']
         },
         [Width.VERY_WIDE]: {
             label: 'Çok Geniş Alan',
-            description: 'Sahayı enlemesine sonuna kadar kullanır.',
-            pros: ['Uzun paslar için alan açar.'],
-            cons: ['Oyuncular arası mesafe çok artar, paslaşmak zorlaşır.']
+            description: 'Oyuncular arası mesafe açılır.',
+            pros: ['Uzun pas alanı.'],
+            cons: ['Pas isabeti düşer.']
         }
     },
     'ATTACK_TRANSITION': {
-        [AttackingTransition.KEEP_SHAPE]: { label: 'Dağılımı Koru', description: 'Topu kapınca pozisyonlarını bozmazlar.', pros: ['Güvenli.'], cons: ['Kontra şansı azalır.'] },
-        [AttackingTransition.STANDARD]: { label: 'Standart', description: 'Dengeli çıkış.', pros: ['Denge.'], cons: ['Yok.'] },
-        [AttackingTransition.PUSH_FORWARD]: { label: 'İleri Çık', description: 'Top kazanılınca bekler ve orta saha hemen ileri koşar.', pros: ['Hızlı hücum.'], cons: ['Savunma arkası boş kalır.'] }
+        [AttackingTransition.KEEP_SHAPE]: { label: 'Dağılımı Koru', description: 'Herkes pozisyonuna döner.', pros: ['Güvenli.'], cons: ['Kontra şansı düşer.'] },
+        [AttackingTransition.STANDARD]: { label: 'Standart', description: 'Normal.', pros: ['Denge.'], cons: ['Yok.'] },
+        [AttackingTransition.PUSH_FORWARD]: { label: 'İleri Çık', description: 'Bek + OS + OOS ileri fırlar.', pros: ['Kontra şansı artar.'], cons: ['Savunma arkası risk artar.'] }
     },
     'CREATIVE': {
-        [CreativeFreedom.DISCIPLINED]: { label: 'Disiplinli', description: 'Taktik dışına çıkılmaz.', pros: ['Organizasyon bozulmaz.'], cons: ['Sürpriz yaratılmaz.'] },
+        [CreativeFreedom.DISCIPLINED]: { label: 'Disiplinli', description: 'Oyuncu "güvenli"yi seçer. Riskli pas/şut nadirdir.', pros: ['Hata azalır.'], cons: ['Sürpriz azalır.'] },
         [CreativeFreedom.STANDARD]: { label: 'Standart', description: 'Dengeli.', pros: ['Normal.'], cons: ['Yok.'] },
-        [CreativeFreedom.CREATIVE]: { label: 'Yaratıcı', description: 'Oyuncular inisiyatif alır.', pros: ['Kilidi açabilir.'], cons: ['Disiplin sorunu olabilir.'] }
-    },
-    'SET_PIECE': {
-        [SetPiecePlay.RECYCLE]: { label: 'Oyun İçinde Kalsın', description: 'Duran topta riske girmez.', pros: ['Kontra yemezsiniz.'], cons: ['Gol şansı düşer.'] },
-        [SetPiecePlay.TRY_SCORE]: { label: 'Kazanmaya Çalış', description: 'Stoperler de ileri çıkar.', pros: ['Gol şansı artar.'], cons: ['Kontra riski.'] }
-    },
-    'PLAY_STRATEGY': {
-        [PlayStrategy.TRY_BREAK]: { label: 'Presi Kırmaya Çalış', description: 'Pasla çıkmaya çalışır.', pros: ['Top bizde kalır.'], cons: ['Hata riski.'] },
-        [PlayStrategy.STANDARD]: { label: 'Standart', description: 'Dengeli.', pros: ['Denge.'], cons: ['Yok.'] },
-        [PlayStrategy.BREAK_PRESS]: { label: 'Presi Kır', description: 'Gerekirse uzun vurarak baskıdan kurtulur.', pros: ['Güvenli.'], cons: ['Top kaybı.'] }
-    },
-    'GOAL_KICK': {
-        [GoalKickType.SHORT]: { label: 'Kısa', description: 'Stoperlere pas.', pros: ['Oyun kurma.'], cons: ['Pres yeme riski.'] },
-        [GoalKickType.STANDARD]: { label: 'Standart', description: 'Duruma göre.', pros: ['Esnek.'], cons: ['Yok.'] },
-        [GoalKickType.LONG]: { label: 'Uzun', description: 'İleri vurur.', pros: ['Güvenli.'], cons: ['Hava topu mücadelesi.'] }
-    },
-    'GK_DIST_TARGET': {
-        [GKDistributionTarget.CBS]: { label: 'Stoperlere', description: 'Defanstan oyun kurar.', pros: ['Kontrollü.'], cons: ['Riskli.'] },
-        [GKDistributionTarget.FULLBACKS]: { label: 'Beklere', description: 'Kanatlardan kurar.', pros: ['Genişlik.'], cons: ['Taç çizgisi sıkışması.'] },
-        [GKDistributionTarget.MIDFIELD]: { label: 'Orta Saha', description: 'Merkeze oynar.', pros: ['Oyunun kalbi.'], cons: ['Top kaybı tehlikeli.'] },
-        [GKDistributionTarget.WINGS]: { label: 'Kanatlar', description: 'Açıklara uzun.', pros: ['Hızlı atak.'], cons: ['İsabet oranı düşük.'] },
-        [GKDistributionTarget.STRIKER]: { label: 'Forvete', description: 'Pivot santrafora.', pros: ['İndirilen toplar.'], cons: ['Fizik güç ister.'] }
+        [CreativeFreedom.CREATIVE]: { label: 'Yaratıcı', description: 'Oyuncu düşük ihtimalli ama tehlikeli aksiyon dener.', pros: ['Kilidi açar.'], cons: ['Karar alma düşükse saçma denemeler olur.'] }
     },
     'SUPPORT_RUNS': {
-        [SupportRuns.BALANCED]: { label: 'Dengeli', description: 'Fırsat bulunca.', pros: ['Denge.'], cons: ['Yok.'] },
-        [SupportRuns.RIGHT]: { label: 'Sağdan', description: 'Sağ bek bindirir.', pros: ['Sağ kanat aktif.'], cons: ['Sağ arka boş.'] },
-        [SupportRuns.LEFT]: { label: 'Soldan', description: 'Sol bek bindirir.', pros: ['Sol kanat aktif.'], cons: ['Sol arka boş.'] },
-        [SupportRuns.CENTER]: { label: 'Ortadan', description: 'Merkezden deler.', pros: ['Kalabalık hücum.'], cons: ['Kanatlar yalnız kalır.'] }
+        [SupportRuns.BALANCED]: { label: 'Dengeli', description: 'Normal.', pros: ['Denge.'], cons: ['Yok.'] },
+        [SupportRuns.RIGHT]: { label: 'Sağdan', description: 'Sağ bek + kanat daha sık bindirir.', pros: ['Sağ kanat aktif.'], cons: ['Sol taraf savunmada yalnız kalır.'] },
+        [SupportRuns.LEFT]: { label: 'Soldan', description: 'Sol bek + kanat daha sık bindirir.', pros: ['Sol kanat aktif.'], cons: ['Sağ taraf savunmada yalnız kalır.'] },
+        [SupportRuns.CENTER]: { label: 'Ortadan', description: 'OS/OOS ceza sahasına girer.', pros: ['Göbekten gol ihtimali artar.'], cons: ['Kanatlar yalnız kalır.'] }
     },
     'DRIBBLING': {
-        [Dribbling.DISCOURAGE]: { label: 'Vazgeçir', description: 'Pas öncelikli.', pros: ['Top kaybı azalır.'], cons: ['Yaratıcılık düşer.'] },
+        [Dribbling.DISCOURAGE]: { label: 'Vazgeçir', description: 'Oyuncu driplingden kaçar, pas tercih edilir.', pros: ['Top bizde kalır.'], cons: ['Yaratıcılık düşer.'] },
         [Dribbling.STANDARD]: { label: 'Standart', description: 'Normal.', pros: ['Denge.'], cons: ['Yok.'] },
-        [Dribbling.ENCOURAGE]: { label: 'Destekle', description: 'Çalım serbest.', pros: ['Adam eksiltme.'], cons: ['Top kaybı artar.'] }
+        [Dribbling.ENCOURAGE]: { label: 'Destekle', description: 'Oyuncu bire bir dener.', pros: ['Adam eksiltir.'], cons: ['Dripling düşükse top kaybı artar.'] }
     },
     'FOCUS_AREA': {
-        [FocusArea.STANDARD]: { label: 'Standart', description: 'Karışık.', pros: ['Tahmin edilemez.'], cons: ['Yok.'] },
-        [FocusArea.LEFT]: { label: 'Soldan', description: 'Sol kanat ağırlıklı.', pros: ['Solu zorlar.'], cons: ['Tek yönlü.'] },
-        [FocusArea.RIGHT]: { label: 'Sağdan', description: 'Sağ kanat ağırlıklı.', pros: ['Sağı zorlar.'], cons: ['Tek yönlü.'] },
-        [FocusArea.CENTER]: { label: 'Ortadan', description: 'Göbekten.', pros: ['Kısa yol.'], cons: ['Kalabalık.'] },
-        [FocusArea.BOTH_WINGS]: { label: 'Her İki Kanat', description: 'Kanatları kullanır.', pros: ['Genişlik.'], cons: ['Merkez boşalır.'] }
+        [FocusArea.STANDARD]: { label: 'Standart', description: 'Normal.', pros: ['Denge.'], cons: ['Yok.'] },
+        [FocusArea.LEFT]: { label: 'Soldan', description: 'Hücum aksiyonlarının %60-70’i sol kanattan.', pros: ['Solu zorlar.'], cons: ['Rakip önlem alırsa verim düşer.'] },
+        [FocusArea.RIGHT]: { label: 'Sağdan', description: 'Hücum aksiyonlarının %60-70’i sağ kanattan.', pros: ['Sağı zorlar.'], cons: ['Rakip önlem alırsa verim düşer.'] },
+        [FocusArea.CENTER]: { label: 'Ortadan', description: 'Merkezden deler.', pros: ['Kısa yol.'], cons: ['Kalabalık.'] },
+        [FocusArea.BOTH_WINGS]: { label: 'Her İki Kanat', description: 'Orta sayısı artar.', pros: ['Genişlik.'], cons: ['Merkez savunma zayıflar.'] }
     },
     'PASS_TARGET': {
-        [PassTarget.FEET]: { label: 'Ayağına Ver', description: 'Garantili pas.', pros: ['Top bizde kalır.'], cons: ['Yavaş oyun.'] },
+        [PassTarget.FEET]: { label: 'Ayağına Ver', description: 'Ayağa pas.', pros: ['Teknik oyuncular parlar.'], cons: ['Yavaş oyun.'] },
         [PassTarget.STANDARD]: { label: 'Standart', description: 'Normal.', pros: ['Denge.'], cons: ['Yok.'] },
-        [PassTarget.SPACE]: { label: 'Koşu Yoluna', description: 'Boşluğa pas.', pros: ['Tehlike yaratır.'], cons: ['İsabet oranı düşer.'] }
+        [PassTarget.SPACE]: { label: 'Koşu Yoluna', description: 'Koşu yoluna pas.', pros: ['Hızlı oyuncular parlar.'], cons: ['İsabet oranı düşer.'] }
     },
     'PATIENCE': {
-        [Patience.EARLY_CROSS]: { label: 'Fazla Bekletmeden Orta Aç', description: 'Kenara inince hemen orta.', pros: ['Sürpriz gol.'], cons: ['Hazırlıksız hücum.'] },
+        [Patience.EARLY_CROSS]: { label: 'Fazla Bekletmeden Orta Aç', description: 'İlk fırsatta orta.', pros: ['Sürpriz gol.'], cons: ['Gelişigüzel hücum.'] },
         [Patience.STANDARD]: { label: 'Standart', description: 'Normal.', pros: ['Denge.'], cons: ['Yok.'] },
-        [Patience.WORK_INTO_BOX]: { label: 'Paslaşarak Gir', description: 'Net pozisyon arar.', pros: ['Kesin gol şansı.'], cons: ['Şut sayısı düşebilir.'] }
+        [Patience.WORK_INTO_BOX]: { label: 'Paslaşarak Gir', description: 'Şut gecikir, net pozisyon aranır.', pros: ['Garanti gol.'], cons: ['Şut sayısı düşebilir.'] }
     },
     'LONG_SHOTS': {
-        [LongShots.DISCOURAGE]: { label: 'Vazgeçir', description: 'Ceza sahasına girmeye çalış.', pros: ['Garantili oyun.'], cons: ['Kapanan savunmayı açamaz.'] },
+        [LongShots.DISCOURAGE]: { label: 'Vazgeçir', description: 'Yaklaş.', pros: ['Garantili.'], cons: ['Kapananı açamaz.'] },
         [LongShots.STANDARD]: { label: 'Standart', description: 'Normal.', pros: ['Denge.'], cons: ['Yok.'] },
-        [LongShots.ENCOURAGE]: { label: 'Destekle', description: 'Gördüğün yerden vur.', pros: ['Sürpriz goller.'], cons: ['Toplar dağa taşa gidebilir.'] }
+        [LongShots.ENCOURAGE]: { label: 'Destekle', description: 'Ceza sahası dışı şut denemeleri artar.', pros: ['Sürpriz goller.'], cons: ['Uzaktan şut düşükse toplar tribüne gider.'] }
     },
     'CROSSING': {
-        [CrossingType.LOW]: { label: 'Yerden', description: 'Sert yerden orta.', pros: ['Hızlı forvetler için.'], cons: ['Savunma kesebilir.'] },
+        [CrossingType.LOW]: { label: 'Yerden', description: 'Yerden sert orta.', pros: ['Hızlı forvetler için.'], cons: ['Savunma kesebilir.'] },
         [CrossingType.STANDARD]: { label: 'Standart', description: 'Karışık.', pros: ['Denge.'], cons: ['Yok.'] },
-        [CrossingType.HIGH]: { label: 'Havadan', description: 'Arka direğe şişir.', pros: ['Pivot forvetler için.'], cons: ['Kaleci toplayabilir.'] }
+        [CrossingType.HIGH]: { label: 'Havadan', description: 'Havadan orta.', pros: ['Pivot forvetler için.'], cons: ['Kaleci toplayabilir.'] }
     },
     'GK_SPEED': {
         [GKDistributionSpeed.SLOW]: { label: 'Yavaş', description: 'Oyunu soğutur.', pros: ['Takım yerleşir.'], cons: ['Kontra şansı yok.'] },

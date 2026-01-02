@@ -1,36 +1,328 @@
 
-import React from 'react';
-import { Check, Swords, Shield, Dumbbell } from 'lucide-react';
 
-const TrainingView = ({ onTrain, performed }: { onTrain: (type: 'ATTACK' | 'DEFENSE' | 'PHYSICAL') => void, performed: boolean }) => {
+
+
+
+import React, { useState, useEffect } from 'react';
+import { Team, TrainingConfig, TrainingType, TrainingIntensity, Player, ManagerProfile, TrainingReportItem } from '../types';
+import { Check, Swords, Shield, Dumbbell, Brain, Crosshair, Zap, Activity, Users, AlertTriangle, Calendar, Info, Play, ClipboardList, TrendingUp, Target, UserCheck, ToggleLeft, ToggleRight, Lock } from 'lucide-react';
+import PlayerFace from '../components/shared/PlayerFace';
+import { useGameState } from '../hooks/useGameState'; // Import for access to report
+
+interface TrainingViewProps {
+    onTrain: (config: TrainingConfig) => void;
+    performed: boolean;
+    team: Team;
+    manager: ManagerProfile;
+    onGoToDevelopment?: () => void; // New prop for navigation
+    onToggleDelegation?: () => void; // New toggle prop
+}
+
+const TrainingView: React.FC<TrainingViewProps> = ({ onTrain, performed, team, manager, onGoToDevelopment, onToggleDelegation }) => {
+    // Access global state for report
+    const { gameState } = useGameState();
+    const lastReport = gameState.lastTrainingReport || [];
+
+    // Initialize state with existing team config or defaults
+    const [mainFocus, setMainFocus] = useState<TrainingType>(team.trainingConfig?.mainFocus || TrainingType.TACTICAL);
+    const [subFocus, setSubFocus] = useState<TrainingType>(team.trainingConfig?.subFocus || TrainingType.PHYSICAL);
+    const [intensity, setIntensity] = useState<TrainingIntensity>(team.trainingConfig?.intensity || TrainingIntensity.STANDARD);
+    
+    // Check delegation status
+    const isDelegated = team.isTrainingDelegated || false;
+
+    // Derived Staff Quality (Mock or Real)
+    // We use staffRelations to simulate coach quality
+    const assistant = manager.staffRelations.find(s => s.role === 'Yardımcı Antrenör');
+    const fitnessCoach = manager.staffRelations.find(s => s.role === 'Kondisyoner');
+    
+    const assistantQuality = assistant ? assistant.value : 50;
+    const fitnessQuality = fitnessCoach ? fitnessCoach.value : 50;
+
+    const trainingOptions = [
+        { 
+            id: TrainingType.ATTACK, 
+            icon: Swords, 
+            color: 'text-purple-500', 
+            bg: 'bg-purple-500/10 border-purple-500/50',
+            desc: 'Bitiricilik, topsuz alan ve soğukkanlılık artar.',
+            sideEffect: 'Savunma organizasyonu zayıflar.',
+            link: 'Ofansif taktiklerde gol yollarını açar.'
+        },
+        { 
+            id: TrainingType.DEFENSE, 
+            icon: Shield, 
+            color: 'text-blue-500', 
+            bg: 'bg-blue-500/10 border-blue-500/50',
+            desc: 'Pozisyon alma, markaj ve top kapma artar.',
+            sideEffect: 'Hücum yaratıcılığı düşer.',
+            link: 'Otobüs taktiklerinde duvar örer.'
+        },
+        { 
+            id: TrainingType.PHYSICAL, 
+            icon: Dumbbell, 
+            color: 'text-green-500', 
+            bg: 'bg-green-500/10 border-green-500/50',
+            desc: 'Dayanıklılık, güç ve hız artar.',
+            sideEffect: 'Sakatlık riski ve yorgunluk.',
+            link: 'Yüksek tempo cezasını azaltır.'
+        },
+        { 
+            id: TrainingType.TACTICAL, 
+            icon: Brain, 
+            color: 'text-yellow-500', 
+            bg: 'bg-yellow-500/10 border-yellow-500/50',
+            desc: 'Takım uyumu ve karar alma artar.',
+            sideEffect: 'Yok. (Kritik önem)',
+            link: 'Pas hatalarını ve ofsayt riskini azaltır.'
+        },
+        { 
+            id: TrainingType.MATCH_PREP, 
+            icon: Crosshair, 
+            color: 'text-slate-400', 
+            bg: 'bg-slate-500/10 border-slate-500/50',
+            desc: 'Konsantrasyon ve maç başı performansı.',
+            sideEffect: 'Uzun vadeli gelişim yok.',
+            link: 'Derbi öncesi ekstra odak sağlar.'
+        },
+        { 
+            id: TrainingType.SET_PIECES, // ADDED
+            icon: Target, 
+            color: 'text-orange-500', 
+            bg: 'bg-orange-500/10 border-orange-500/50',
+            desc: 'Frikik, korner ve penaltı organizasyonları.',
+            sideEffect: 'Akan oyunda tempo düşer.',
+            link: 'Kilitlenen maçları duran topla çözer.'
+        }
+    ];
+
+    const getIntensityColor = (i: TrainingIntensity) => {
+        if (i === TrainingIntensity.LOW) return 'text-blue-400';
+        if (i === TrainingIntensity.STANDARD) return 'text-yellow-400';
+        return 'text-red-500';
+    };
+
+    const handleConfirm = () => {
+        onTrain({
+            mainFocus,
+            subFocus,
+            intensity
+        });
+    };
+
+    // New Delegation Logic
+    const handleToggleDelegation = () => {
+        if (onToggleDelegation) {
+            onToggleDelegation();
+        }
+    };
+
     return (
-        <div className="flex flex-col items-center justify-center h-full space-y-8">
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">Haftalık Antrenman</h2>
-            {performed ? (
-                <div className="bg-green-100 dark:bg-green-900/50 border border-green-500 p-8 rounded-xl text-center">
-                    <Check size={48} className="mx-auto text-green-600 dark:text-green-400 mb-4"/>
-                    <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Antrenman Tamamlandı</h3>
-                    <p className="text-slate-500 dark:text-slate-300 mt-2">Oyuncular dinlenmeye çekildi.</p>
+        <div className="h-full flex flex-col bg-slate-900 text-white overflow-hidden relative">
+            
+            {/* Header: Overview & Controls */}
+            <div className="p-6 border-b border-slate-800 bg-slate-900 shrink-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 className="text-2xl font-bold flex items-center gap-3">
+                        <Activity className="text-yellow-500"/> Haftalık Antrenman Programı
+                    </h2>
+                    <p className="text-slate-400 text-sm mt-1">Takımın fiziksel ve taktiksel gelişimini planla.</p>
                 </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full">
-                    <button onClick={() => onTrain('ATTACK')} className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 p-8 rounded-xl flex flex-col items-center transition group shadow-sm">
-                        <Swords size={48} className="text-blue-500 mb-4 group-hover:scale-110 transition-transform"/>
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Hücum Çalışması</h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 text-center">Şut, Bitiricilik ve Pas özelliklerini geliştirir.</p>
-                    </button>
-                    <button onClick={() => onTrain('DEFENSE')} className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 p-8 rounded-xl flex flex-col items-center transition group shadow-sm">
-                        <Shield size={48} className="text-red-500 mb-4 group-hover:scale-110 transition-transform"/>
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Savunma Çalışması</h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 text-center">Savunma, Kafa ve Güç özelliklerini geliştirir.</p>
-                    </button>
-                    <button onClick={() => onTrain('PHYSICAL')} className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 p-8 rounded-xl flex flex-col items-center transition group shadow-sm">
-                        <Dumbbell size={48} className="text-yellow-500 mb-4 group-hover:scale-110 transition-transform"/>
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Fiziksel Yükleme</h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 text-center">Hız, Dayanıklılık ve Kondisyon yüklemesi.</p>
-                    </button>
+
+                <div className={`flex items-center gap-6 bg-slate-800 p-2 rounded-lg border border-slate-700 transition-opacity ${isDelegated ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className="text-right px-2">
+                        <div className="text-xs font-bold text-slate-500 uppercase">Antrenman Yoğunluğu</div>
+                        <div className={`text-lg font-black ${getIntensityColor(intensity)}`}>{intensity}</div>
+                    </div>
+                    <div className="flex gap-1">
+                        <button onClick={() => setIntensity(TrainingIntensity.LOW)} className={`p-2 rounded ${intensity === TrainingIntensity.LOW ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`} title="Düşük"><Zap size={16} className={intensity === TrainingIntensity.LOW ? 'fill-white' : ''}/></button>
+                        <button onClick={() => setIntensity(TrainingIntensity.STANDARD)} className={`p-2 rounded ${intensity === TrainingIntensity.STANDARD ? 'bg-yellow-600 text-white' : 'bg-slate-700 text-slate-400'}`} title="Standart"><Zap size={16} className={intensity === TrainingIntensity.STANDARD ? 'fill-white' : ''}/></button>
+                        <button onClick={() => setIntensity(TrainingIntensity.HIGH)} className={`p-2 rounded ${intensity === TrainingIntensity.HIGH ? 'bg-red-600 text-white' : 'bg-slate-700 text-slate-400'}`} title="Yüksek"><Zap size={16} className={intensity === TrainingIntensity.HIGH ? 'fill-white' : ''}/></button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Delegation Banner Overlay if Active */}
+            {isDelegated && (
+                <div className="absolute top-[88px] left-0 right-0 z-20 flex justify-center pointer-events-none">
+                    <div className="bg-blue-600 text-white px-6 py-2 rounded-b-lg shadow-lg flex items-center gap-2 font-bold text-sm border-x border-b border-blue-400">
+                        <UserCheck size={18} />
+                        Antrenman programı teknik heyet tarafından otomatik olarak yönetiliyor.
+                    </div>
                 </div>
             )}
+
+            {/* Main Content Grid */}
+            <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 custom-scrollbar relative">
+                
+                {/* Overlay Disable Interaction if Delegated */}
+                {isDelegated && (
+                    <div className="absolute inset-0 bg-slate-900/60 z-10 backdrop-blur-[1px] rounded-xl flex items-center justify-center">
+                        <div className="bg-slate-800 p-8 rounded-xl border border-slate-600 shadow-2xl text-center max-w-md">
+                            <Lock size={48} className="mx-auto text-blue-500 mb-4"/>
+                            <h3 className="text-xl font-bold text-white mb-2">Otomatik Yönetim Aktif</h3>
+                            <p className="text-slate-400 mb-6">
+                                Antrenman programı şu anda teknik direktör yardımcısı ve antrenör ekibi tarafından belirleniyor. Manuel müdahale yapmak için yönetimi devralın.
+                            </p>
+                            <button 
+                                onClick={handleToggleDelegation}
+                                className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-bold flex items-center justify-center gap-2 w-full transition pointer-events-auto"
+                            >
+                                <ToggleLeft size={20}/> Yönetimi Devral (İptal Et)
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* LEFT: SCHEDULE SELECTOR (Col 8) */}
+                <div className={`lg:col-span-8 space-y-6 ${isDelegated ? 'blur-sm' : ''}`}>
+                    
+                    {/* Focus Selection Cards */}
+                    <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+                        <h3 className="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
+                            <Calendar size={16}/> Odak Alanları
+                        </h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* Main Focus */}
+                            <div>
+                                <div className="text-xs font-bold text-yellow-500 mb-2 uppercase tracking-wider">Ana Odak (Sabah)</div>
+                                <div className="space-y-2">
+                                    {trainingOptions.map(opt => (
+                                        <button
+                                            key={`main-${opt.id}`}
+                                            onClick={() => setMainFocus(opt.id)}
+                                            disabled={performed}
+                                            className={`w-full text-left p-3 rounded-lg border transition-all flex items-center gap-3 relative overflow-hidden group ${mainFocus === opt.id ? `${opt.bg} shadow-lg` : 'bg-slate-700/50 border-slate-600 hover:bg-slate-700'}`}
+                                        >
+                                            <div className={`p-2 rounded-full bg-slate-900 ${opt.color}`}>
+                                                <opt.icon size={20}/>
+                                            </div>
+                                            <div className="flex-1 z-10">
+                                                <div className={`font-bold ${opt.color}`}>{opt.id}</div>
+                                                <div className="text-[10px] text-slate-400">{opt.desc}</div>
+                                            </div>
+                                            {mainFocus === opt.id && <Check className={`ml-auto ${opt.color}`} size={20}/>}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Sub Focus */}
+                            <div>
+                                <div className="text-xs font-bold text-blue-400 mb-2 uppercase tracking-wider">Yan Odak (Öğleden Sonra)</div>
+                                <div className="space-y-2">
+                                    {trainingOptions.map(opt => (
+                                        <button
+                                            key={`sub-${opt.id}`}
+                                            onClick={() => setSubFocus(opt.id)}
+                                            disabled={performed}
+                                            className={`w-full text-left p-3 rounded-lg border transition-all flex items-center gap-3 relative overflow-hidden group ${subFocus === opt.id ? `${opt.bg} shadow-lg` : 'bg-slate-700/50 border-slate-600 hover:bg-slate-700'}`}
+                                        >
+                                            <div className={`p-2 rounded-full bg-slate-900 ${opt.color} opacity-70`}>
+                                                <opt.icon size={16}/>
+                                            </div>
+                                            <div className="flex-1 z-10">
+                                                <div className={`font-bold ${opt.color} opacity-90`}>{opt.id}</div>
+                                            </div>
+                                            {subFocus === opt.id && <Check className={`ml-auto ${opt.color}`} size={16}/>}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Active Effects Panel */}
+                    <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 flex flex-col md:flex-row gap-6">
+                        <div className="flex-1">
+                            <h3 className="text-xs font-bold text-green-500 uppercase mb-3 flex items-center gap-1"><Zap size={14}/> Taktiksel Bağlantı (Bonus)</h3>
+                            <div className="text-sm text-slate-300 bg-slate-900/50 p-3 rounded border-l-4 border-green-500">
+                                {trainingOptions.find(o => o.id === mainFocus)?.link}
+                            </div>
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="text-xs font-bold text-red-500 uppercase mb-3 flex items-center gap-1"><AlertTriangle size={14}/> Yan Etkiler (Risk)</h3>
+                            <div className="text-sm text-slate-300 bg-slate-900/50 p-3 rounded border-l-4 border-red-500">
+                                {trainingOptions.find(o => o.id === mainFocus)?.sideEffect}
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                {/* RIGHT: STAFF & PLAYERS (Col 4) */}
+                <div className={`lg:col-span-4 space-y-6 ${isDelegated ? 'blur-sm' : ''}`}>
+                    
+                    {/* Action Buttons */}
+                    <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 text-center space-y-3">
+                        {performed ? (
+                            <div className="text-green-500 font-bold flex flex-col items-center gap-2">
+                                <Check size={48} className="bg-green-900/20 p-2 rounded-full"/>
+                                <span>Bugünkü Antrenman Tamamlandı</span>
+                            </div>
+                        ) : (
+                            <>
+                                <button 
+                                    onClick={handleConfirm}
+                                    className="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-black text-lg py-4 rounded-xl shadow-lg shadow-yellow-900/20 flex items-center justify-center gap-2 transition-transform hover:scale-105 active:scale-95"
+                                >
+                                    <Play size={24} fill="black"/> Programı Uygula
+                                </button>
+                                
+                                <button 
+                                    onClick={handleToggleDelegation}
+                                    className="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all border border-slate-600 hover:border-slate-500 text-sm"
+                                    title="Siz iptal edene kadar antrenmanları teknik heyet otomatik yönetir."
+                                >
+                                    <ToggleRight size={18} className="text-green-400"/> Otomatik Antrenman (Aç)
+                                </button>
+                            </>
+                        )}
+                    </div>
+
+                    {/* Last Training Report (Feedback) */}
+                    <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">
+                            <ClipboardList size={14}/> Son Antrenman Raporu
+                        </h3>
+                        <div className="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
+                            {lastReport.length === 0 ? (
+                                <div className="text-slate-500 text-xs italic text-center py-4">Henüz rapor yok.</div>
+                            ) : (
+                                lastReport.map((item, idx) => (
+                                    <div key={idx} className={`p-2 rounded text-xs border-l-4 flex gap-2 ${
+                                        item.type === 'POSITIVE' ? 'bg-green-900/20 border-green-500 text-green-300' :
+                                        item.type === 'NEGATIVE' ? 'bg-red-900/20 border-red-500 text-red-300' :
+                                        'bg-slate-700/50 border-slate-500 text-slate-300'
+                                    }`}>
+                                        <div className="font-bold shrink-0">{item.playerName}:</div>
+                                        <div>{item.message}</div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Development Center Link */}
+                    <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 flex flex-col items-center text-center">
+                        <div className="bg-blue-900/30 p-3 rounded-full mb-3 text-blue-400">
+                            <TrendingUp size={32}/>
+                        </div>
+                        <h3 className="text-lg font-bold text-white mb-2">Bireysel Gelişim</h3>
+                        <p className="text-xs text-slate-400 mb-4">
+                            Oyuncularınıza özel programlar hazırlayın ve gelişimlerini yakından takip edin.
+                        </p>
+                        <button 
+                            onClick={onGoToDevelopment}
+                            className="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg transition border border-slate-600 flex items-center justify-center gap-2 text-sm pointer-events-auto"
+                        >
+                            Gelişim Merkezine Git <Play size={12}/>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
         </div>
     );
 };

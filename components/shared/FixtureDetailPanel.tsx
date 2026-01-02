@@ -13,9 +13,10 @@ interface FixtureDetailPanelProps {
     onClose?: () => void;
     variant?: 'modal' | 'embedded'; // New Prop
     myTeamId?: string; // Added to identify user team
+    onTeamClick?: (teamId: string) => void; // NEW: Callback for clicking teams
 }
 
-const FixtureDetailPanel: React.FC<FixtureDetailPanelProps> = ({ fixture, homeTeam, awayTeam, allFixtures, onClose, variant = 'modal', myTeamId }) => {
+const FixtureDetailPanel: React.FC<FixtureDetailPanelProps> = ({ fixture, homeTeam, awayTeam, allFixtures, onClose, variant = 'modal', myTeamId, onTeamClick }) => {
     const dateInfo = getFormattedDate(fixture.date);
     const time = "20:00"; // Standart saat
 
@@ -166,10 +167,14 @@ const FixtureDetailPanel: React.FC<FixtureDetailPanelProps> = ({ fixture, homeTe
 
                     {/* Matchup & Score */}
                     <div className="relative z-10 w-full flex items-start justify-between px-1">
-                        {/* Home */}
-                        <div className="flex flex-col items-center w-1/3">
-                            <img src={homeTeam.logo} className="w-16 h-16 object-contain drop-shadow-xl mb-2" />
-                            <span className="text-white font-bold text-sm md:text-base leading-tight truncate w-full mb-2">{homeTeam.name}</span>
+                        {/* Home - CLICKABLE */}
+                        <div 
+                            className="flex flex-col items-center w-1/3 cursor-pointer hover:scale-105 transition-transform group"
+                            onClick={() => onTeamClick && onTeamClick(homeTeam.id)}
+                            title={`${homeTeam.name} profiline git`}
+                        >
+                            <img src={homeTeam.logo} className="w-16 h-16 object-contain drop-shadow-xl mb-2 group-hover:brightness-110" />
+                            <span className="text-white font-bold text-sm md:text-base leading-tight truncate w-full mb-2 group-hover:text-yellow-400 transition-colors">{homeTeam.name}</span>
                             
                             {/* Home Goals List */}
                             {fixture.played && (
@@ -194,10 +199,14 @@ const FixtureDetailPanel: React.FC<FixtureDetailPanelProps> = ({ fixture, homeTe
                             )}
                         </div>
 
-                        {/* Away */}
-                        <div className="flex flex-col items-center w-1/3">
-                            <img src={awayTeam.logo} className="w-16 h-16 object-contain drop-shadow-xl mb-2" />
-                            <span className="text-white font-bold text-sm md:text-base leading-tight truncate w-full mb-2">{awayTeam.name}</span>
+                        {/* Away - CLICKABLE */}
+                        <div 
+                            className="flex flex-col items-center w-1/3 cursor-pointer hover:scale-105 transition-transform group"
+                            onClick={() => onTeamClick && onTeamClick(awayTeam.id)}
+                            title={`${awayTeam.name} profiline git`}
+                        >
+                            <img src={awayTeam.logo} className="w-16 h-16 object-contain drop-shadow-xl mb-2 group-hover:brightness-110" />
+                            <span className="text-white font-bold text-sm md:text-base leading-tight truncate w-full mb-2 group-hover:text-yellow-400 transition-colors">{awayTeam.name}</span>
                             
                             {/* Away Goals List */}
                             {fixture.played && (

@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
 import { Team, Player, Fixture, ManagerProfile } from '../types';
-import { ChevronLeft, Trophy, Users, Home, Star, DollarSign, BarChart3, Wallet, Globe, TrendingUp, TrendingDown, Landmark, Scale, Activity, Calendar, Goal, Zap, Disc, AlertCircle, ArrowRight, ArrowLeft, History, Archive, ArrowRightLeft, Coins } from 'lucide-react';
+import { ChevronLeft, Trophy, Users, Home, Star, DollarSign, BarChart3, Wallet, Globe, TrendingUp, TrendingDown, Landmark, Scale, Activity, Calendar, Goal, Zap, Disc, AlertCircle, ArrowRight, ArrowLeft, History, Archive, ArrowRightLeft, Coins, CheckCircle, Building2, User, Briefcase, School, HardHat, Target } from 'lucide-react';
 import SquadView from './SquadView';
 import PlayerFace from '../components/shared/PlayerFace';
 import { calculateForm, calculateMonthlyNetFlow } from '../utils/teamCalculations';
@@ -77,7 +78,7 @@ const generateLeagueHistory = (team: Team) => {
 // --- MAIN COMPONENT ---
 
 const TeamDetailView = ({ team, allTeams, fixtures, currentDate, manager, onClose, onPlayerClick, onTeamClick }: TeamDetailViewProps) => {
-    const [activeTab, setActiveTab] = useState<'GENERAL' | 'SQUAD' | 'FIXTURES' | 'TRANSFERS' | 'HISTORY'>('GENERAL');
+    const [activeTab, setActiveTab] = useState<'GENERAL' | 'SQUAD' | 'FIXTURES' | 'TRANSFERS' | 'HISTORY' | 'MANAGEMENT'>('GENERAL');
 
     const sortedTeams = [...allTeams].sort((a, b) => {
         if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points;
@@ -161,6 +162,7 @@ const TeamDetailView = ({ team, allTeams, fixtures, currentDate, manager, onClos
 
     const tabs = [
         { id: 'GENERAL', label: 'Genel', icon: BarChart3 },
+        { id: 'MANAGEMENT', label: 'Yönetim & Tesis', icon: Building2 },
         { id: 'SQUAD', label: 'Oyuncular', icon: Users },
         { id: 'FIXTURES', label: 'Fikstür', icon: Calendar },
         { id: 'TRANSFERS', label: 'Transferler', icon: ArrowRightLeft },
@@ -297,6 +299,123 @@ const TeamDetailView = ({ team, allTeams, fixtures, currentDate, manager, onClos
                                 <PlayerStatCard 
                                     label="En Yüksek Reyting" player={topRating} statValue={topRating.seasonStats.averageRating || 0} statLabel="Reyting" icon={Star} colorClass="text-yellow-500" onClick={onPlayerClick}
                                 />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 2. MANAGEMENT TAB (NEW) */}
+                {activeTab === 'MANAGEMENT' && team.board && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-2">
+                        {/* President & Board Card */}
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+                            <div className="flex flex-col md:flex-row items-center gap-8">
+                                {/* President Profile */}
+                                <div className="flex flex-col items-center shrink-0">
+                                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-slate-200 to-slate-400 border-4 border-slate-100 dark:border-slate-600 flex items-center justify-center shadow-lg">
+                                        <User size={48} className="text-slate-600"/>
+                                    </div>
+                                    <div className="mt-3 text-center">
+                                        <div className="text-sm font-bold text-slate-500 uppercase tracking-wider">Kulüp Başkanı</div>
+                                        <div className="text-xl font-black text-slate-900 dark:text-white">{team.board.presidentName}</div>
+                                    </div>
+                                </div>
+
+                                {/* Board Stats */}
+                                <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                                        <div className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-2">
+                                            <Target size={14}/> Yönetim Beklentisi
+                                        </div>
+                                        <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{team.board.expectations}</div>
+                                        <p className="text-xs text-slate-400 mt-1">Bu sezon için ana hedef.</p>
+                                    </div>
+                                    <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                                        <div className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-2">
+                                            <Activity size={14}/> Yönetim Sabrı
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                <div className={`h-full ${team.board.patience > 15 ? 'bg-green-500' : team.board.patience > 10 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{width: `${(team.board.patience / 20) * 100}%`}}></div>
+                                            </div>
+                                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{team.board.patience}/20</span>
+                                        </div>
+                                        <p className="text-xs text-slate-400 mt-1">{team.board.patience > 15 ? 'Yönetim arkanızda.' : team.board.patience > 10 ? 'Yönetim temkinli.' : 'Koltuğunuz sallanıyor.'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Facilities Section */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Training */}
+                            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity"><HardHat size={80}/></div>
+                                <h3 className="text-sm font-bold text-slate-500 uppercase mb-4 flex items-center gap-2"><Zap size={16} className="text-yellow-500"/> Antrenman Tesisleri</h3>
+                                <div className="text-lg font-bold text-slate-900 dark:text-white mb-2 leading-tight">{team.facilities.trainingCenterName}</div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                        <div className={`h-full ${team.facilities.trainingLevel >= 18 ? 'bg-purple-500' : team.facilities.trainingLevel >= 14 ? 'bg-green-500' : team.facilities.trainingLevel >= 10 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{width: `${(team.facilities.trainingLevel / 20) * 100}%`}}></div>
+                                    </div>
+                                    <span className="text-xs font-mono font-bold text-slate-500">{team.facilities.trainingLevel}/20</span>
+                                </div>
+                                <div className="text-xs text-slate-400">{team.facilities.trainingLevel >= 18 ? 'Dünya Standartlarında' : team.facilities.trainingLevel >= 14 ? 'Üst Düzey' : team.facilities.trainingLevel >= 10 ? 'Yeterli' : 'Yetersiz'}</div>
+                            </div>
+
+                            {/* Youth Academy */}
+                            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity"><School size={80}/></div>
+                                <h3 className="text-sm font-bold text-slate-500 uppercase mb-4 flex items-center gap-2"><Briefcase size={16} className="text-blue-500"/> Altyapı Akademisi</h3>
+                                <div className="text-lg font-bold text-slate-900 dark:text-white mb-2 leading-tight">{team.facilities.youthAcademyName}</div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                        <div className={`h-full ${team.facilities.youthLevel >= 18 ? 'bg-purple-500' : team.facilities.youthLevel >= 14 ? 'bg-green-500' : team.facilities.youthLevel >= 10 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{width: `${(team.facilities.youthLevel / 20) * 100}%`}}></div>
+                                    </div>
+                                    <span className="text-xs font-mono font-bold text-slate-500">{team.facilities.youthLevel}/20</span>
+                                </div>
+                                <div className="text-xs text-slate-400">{team.facilities.youthLevel >= 18 ? 'Fabrika Gibi' : team.facilities.youthLevel >= 14 ? 'Verimli' : team.facilities.youthLevel >= 10 ? 'Ortalama' : 'Geliştirilmeli'}</div>
+                            </div>
+
+                            {/* Corporate */}
+                            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity"><Building2 size={80}/></div>
+                                <h3 className="text-sm font-bold text-slate-500 uppercase mb-4 flex items-center gap-2"><Briefcase size={16} className="text-green-500"/> Kurumsal Yapı</h3>
+                                <div className="text-lg font-bold text-slate-900 dark:text-white mb-2 leading-tight">Yönetim Binası & Ofisler</div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                        <div className={`h-full ${team.facilities.corporateLevel >= 18 ? 'bg-purple-500' : team.facilities.corporateLevel >= 14 ? 'bg-green-500' : team.facilities.corporateLevel >= 10 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{width: `${(team.facilities.corporateLevel / 20) * 100}%`}}></div>
+                                    </div>
+                                    <span className="text-xs font-mono font-bold text-slate-500">{team.facilities.corporateLevel}/20</span>
+                                </div>
+                                <div className="text-xs text-slate-400">{team.facilities.corporateLevel >= 18 ? 'Profesyonel' : team.facilities.corporateLevel >= 14 ? 'İyi Yönetilen' : 'Standart'}</div>
+                            </div>
+                        </div>
+
+                        {/* Technical Staff List */}
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+                            <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><Users className="text-indigo-500"/> Teknik Heyet</h3>
+                            </div>
+                            <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                                {team.staff && team.staff.length > 0 ? team.staff.map((staff, i) => (
+                                    <div key={i} className="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-500 dark:text-slate-400 text-lg">
+                                                {staff.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-slate-900 dark:text-white">{staff.name}</div>
+                                                <div className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase">{staff.role}</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col items-end">
+                                            <div className={`font-black text-lg ${staff.rating >= 80 ? 'text-green-500' : staff.rating >= 60 ? 'text-yellow-500' : 'text-slate-500'}`}>{staff.rating}</div>
+                                            <div className="text-[10px] uppercase text-slate-400">Yetenek</div>
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <div className="p-8 text-center text-slate-500 italic">Personel verisi bulunamadı.</div>
+                                )}
                             </div>
                         </div>
                     </div>

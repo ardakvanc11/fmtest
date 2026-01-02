@@ -1,6 +1,8 @@
 
+
+
 import React, { useState } from 'react';
-import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, PendingTransfer, SponsorDeal, IncomingOffer } from '../types';
+import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, PendingTransfer, SponsorDeal, IncomingOffer, TrainingConfig, IndividualTrainingType } from '../types';
 import { FileWarning, LogOut, Trophy, Building2, BarChart3, ArrowRightLeft, Wallet, Clock, TrendingUp, TrendingDown, Crown } from 'lucide-react';
 
 // Views
@@ -14,6 +16,7 @@ import TransferView from '../views/TransferView';
 import FinanceView from '../views/FinanceView';
 import SocialMediaView from '../views/SocialMediaView';
 import TrainingView from '../views/TrainingView';
+import DevelopmentCenterView from '../views/DevelopmentCenterView'; // NEW VIEW
 import TeamDetailView from '../views/TeamDetailView';
 import PlayerDetailView from '../views/PlayerDetailView'; 
 import MatchPreview from '../views/MatchPreview';
@@ -62,7 +65,8 @@ interface MainContentProps {
     handleSave: () => void;
     handleNewGame: () => void;
     handleNextWeek: () => void;
-    handleTrain: (type: 'ATTACK' | 'DEFENSE' | 'PHYSICAL') => void;
+    handleTrain: (config: TrainingConfig) => void; // UPDATED SIGNATURE
+    handleAssignIndividualTraining: (playerId: string, type: IndividualTrainingType) => void; // NEW
     handleMatchFinish: (hScore: number, aScore: number, events: MatchEvent[], stats: MatchStats) => void;
     handleFastSimulate: () => void;
     handleShowTeamDetail: (teamId: string) => void;
@@ -84,6 +88,7 @@ interface MainContentProps {
     handleTakeEmergencyLoan: (amount: number) => void; // NEW
     handleAcceptOffer: (offer: IncomingOffer) => void; // NEW
     handleRejectOffer: (offer: IncomingOffer) => void; // NEW
+    handleToggleTrainingDelegation: () => void; // NEW
     negotiatingTransferPlayer: Player | null; 
     setNegotiatingTransferPlayer: React.Dispatch<React.SetStateAction<Player | null>>; 
     incomingTransfer: PendingTransfer | null; 
@@ -122,6 +127,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
         handleNewGame,
         handleNextWeek,
         handleTrain,
+        handleAssignIndividualTraining,
         handleMatchFinish,
         handleFastSimulate,
         handleShowTeamDetail,
@@ -143,6 +149,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
         handleTakeEmergencyLoan,
         handleAcceptOffer,
         handleRejectOffer,
+        handleToggleTrainingDelegation,
         negotiatingTransferPlayer,
         setNegotiatingTransferPlayer,
         incomingTransfer,
@@ -627,10 +634,21 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                 />
             )}
 
-            {currentView === 'training' && (
+            {currentView === 'training' && myTeam && (
                 <TrainingView 
                     onTrain={handleTrain} 
                     performed={gameState.trainingPerformed}
+                    team={myTeam}
+                    manager={gameState.manager!}
+                    onGoToDevelopment={() => navigateTo('development')}
+                    onToggleDelegation={handleToggleTrainingDelegation}
+                />
+            )}
+
+            {currentView === 'development' && myTeam && (
+                <DevelopmentCenterView 
+                    players={myTeam.players}
+                    onAssignTraining={handleAssignIndividualTraining}
                 />
             )}
 
@@ -801,6 +819,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                             onClose={() => setSelectedFixtureInfo(null)}
                             variant="modal"
                             myTeamId={gameState.myTeamId!}
+                            onTeamClick={handleShowTeamDetail} // Pass handler for clicking teams in modal
                         />
                     </div>
                 </div>

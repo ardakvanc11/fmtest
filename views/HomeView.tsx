@@ -1,11 +1,10 @@
 
-
-
 import React, { useState } from 'react';
-import { ManagerProfile, Team, Fixture } from '../types';
+import { ManagerProfile, Team, Fixture, StaffRelation } from '../types';
 import { calculateForm, calculateManagerPower } from '../utils/gameEngine';
 import { getFormattedDate } from '../utils/calendarAndFixtures';
-import { Home, User, FileText, Heart, Calendar, Star, Feather, AlertTriangle, Clock, Trophy, Wallet, BarChart3, Building2, ArrowRightLeft, TrendingUp, TrendingDown, Power, Check, X, Crown, LogOut } from 'lucide-react';
+// FIX: Added 'Users' to imports from lucide-react
+import { Home, User, Users, FileText, Heart, Calendar, Star, Feather, AlertTriangle, Clock, Trophy, Wallet, BarChart3, Building2, ArrowRightLeft, TrendingUp, TrendingDown, Power, Check, X, Crown, LogOut, UserCircle2, Smile, Meh, Frown } from 'lucide-react';
 import StandingsTable from '../components/shared/StandingsTable';
 import HallOfFameModal from '../modals/HallOfFameModal';
 
@@ -81,6 +80,14 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
     const winPercentage = manager.stats.matchesManaged > 0 
         ? ((manager.stats.wins / manager.stats.matchesManaged) * 100).toFixed(1) 
         : '0.0';
+
+    const getRelationStatus = (val: number) => {
+        if (val >= 80) return { label: 'Dostane', color: 'text-green-500', icon: Smile };
+        if (val >= 60) return { label: 'İyi', color: 'text-emerald-400', icon: Smile };
+        if (val >= 40) return { label: 'Normal', color: 'text-slate-400', icon: Meh };
+        if (val >= 20) return { label: 'Soğuk', color: 'text-orange-400', icon: Meh };
+        return { label: 'Gergin', color: 'text-red-500', icon: Frown };
+    };
 
     return (
         <div className="space-y-6 pb-10">
@@ -235,7 +242,7 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
                                         const dateLabel = getFormattedDate(f.date).label;
                                         
                                         return (
-                                            <div key={f.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/30 p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700/50 transition cursor-pointer" onClick={() => onTeamClick(opponentId)}>
+                                            <div key={f.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/30 p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700/50 transition cursor-not-allowed">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-8 text-center bg-white dark:bg-slate-800 rounded py-1 border border-slate-200 dark:border-slate-700">
                                                         <span className="text-xs font-bold text-slate-600 dark:text-slate-400 block">{f.week}.</span>
@@ -524,42 +531,78 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
             )}
 
             {tab === 'RELATIONS' && (
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div className="space-y-8 max-w-5xl mx-auto">
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Genel Güven</h2>
-                        <div className="space-y-6">
+                        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                             <TrendingUp className="text-blue-500" /> Genel Güven Seviyeleri
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                             <div>
                                 <div className="flex justify-between mb-1">
-                                    <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                                        Yönetim {manager.trust.board < 35 && <AlertTriangle size={14} className="text-red-500 animate-pulse"/>}
+                                    <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2 text-sm font-bold uppercase tracking-wider">
+                                        Yönetim Kurulu {manager.trust.board < 35 && <AlertTriangle size={14} className="text-red-500 animate-pulse"/>}
                                     </span>
-                                    <span className={`font-bold ${manager.trust.board < 35 ? 'text-red-500' : ''}`}>{manager.trust.board}%</span>
+                                    <span className={`font-black ${manager.trust.board < 35 ? 'text-red-500' : 'text-blue-500'}`}>{manager.trust.board}%</span>
                                 </div>
-                                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className={`h-full ${manager.trust.board < 35 ? 'bg-red-500' : 'bg-blue-500'}`} style={{width: `${manager.trust.board}%`}}/></div>
+                                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className={`h-full transition-all duration-1000 ${manager.trust.board < 35 ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-blue-500'}`} style={{width: `${manager.trust.board}%`}}/></div>
                             </div>
                             <div>
                                 <div className="flex justify-between mb-1">
-                                    <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                                        Taraftar {manager.trust.fans < 40 && <AlertTriangle size={14} className="text-red-500 animate-pulse"/>}
+                                    <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2 text-sm font-bold uppercase tracking-wider">
+                                        Taraftar Grubu {manager.trust.fans < 40 && <AlertTriangle size={14} className="text-red-500 animate-pulse"/>}
                                     </span>
-                                    <span className={`font-bold ${manager.trust.fans < 40 ? 'text-red-500' : ''}`}>{manager.trust.fans}%</span>
+                                    <span className={`font-black ${manager.trust.fans < 40 ? 'text-red-500' : 'text-green-500'}`}>{manager.trust.fans}%</span>
                                 </div>
-                                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className={`h-full ${manager.trust.fans < 40 ? 'bg-red-500' : 'bg-green-500'}`} style={{width: `${manager.trust.fans}%`}}/></div>
+                                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className={`h-full transition-all duration-1000 ${manager.trust.fans < 40 ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-green-500'}`} style={{width: `${manager.trust.fans}%`}}/></div>
                             </div>
                             <div>
-                                <div className="flex justify-between mb-1"><span className="text-slate-500 dark:text-slate-400">Oyuncular</span><span className="font-bold">{manager.trust.players}%</span></div>
-                                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className="h-full bg-yellow-500" style={{width: `${manager.trust.players}%`}}/></div>
+                                <div className="flex justify-between mb-1"><span className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wider">Oyuncu Grubu</span><span className="font-black text-yellow-500">{manager.trust.players}%</span></div>
+                                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className="h-full bg-yellow-500 transition-all duration-1000" style={{width: `${manager.trust.players}%`}}/></div>
                             </div>
                              <div>
-                                <div className="flex justify-between mb-1"><span className="text-slate-500 dark:text-slate-400">Hakemler Birliği</span><span className="font-bold">{manager.trust.referees}%</span></div>
-                                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className="h-full bg-red-500" style={{width: `${manager.trust.referees}%`}}/></div>
+                                <div className="flex justify-between mb-1"><span className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wider">Hakemler & Federasyon</span><span className="font-black text-red-500">{manager.trust.referees}%</span></div>
+                                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className="h-full bg-red-500 transition-all duration-1000" style={{width: `${manager.trust.referees}%`}}/></div>
                             </div>
-                            {/* Added Media Trust Bar */}
                             <div>
-                                <div className="flex justify-between mb-1"><span className="text-slate-500 dark:text-slate-400">Medya</span><span className="font-bold">{manager.trust.media || 50}%</span></div>
-                                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className="h-full bg-purple-500" style={{width: `${manager.trust.media || 50}%`}}/></div>
+                                <div className="flex justify-between mb-1"><span className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wider">Basın & Medya</span><span className="font-black text-purple-500">{manager.trust.media || 50}%</span></div>
+                                <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className="h-full bg-purple-500 transition-all duration-1000" style={{width: `${manager.trust.media || 50}%`}}/></div>
                             </div>
                         </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                             <Users className="text-yellow-500" /> Kurumsal İlişkiler & Personel Heyeti
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {manager.staffRelations && manager.staffRelations.map((staff: StaffRelation) => {
+                                const status = getRelationStatus(staff.value);
+                                return (
+                                    <div key={staff.id} className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-blue-500/50 transition-all group">
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-xl font-black shrink-0 shadow-inner ${staff.avatarColor}`}>
+                                            {staff.name.charAt(0)}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-black text-slate-900 dark:text-white truncate">{staff.name}</div>
+                                            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-tight mb-1">{staff.role}</div>
+                                            <div className="flex items-center gap-1.5">
+                                                <status.icon size={14} className={status.color} />
+                                                <span className={`text-xs font-bold ${status.color}`}>{status.label}</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-lg font-mono font-black text-slate-700 dark:text-slate-300">%{staff.value}</div>
+                                            <div className="h-1 w-12 bg-slate-200 dark:bg-slate-700 rounded-full mt-1 overflow-hidden">
+                                                <div className={`h-full ${status.color.replace('text-', 'bg-')}`} style={{width: `${staff.value}%`}}></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        {(!manager.staffRelations || manager.staffRelations.length === 0) && (
+                            <div className="text-center py-10 text-slate-500 italic">Personel verisi yüklenemedi.</div>
+                        )}
                     </div>
                  </div>
             )}

@@ -1,4 +1,5 @@
 
+
 export enum Position {
     GK = 'GK',
     SLB = 'SLB', // Sol Bek
@@ -232,6 +233,85 @@ export enum GameSystem {
     HARAMBALL = 'Haramball (Otobüsü Çek)'
 }
 
+// --- TRAINING ENUMS ---
+export enum TrainingType {
+    ATTACK = 'Hücum',
+    DEFENSE = 'Savunma',
+    PHYSICAL = 'Fiziksel',
+    TACTICAL = 'Taktiksel',
+    MATCH_PREP = 'Maç Hazırlığı',
+    SET_PIECES = 'Duran Top' // NEW
+}
+
+export enum TrainingIntensity {
+    LOW = 'Düşük',
+    STANDARD = 'Standart',
+    HIGH = 'Yüksek'
+}
+
+export interface TrainingConfig {
+    mainFocus: TrainingType;
+    subFocus: TrainingType;
+    intensity: TrainingIntensity;
+}
+
+export interface TrainingReportItem {
+    playerId: string;
+    playerName: string;
+    message: string;
+    type: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL';
+}
+
+// --- INDIVIDUAL TRAINING ---
+export enum IndividualTrainingType {
+    FINISHING = 'Bitiricilik',
+    PASSING = 'Pas & Oyun Kurma',
+    DRIBBLING = 'Dripling & Adam Eksiltme',
+    MENTAL_DECISION = 'Karar Alma & Soğukkanlılık',
+    MENTAL_LEADERSHIP = 'Liderlik & Mental Dayanıklılık',
+    PHYSICAL_STAMINA = 'Dayanıklılık',
+    PHYSICAL_SPEED = 'Hız & Patlayıcılık',
+    PHYSICAL_STRENGTH = 'Güç & İkili Mücadele',
+    GK_REFLEX = 'Kaleci: Refleks',
+    GK_DISTRIBUTION = 'Kaleci: Oyun Kurulum',
+    GK_POSITIONING = 'Kaleci: Pozisyon Alma'
+}
+
+// --- PLAYER PERSONALITY ---
+export enum PlayerPersonality {
+    AMBITIOUS = 'Hırslı',
+    PROFESSIONAL = 'Profesyonel',
+    HARDWORKING = 'Çalışkan',
+    DETERMINED = 'Kararlı',
+    LAZY = 'Tembel',
+    INCONSISTENT = 'İstikrarsız',
+    NORMAL = 'Normal'
+}
+
+// --- NEW MANAGEMENT INTERFACES ---
+
+export interface ClubStaff {
+    role: string;
+    name: string;
+    rating: number; // 1-100 (Personel yeteneği)
+    age: number;
+    nationality: string;
+}
+
+export interface ClubFacilities {
+    trainingCenterName: string;
+    trainingLevel: number; // 1-20
+    youthAcademyName: string;
+    youthLevel: number; // 1-20
+    corporateLevel: number; // 1-20
+}
+
+export interface ClubBoard {
+    presidentName: string;
+    expectations: string; // e.g. "Şampiyonluk", "Üst Sıralar"
+    patience: number; // 1-20 (Yönetim sabrı)
+}
+
 // --- INTERFACES ---
 
 export interface HalftimeTalkOption {
@@ -249,6 +329,7 @@ export interface PlayerSeasonStats {
     ratings: number[]; 
     averageRating: number;
     matchesPlayed: number;
+    processedMatchIds: string[]; // NEW: To prevent double counting
 }
 
 export interface PlayerStats {
@@ -352,7 +433,14 @@ export interface Player {
     squadStatus?: string; 
     nextNegotiationWeek?: number; 
     activePromises?: string[]; 
-    transferListed?: boolean; 
+    transferListed?: boolean;
+    trainingFocus?: string; // Legacy field
+    activeTraining?: IndividualTrainingType; // Active Individual Training Program
+    personality?: PlayerPersonality; // NEW: Player Personality
+    activeTrainingWeeks?: number; // NEW: Weeks spent on current individual program
+    developmentFeedback?: string; // NEW: Feedback string (e.g. "Gelişiyor")
+    statProgress?: Record<string, number>; // NEW: Hidden Decimal Progress for Stats
+    recentAttributeChanges?: Record<string, 'UP' | 'DOWN' | 'PARTIAL_UP'>; // NEW: Tracks recent changes for UI feedback (Green/Red arrows)
 }
 
 export interface FinancialRecords {
@@ -436,6 +524,11 @@ export interface Team {
     transferHistory: TransferRecord[]; 
     sponsors: TeamSponsors; 
 
+    // --- MANAGEMENT & FACILITIES (NEW) ---
+    board: ClubBoard;
+    staff: ClubStaff[];
+    facilities: ClubFacilities;
+
     // --- TACTICS (UPDATED) ---
     gameSystem?: GameSystem; // NEW FIELD
     formation: string; 
@@ -473,6 +566,10 @@ export interface Team {
     preventCrosses?: PreventCrosses;
     pressFocus: PressingFocus;
     
+    // Training
+    trainingConfig?: TrainingConfig; // NEW FIELD
+    isTrainingDelegated?: boolean; // NEW: Persistent delegation flag
+
     // Legacy support fields
     timeWasting?: TimeWasting; 
     finalThird?: any; 
@@ -495,100 +592,12 @@ export interface Team {
     leagueHistory?: HistoricalRanking[]; 
 }
 
-export interface MatchEvent {
-    minute: number;
-    description: string;
-    type: 'GOAL' | 'MISS' | 'CARD_YELLOW' | 'CARD_RED' | 'INFO' | 'VAR' | 'FOUL' | 'CORNER' | 'INJURY' | 'OFFSIDE' | 'SAVE' | 'SUBSTITUTION';
-    teamName?: string;
-    scorer?: string;
-    assist?: string;
-    playerId?: string; 
-    varOutcome?: 'GOAL' | 'NO_GOAL'; 
-}
-
-export interface PlayerPerformance {
-    playerId: string;
+export interface StaffRelation {
+    id: string;
     name: string;
-    position: Position;
-    rating: number; 
-    goals: number;
-    assists: number;
-}
-
-export interface MatchStats {
-    homePossession: number;
-    awayPossession: number;
-    homeShots: number;
-    awayShots: number;
-    homeShotsOnTarget: number;
-    awayShotsOnTarget: number;
-    homeCorners: number; 
-    awayCorners: number; 
-    homeFouls: number; 
-    awayFouls: number; 
-    homeOffsides: number;
-    awayOffsides: number;
-    homeYellowCards: number;
-    awayYellowCards: number;
-    homeRedCards: number;
-    awayRedCards: number;
-    mvpPlayerId: string;
-    mvpPlayerName: string;
-    homeRatings: PlayerPerformance[];
-    awayRatings: PlayerPerformance[];
-    managerCards?: 'YELLOW' | 'RED' | null;
-}
-
-export interface BettingOdds {
-    home: number;
-    draw: number;
-    away: number;
-}
-
-export interface Fixture {
-    id: string;
-    week: number;
-    date: string; 
-    homeTeamId: string;
-    awayTeamId: string;
-    played: boolean;
-    homeScore: number | null;
-    awayScore: number | null;
-    matchEvents?: MatchEvent[]; 
-    stats?: MatchStats; 
-}
-
-export interface NewsItem {
-    id: string;
-    week: number;
-    title: string;
-    content: string;
-    type: 'MATCH' | 'TRANSFER' | 'INTERVIEW' | 'INJURY' | 'OTHER';
-    image?: string; 
-}
-
-export interface InterviewOption {
-    id: string;
-    text: string;
-    effect: {
-        teamMorale?: number;
-        playerMorale?: number;
-        description: string;
-        trustUpdate?: {
-            board?: number;
-            fans?: number;
-            players?: number;
-            referees?: number;
-            media?: number; 
-        };
-    };
-}
-
-export interface InterviewQuestion {
-    id: string;
-    question: string;
-    relatedPlayerId?: string; 
-    options: InterviewOption[];
+    role: string;
+    value: number; // 0-100
+    avatarColor: string;
 }
 
 export interface ManagerStats {
@@ -631,6 +640,7 @@ export interface ManagerProfile {
         media: number; 
     };
     playerRelations: { playerId: string; name: string; value: number }[]; 
+    staffRelations: StaffRelation[]; // NEW FIELD
     history: string[]; 
 }
 
@@ -706,6 +716,126 @@ export interface SeasonSummary {
     transfersIn: TransferImpact[];
 }
 
+// --- MISSING INTERFACES ADDED ---
+
+/**
+ * Represents a significant event during a simulated match.
+ */
+export interface MatchEvent {
+    minute: number;
+    type: 'GOAL' | 'CARD_YELLOW' | 'CARD_RED' | 'INJURY' | 'SUBSTITUTION' | 'VAR' | 'MISS' | 'OFFSIDE' | 'CORNER' | 'FOUL' | 'INFO' | 'SAVE';
+    description: string;
+    teamName?: string;
+    scorer?: string;
+    assist?: string;
+    playerId?: string;
+    varOutcome?: 'GOAL' | 'NO_GOAL';
+}
+
+/**
+ * Detailed performance data for an individual player in a specific match.
+ */
+export interface PlayerPerformance {
+    playerId: string;
+    name: string;
+    position: Position;
+    rating: number;
+    goals: number;
+    assists: number;
+}
+
+/**
+ * Aggregated statistics for a completed or ongoing match.
+ */
+export interface MatchStats {
+    homePossession: number;
+    awayPossession: number;
+    homeShots: number;
+    awayShots: number;
+    homeShotsOnTarget: number;
+    awayShotsOnTarget: number;
+    homeCorners: number;
+    awayCorners: number;
+    homeFouls: number;
+    awayFouls: number;
+    homeOffsides: number;
+    awayOffsides: number;
+    homeYellowCards: number;
+    awayYellowCards: number;
+    homeRedCards: number;
+    awayRedCards: number;
+    mvpPlayerId: string;
+    mvpPlayerName: string;
+    homeRatings: PlayerPerformance[];
+    awayRatings: PlayerPerformance[];
+    managerCards?: 'NONE' | 'YELLOW' | 'RED';
+}
+
+/**
+ * Represents a scheduled or played match between two teams.
+ */
+export interface Fixture {
+    id: string;
+    week: number;
+    date: string;
+    homeTeamId: string;
+    awayTeamId: string;
+    played: boolean;
+    homeScore: number | null;
+    awayScore: number | null;
+    matchEvents?: MatchEvent[];
+    stats?: MatchStats;
+}
+
+/**
+ * A news article or social media post in the game world.
+ */
+export interface NewsItem {
+    id: string;
+    week: number;
+    type: 'MATCH' | 'TRANSFER' | 'INJURY' | 'FINANCE' | 'OTHER';
+    title: string;
+    content: string;
+}
+
+/**
+ * An option for responding during a press interview.
+ */
+export interface InterviewOption {
+    id: string;
+    text: string;
+    effect?: {
+        teamMorale?: number;
+        playerMorale?: number;
+        trustUpdate?: {
+            board?: number;
+            fans?: number;
+            players?: number;
+            referees?: number;
+            media?: number;
+        };
+        description?: string;
+    };
+}
+
+/**
+ * A question asked during a press interview.
+ */
+export interface InterviewQuestion {
+    id: string;
+    question: string;
+    options: InterviewOption[];
+}
+
+/**
+ * Odds used for match outcome predictions.
+ */
+export interface BettingOdds {
+    home: number;
+    draw: number;
+    away: number;
+}
+
 export interface GameState {
     managerName: string | null;
     manager: ManagerProfile | null; 
@@ -725,4 +855,5 @@ export interface GameState {
     incomingOffers: IncomingOffer[]; 
     seasonChampion?: SeasonChampion | null; 
     lastSeasonSummary?: SeasonSummary | null; 
+    lastTrainingReport?: TrainingReportItem[]; // NEW: For storing training feedback
 }

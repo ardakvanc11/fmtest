@@ -2,9 +2,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Team, MatchEvent, MatchStats, Position, Player, Mentality } from '../types';
 import { simulateMatchStep, getEmptyMatchStats } from '../utils/gameEngine';
-import PitchVisual from '../components/shared/PitchVisual';
+import MatchPitch2D from '../components/match/MatchPitch2D'; // NEW IMPORT
 import { Timer, AlertOctagon, Megaphone, Settings, PlayCircle, Zap, BarChart2, List, Lock } from 'lucide-react';
-import { calculateTeamStrength } from '../utils/teamCalculations';
 import { MatchScoreboard, MatchOverlays, MatchEventFeed } from '../components/match/MatchUI';
 
 const GOAL_SOUND = '/voices/goalsound.wav';
@@ -33,6 +32,11 @@ const MatchSimulation = ({ homeTeam, awayTeam, userTeamId, onFinish, allTeams, f
     const [managerDiscipline, setManagerDiscipline] = useState<'NONE' | 'WARNED' | 'YELLOW' | 'RED'>('NONE');
     const [forcedSubstitutionPlayerId, setForcedSubstitutionPlayerId] = useState<string | null>(null);
     const [mobileTab, setMobileTab] = useState<'FEED' | 'STATS'>('FEED');
+
+    // --- 2D ENGINE STATE ---
+    const [ballPosition, setBallPosition] = useState({ x: 50, y: 50 }); // 0-100%
+    const [possessionTeamId, setPossessionTeamId] = useState<string | null>(null);
+    const [lastActionText, setLastActionText] = useState("");
 
     const isSabotageActive = managerTrust < 30;
     const [sabotageTriggered, setSabotageTriggered] = useState(false);
@@ -82,18 +86,93 @@ const MatchSimulation = ({ homeTeam, awayTeam, userTeamId, onFinish, allTeams, f
         return { simHome, simAway };
     };
 
+    // --- 2D BALL MOVEMENT LOGIC ---
+    // Runs frequently to animate ball between major events
+    useEffect(() => {
+        if(isTacticsOpen || phase === 'HALFTIME' || phase === 'FULL_TIME' || isVarActive || isPenaltyActive) return;
+        
+        const tickRate = 800 / speed; // Update visual every ~0.8s adjusted by speed
+        
+        const visualInterval = setInterval(() => {
+            setBallPosition(prev => {
+                const { simHome, simAway } = getSimulateTeams();
+                
+                // Determine dominance
+                const hStr = simHome.strength * (1 + (stats.homePossession - 50)/100);
+                const aStr = simAway.strength * (1 + (stats.awayPossession - 50)/100);
+                const totalStr = hStr + aStr;
+                const homeProb = hStr / totalStr;
+                
+                // Randomly switch possession based on dominance
+                let currentTeam = possessionTeamId === homeTeam.id ? 'HOME' : 'AWAY';
+                if (Math.random() < 0.2) { // 20% chance to switch possession naturally
+                    const roll = Math.random();
+                    if (roll < homeProb) {
+                        currentTeam = 'HOME';
+                        setPossessionTeamId(homeTeam.id);
+                    } else {
+                        currentTeam = 'AWAY';
+                        setPossessionTeamId(awayTeam.id);
+                    }
+                }
+
+                // Move ball towards goal based on current possession team
+                // Home Goal is at Y=0, Away Goal is at Y=100
+                // Home Attacks UP (Target Y=100), Away Attacks DOWN (Target Y=0)
+                
+                let targetY = 50;
+                let targetX = 50;
+                let action = "";
+
+                if (currentTeam === 'HOME') {
+                    // Attacking towards Y=100
+                    const progress = Math.random(); 
+                    targetY = prev.y + (progress * 15); // Move forward 0-15%
+                    targetX = Math.max(10, Math.min(90, prev.x + (Math.random() * 20 - 10))); // Move side-to-side
+                    
+                    if (targetY > 80) action = "Hücumda";
+                    else if (targetY > 40) action = "Orta Saha";
+                    else action = "Savunmadan Çıkıyor";
+                } else {
+                    // Attacking towards Y=0
+                    const progress = Math.random(); 
+                    targetY = prev.y - (progress * 15); // Move forward (down) 0-15%
+                    targetX = Math.max(10, Math.min(90, prev.x + (Math.random() * 20 - 10)));
+
+                    if (targetY < 20) action = "Hücumda";
+                    else if (targetY < 60) action = "Orta Saha";
+                    else action = "Savunmadan Çıkıyor";
+                }
+
+                // Clamp
+                targetY = Math.max(5, Math.min(95, targetY));
+                
+                setLastActionText(action);
+                return { x: targetX, y: targetY };
+            });
+        }, tickRate);
+
+        return () => clearInterval(visualInterval);
+    }, [isTacticsOpen, phase, speed, isVarActive, isPenaltyActive, possessionTeamId, stats.homePossession]);
+
+
+    // --- MAIN GAME LOOP (Minutes & Events) ---
     useEffect(() => {
         if(isTacticsOpen || phase === 'HALFTIME' || phase === 'FULL_TIME' || isVarActive || isPenaltyActive) return;
         const interval = setInterval(() => {
             setMinute(m => {
                 const nextM = m + 1;
+                
+                // ... (Sabotage Logic kept same) ...
                 if (isSabotageActive && !sabotageTriggered && nextM === 10) {
                     setSabotageTriggered(true);
                     setEvents(prev => [...prev, { minute: nextM, type: 'INFO', description: "⚠️ DİKKAT: Oyuncular sahada isteksiz görünüyor. Menajere olan tepkileri oyuna yansıyor!", teamName: myTeamCurrent.name }]);
                 }
+
                 if (nextM === 45 && phase === 'FIRST_HALF') { setPhase('HALFTIME'); playSound(WHISTLE_SOUND); return 45; }
                 if (nextM >= 90 && phase === 'SECOND_HALF') { setPhase('FULL_TIME'); playSound(WHISTLE_SOUND); return 90; }
 
+                // ... (AI Substitution Logic kept same) ...
                 const isOpponentHome = !userIsHome;
                 const aiTeam = isOpponentHome ? liveHomeTeam : liveAwayTeam;
                 const aiSubsCount = isOpponentHome ? homeSubsUsed : awaySubsUsed;
@@ -125,35 +204,101 @@ const MatchSimulation = ({ homeTeam, awayTeam, userTeamId, onFinish, allTeams, f
                 
                 if(event) {
                     setEvents(prev => [...prev, event]);
+                    
+                    // --- VISUAL SYNC FOR EVENTS ---
+                    if (event.type === 'GOAL') {
+                        // Move ball to goal net
+                        const isHomeGoal = event.teamName === homeTeam.name;
+                        setPossessionTeamId(event.teamName === homeTeam.name ? homeTeam.id : awayTeam.id);
+                        setBallPosition({ x: 50, y: isHomeGoal ? 98 : 2 }); // Home attacks UP (98), Away attacks DOWN (2)
+                        setLastActionText("GOL!");
+                        // Then reset to center after delay (handled by next ticks naturally as possession resets)
+                        setTimeout(() => setBallPosition({ x: 50, y: 50 }), 2000);
+                    } else if (event.type === 'SAVE' || event.type === 'MISS') {
+                        // Ball near goal but not in
+                        const isHomeAttack = event.teamName === homeTeam.name;
+                        setPossessionTeamId(isHomeAttack ? homeTeam.id : awayTeam.id); // Attacking team had it
+                        setBallPosition({ x: Math.random() * 60 + 20, y: isHomeAttack ? 95 : 5 }); // Near goal line
+                        setLastActionText(event.type === 'SAVE' ? "Kurtarış!" : "Dışarı!");
+                    } else if (event.type === 'CORNER') {
+                        const isHomeAttack = event.teamName === homeTeam.name;
+                        const isLeftCorner = Math.random() > 0.5;
+                        setBallPosition({ x: isLeftCorner ? 2 : 98, y: isHomeAttack ? 98 : 2 });
+                        setLastActionText("Köşe Vuruşu");
+                    }
+
                     if (event.type === 'CARD_RED') playSound(WHISTLE_SOUND);
+                    
+                    // --- INJURY HANDLING (UPDATED) ---
                     if (event.type === 'INJURY') {
                         const injuredTeamIsHome = event.teamName === liveHomeTeam.name;
+                        
+                        // 1. Identify team based on closure state
+                        let teamObj = injuredTeamIsHome ? liveHomeTeam : liveAwayTeam;
+                        
+                        // 2. Mark the player as injured in a new object immediately
+                        const updatedPlayersWithInjury = teamObj.players.map(p => {
+                            if (p.id === event.playerId) {
+                                return {
+                                    ...p,
+                                    condition: 0, // Drop condition
+                                    injury: {
+                                        type: 'Sakatlık', // Generic for visual
+                                        daysRemaining: 1, // Just needs to be > 0 for visual
+                                        description: event.description
+                                    }
+                                };
+                            }
+                            return p;
+                        });
+                        
+                        let updatedTeamObj = { ...teamObj, players: updatedPlayersWithInjury };
+
+                        // 3. Handle AI Substitution Logic immediately on this updated object
                         const isAiInjury = (injuredTeamIsHome && !userIsHome) || (!injuredTeamIsHome && userIsHome);
+                        
                         if (isAiInjury) {
                             const currentSubs = injuredTeamIsHome ? homeSubsUsed : awaySubsUsed;
+                            const setSubFn = injuredTeamIsHome ? setHomeSubsUsed : setAwaySubsUsed;
+                            
                             if (currentSubs < 5) {
-                                const teamObj = injuredTeamIsHome ? liveHomeTeam : liveAwayTeam;
-                                const setTeamFn = injuredTeamIsHome ? setLiveHomeTeam : setLiveAwayTeam;
-                                const setSubFn = injuredTeamIsHome ? setHomeSubsUsed : setAwaySubsUsed;
-                                const injuredPlayer = teamObj.players.find(p => p.id === event.playerId);
-                                const benchPlayers = teamObj.players.slice(11, 18);
+                                const injuredPlayer = updatedTeamObj.players.find(p => p.id === event.playerId);
+                                const benchPlayers = updatedTeamObj.players.slice(11, 18);
                                 let subIn = benchPlayers.find(p => p.position === injuredPlayer?.position) || benchPlayers[0];
+                                
                                 if (injuredPlayer && subIn) {
-                                    const newPlayers = [...teamObj.players];
+                                    const newPlayers = [...updatedTeamObj.players];
                                     const idxOut = newPlayers.findIndex(p => p.id === injuredPlayer.id);
                                     const idxIn = newPlayers.findIndex(p => p.id === subIn.id);
+                                    
                                     if(idxOut !== -1 && idxIn !== -1) {
                                         [newPlayers[idxOut], newPlayers[idxIn]] = [newPlayers[idxIn], newPlayers[idxOut]];
-                                        setTeamFn({ ...teamObj, players: newPlayers });
+                                        updatedTeamObj = { ...updatedTeamObj, players: newPlayers };
+                                        
                                         setSubFn(s => s + 1);
-                                        setEvents(prev => [...prev, { minute: nextM, type: 'SUBSTITUTION', description: `Zorunlu Değişiklik: ${injuredPlayer.name} 🔄 ${subIn!.name}`, teamName: teamObj.name }]);
+                                        setEvents(prev => [...prev, { minute: nextM, type: 'SUBSTITUTION', description: `Zorunlu Değişiklik: ${injuredPlayer.name} 🔄 ${subIn!.name}`, teamName: updatedTeamObj.name }]);
                                     }
                                 }
                             }
                         } else {
-                            if (event.playerId) { setForcedSubstitutionPlayerId(event.playerId); setIsTacticsOpen(true); }
+                            // User Logic: Just trigger the modal, user will see the injured icon
+                            if (event.playerId) { 
+                                setForcedSubstitutionPlayerId(event.playerId); 
+                                setIsTacticsOpen(true); 
+                            }
+                        }
+
+                        // 4. Commit the State Update
+                        if (injuredTeamIsHome) {
+                            setLiveHomeTeam(updatedTeamObj);
+                            if (userIsHome) setMyTeamCurrent(updatedTeamObj);
+                        } else {
+                            setLiveAwayTeam(updatedTeamObj);
+                            if (!userIsHome) setMyTeamCurrent(updatedTeamObj);
                         }
                     }
+
+                    // ... (Penalty Handling kept same) ...
                     if (event.type === 'CARD_YELLOW') {
                         const isHomeFoul = event.teamName === homeTeam.name;
                         const attackingPossession = isHomeFoul ? statsRef.current.awayPossession : statsRef.current.homePossession;
@@ -162,6 +307,10 @@ const MatchSimulation = ({ homeTeam, awayTeam, userTeamId, onFinish, allTeams, f
                             setIsPenaltyActive(true); playSound(WHISTLE_SOUND); const penaltyTeam = isHomeFoul ? liveAwayTeam : liveHomeTeam; setPenaltyTeamId(penaltyTeam.id);
                             const xi = penaltyTeam.players.slice(0, 11); const taker = xi.reduce((prev, current) => (prev.stats.finishing > current.stats.finishing) ? prev : current);
                             setPenaltyMessage(`${taker.name} topun başında...`);
+                            
+                            // Visual: Penalty Spot
+                            setBallPosition({ x: 50, y: penaltyTeam.id === homeTeam.id ? 88 : 12 }); // Penalty spots approx
+                            
                             setTimeout(() => {
                                 setIsPenaltyActive(false); setPenaltyTeamId(null);
                                 const isGoal = Math.random() < 0.70;
@@ -170,6 +319,7 @@ const MatchSimulation = ({ homeTeam, awayTeam, userTeamId, onFinish, allTeams, f
                                     lastGoalRealTime.current = Date.now();
                                     setEvents(prev => [...prev, { minute: nextM, type: 'GOAL', description: `GOOOOL! ${taker.name} penaltıdan affetmedi!`, teamName: penaltyTeam.name, scorer: taker.name, assist: 'Penaltı' }]);
                                     playSound(GOAL_SOUND); 
+                                    setBallPosition({ x: 50, y: penaltyTeam.id === homeTeam.id ? 98 : 2 }); // Net
                                     setStats(prev => { const s = {...prev}; if(penaltyTeam.id === homeTeam.id) { s.homeShots++; s.homeShotsOnTarget++; } else { s.awayShots++; s.awayShotsOnTarget++; } return s; });
                                 } else {
                                     setEvents(prev => [...prev, { minute: nextM, type: 'MISS', description: `KAÇTI! ${taker.name} penaltıdan yararlanamadı!`, teamName: penaltyTeam.name }]);
@@ -178,6 +328,8 @@ const MatchSimulation = ({ homeTeam, awayTeam, userTeamId, onFinish, allTeams, f
                             }, 2500);
                         }
                     }
+
+                    // ... (Goal/VAR Handling kept same) ...
                     if(event.type === 'GOAL') {
                         lastGoalRealTime.current = Date.now(); playSound(GOAL_SOUND); 
                         if(event.teamName === homeTeam.name) setHomeScore(s => s + 1); else setAwayScore(s => s + 1);
@@ -203,6 +355,8 @@ const MatchSimulation = ({ homeTeam, awayTeam, userTeamId, onFinish, allTeams, f
                             }, 1000);
                         }
                     }
+                    
+                    // ... (Stats update kept same) ...
                     setStats(prev => {
                         const s = {...prev};
                         if(event.teamName === homeTeam.name) s.homePossession = Math.min(80, s.homePossession + 1); else s.awayPossession = Math.min(80, s.awayPossession + 1);
@@ -222,6 +376,7 @@ const MatchSimulation = ({ homeTeam, awayTeam, userTeamId, onFinish, allTeams, f
         return () => clearInterval(interval);
     }, [minute, isTacticsOpen, phase, speed, isVarActive, isPenaltyActive, events, liveHomeTeam, liveAwayTeam, homeSubsUsed, awaySubsUsed, forcedSubstitutionPlayerId, isSabotageActive]);
 
+    // ... (Objection logic kept same) ...
     const handleObjection = () => {
          if (managerDiscipline === 'RED') return; 
          const lastEvent = events[events.length - 1];
@@ -297,7 +452,14 @@ const MatchSimulation = ({ homeTeam, awayTeam, userTeamId, onFinish, allTeams, f
 
             <div className="flex-1 flex overflow-hidden flex-col md:flex-row">
                 <div className="w-1/3 hidden lg:block bg-green-900 border-r border-slate-800 relative">
-                     <PitchVisual players={myTeamCurrent.players} onPlayerClick={() => {}} selectedPlayerId={null}/>
+                     {/* REPLACED Static Pitch with 2D Match Engine */}
+                     <MatchPitch2D 
+                        homeTeam={liveHomeTeam} 
+                        awayTeam={liveAwayTeam} 
+                        ballPosition={ballPosition} 
+                        possessionTeamId={possessionTeamId}
+                        lastAction={lastActionText}
+                     />
                 </div>
 
                 <div className="md:hidden flex border-b border-slate-700 bg-slate-800 shrink-0">

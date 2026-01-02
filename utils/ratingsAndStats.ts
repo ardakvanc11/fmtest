@@ -1,4 +1,5 @@
 
+
 import { Position, Team, MatchEvent, PlayerPerformance } from '../types';
 
 // Helper to generate simulated granular stats based on skill
@@ -304,9 +305,24 @@ export const calculateRatingsFromEvents = (
             }
         }
 
-        const lineup = team.players.slice(0, 11);
+        // --- IDENTIFY PLAYERS WHO PLAYED (STARTERS + SUBS) ---
+        // 1. Starters
+        const starters = team.players.slice(0, 11);
+        
+        // 2. Substitutes (Check events for IN players)
+        const substitutions = events.filter(e => e.type === 'SUBSTITUTION' && e.teamName === team.name);
+        const subInNames = new Set(substitutions.map(s => s.description.split(' 🔄 ')[1].trim()));
+        
+        // Find actual player objects for subs
+        // Note: Assuming subs come from the bench (index 11-18) or reserves, but mostly bench
+        const subPlayers = team.players.filter(p => subInNames.has(p.name));
 
-        let ratings = lineup.map(player => {
+        const allActivePlayers = [...starters, ...subPlayers];
+
+        // 3. Remove players who were SUBBED OUT early (optional, but they still get a rating usually)
+        // For simplicity, we rate everyone who stepped on the pitch.
+
+        let ratings = allActivePlayers.map(player => {
             const playerEvents = events.filter(e => e.teamName === team.name);
             
             const goals = playerEvents.filter(e => e.type === 'GOAL' && e.scorer === player.name).length;
@@ -321,6 +337,23 @@ export const calculateRatingsFromEvents = (
                 else bonus = 0.3;
             }
 
+            // Estimate Minutes Played
+            let minutes = 90;
+            const subInEvent = substitutions.find(s => s.description.includes(`🔄 ${player.name}`));
+            const subOutEvent = substitutions.find(s => s.description.startsWith(player.name));
+
+            if (subInEvent) {
+                minutes = 90 - subInEvent.minute;
+            } else if (subOutEvent) {
+                minutes = subOutEvent.minute;
+            }
+
+            // If red card, minutes stopped there
+            if (redCards > 0) {
+                const redEvent = playerEvents.find(e => e.type === 'CARD_RED' && e.playerId === player.id);
+                if (redEvent) minutes = Math.min(minutes, redEvent.minute);
+            }
+
             const rating = calculateRating(
                 player.position,
                 player.skill,
@@ -330,7 +363,7 @@ export const calculateRatingsFromEvents = (
                 redCards,
                 oppScore,
                 result,
-                90,
+                minutes,
                 bonus // Pass the bonus
             );
 

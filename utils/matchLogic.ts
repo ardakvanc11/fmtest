@@ -1,7 +1,5 @@
 
-
-
-import { Team, Player, MatchEvent, MatchStats, Position, Tackling, PlayerPerformance, Fixture } from '../types';
+import { Team, Player, MatchEvent, MatchStats, Position, Tackling, PlayerPerformance, Fixture, PassingStyle, Tempo, Width, AttackingTransition, CreativeFreedom, SupportRuns, Dribbling, FocusArea, PressingLine, DefensiveLine, DefLineMobility, PressIntensity, DefensiveTransition, PreventCrosses, PressingFocus, Patience, PassTarget, LongShots, CrossingType, GKDistributionSpeed, SetPiecePlay, PlayStrategy, GoalKickType, GKDistributionTarget } from '../types';
 import { INJURY_TYPES, RIVALRIES } from '../constants';
 import { MATCH_INFO_MESSAGES } from '../data/infoPool';
 import { GOAL_TEXTS, SAVE_TEXTS, MISS_TEXTS, FOUL_TEXTS, YELLOW_CARD_TEXTS, YELLOW_CARD_AGGRESSIVE_TEXTS, OFFSIDE_TEXTS, CORNER_TEXTS } from '../data/eventTexts';
@@ -59,7 +57,6 @@ export const generateMatchStats = (homePlayers: Player[], awayPlayers: Player[],
     const homeRatings = generateRandomPlayerRatings(homePlayers, hScore, aScore, hScore > aScore, hScore === aScore);
     const awayRatings = generateRandomPlayerRatings(awayPlayers, aScore, hScore, aScore > hScore, hScore === aScore);
 
-    // FIX: Use calculateRawTeamStrength directly on player lists to avoid NaN
     const hStr = calculateRawTeamStrength(homePlayers);
     const aStr = calculateRawTeamStrength(awayPlayers);
 
@@ -71,29 +68,26 @@ export const generateMatchStats = (homePlayers: Player[], awayPlayers: Player[],
     
     const possessionAdvantage = homePossession - 50; 
 
-    // 2. Kurtarışlar (Saves) - Gol olamayan isabetli şutlar
-    // Güçlü takımlar daha çok pozisyona girer, rakip kaleci daha çok kurtarış yapar.
+    // 2. Kurtarışlar (Saves)
     const calculateSaves = (attackerStr: number, defenderStr: number) => {
         const baseSaves = Math.floor(Math.random() * 4); // 0-3 arası şans faktörü
         const pressure = attackerStr > defenderStr ? (attackerStr - defenderStr) / 5 : 0; // Güç farkı baskısı
         return Math.floor(baseSaves + pressure);
     };
 
-    const hSaves = calculateSaves(aStr, hStr); // Ev sahibinin kurtardığı (Deplasmanın kaçırdığı)
-    const aSaves = calculateSaves(hStr, aStr); // Deplasmanın kurtardığı (Ev sahibinin kaçırdığı)
+    const hSaves = calculateSaves(aStr, hStr); 
+    const aSaves = calculateSaves(hStr, aStr); 
 
-    // 3. İsabetli Şutlar (Goller + Kurtarışlar)
-    // Mantık: Gol sayısı, isabetli şut sayısından fazla olamaz.
+    // 3. İsabetli Şutlar
     const hTarget = hScore + aSaves; 
     const aTarget = aScore + hSaves;
 
-    // 4. İsabetsiz Şutlar (Dışarı Giden)
-    // Topla oynama ve güce göre üretkenlik
+    // 4. İsabetsiz Şutlar
     const calculateMisses = (possession: number, strength: number) => {
         const base = 2;
         const creationFactor = (strength / 20) + (possession / 15); 
         const variance = Math.floor(Math.random() * 5);
-        return Math.floor(base + creationFactor + variance) - (strength > 85 ? 2 : 0); // İyi takımlar daha az ıska geçer
+        return Math.floor(base + creationFactor + variance) - (strength > 85 ? 2 : 0); 
     };
 
     const hMisses = calculateMisses(homePossession, hStr);
@@ -103,11 +97,11 @@ export const generateMatchStats = (homePlayers: Player[], awayPlayers: Player[],
     const hShots = hTarget + hMisses;
     const aShots = aTarget + aMisses;
 
-    // 6. Kornerler (Şut ve baskı ile orantılı)
+    // 6. Kornerler
     const hCorners = Math.floor(hShots / 3) + (possessionAdvantage > 10 ? 2 : 0) + Math.floor(Math.random() * 3);
     const aCorners = Math.floor(aShots / 3) + (possessionAdvantage < -10 ? 2 : 0) + Math.floor(Math.random() * 3);
     
-    // 7. Fauller (Zayıf takım daha çok faul yapmaya meyilli)
+    // 7. Fauller
     const hFouls = Math.floor(Math.random() * 10) + (hStr < aStr ? 3 : 0);
     const aFouls = Math.floor(Math.random() * 10) + (aStr < hStr ? 3 : 0);
 
@@ -164,26 +158,188 @@ export const getWeightedInjury = () => {
     return INJURY_TYPES[0];
 };
 
+// --- NEW TACTICAL ENGINE LOGIC ---
+const calculateTacticalEfficiency = (team: Team, minute: number): { multiplier: number, warning?: string } => {
+    let multiplier = 1.0;
+    const xi = team.players.slice(0, 11);
+    
+    const avg = (stat: keyof typeof xi[0]['stats']) => 
+        xi.reduce((sum, p) => sum + (p.stats[stat] || 10), 0) / xi.length;
+
+    const avgList = (list: Player[], stat: keyof Player['stats']) =>
+        list.length ? list.reduce((s, p) => s + (p.stats[stat] || 10), 0) / list.length : 10;
+
+    const defenders = xi.filter(p => [Position.STP, Position.SLB, Position.SGB].includes(p.position));
+    const cbs = xi.filter(p => p.position === Position.STP);
+    const mids = xi.filter(p => [Position.OS, Position.OOS].includes(p.position));
+    const dms = xi.filter(p => p.position === Position.OS);
+    const wings = xi.filter(p => [Position.SLK, Position.SGK].includes(p.position));
+    const strikers = xi.filter(p => p.position === Position.SNT);
+    
+    let warning = undefined;
+
+    // --- 1. PASSING STYLE ---
+    if (team.passing === PassingStyle.EXTREME_SHORT) {
+        // En yakın opsiyon dışında pas yok. Pas süresi uzar, şut düşer.
+        // Penalty if under pressure (avg composure/decision low)
+        if (avg('passing') >= 14 && avg('composure') >= 13) {
+            multiplier += 0.05; // Tiki-taka master
+        } else {
+            multiplier -= 0.05; // Stuck with ball
+            if (avg('decisions') < 12 && Math.random() < 0.1) warning = "Savunmada riskli paslaşma!";
+        }
+    } else if (team.passing === PassingStyle.SHORT) {
+        if (avg('passing') >= 12) multiplier += 0.04;
+    } else if (team.passing === PassingStyle.DIRECT) {
+        if (avg('vision') >= 12 && avg('pace') >= 12) multiplier += 0.06;
+        else multiplier -= 0.04; // Too many lost balls
+    } else if (team.passing === PassingStyle.PUMP_BALL) {
+        // "İleri Şişir" - Midfield stats ignored, Striker Physical is key
+        // Possession penalty implicit (lower base mult)
+        multiplier -= 0.10; // Possession penalty
+        const stStrength = avgList(strikers, 'physical') + avgList(strikers, 'heading');
+        if (stStrength >= 28) { // 14+ avg
+            multiplier += 0.25; // Huge boost if target man exists
+        } else {
+            if (Math.random() < 0.1) warning = "Forvetler top indiremiyor";
+        }
+    }
+
+    // --- 2. TEMPO ---
+    if (team.tempo === Tempo.VERY_SLOW) {
+        multiplier -= 0.10; // Chance creation drops significantly
+        if (avg('passing') >= 13) multiplier += 0.05; // But control increases
+    } else if (team.tempo === Tempo.HIGH) {
+        if (avg('decisions') < 12) multiplier -= 0.05; // Mistakes
+    } else if (team.tempo === Tempo.BEAST_MODE) {
+        // "Hayvan Gibi"
+        if (minute <= 60) {
+            multiplier += 0.15; // Huge boost early game
+        } else {
+            multiplier -= 0.30; // Huge drop after 60
+            if (Math.random() < 0.15) warning = "Takım fiziksel olarak çöktü (Beast Mode)";
+        }
+    }
+
+    // --- 3. WIDTH ---
+    if (team.width === Width.VERY_NARROW) {
+        if (avgList(mids, 'passing') >= 13) multiplier += 0.08;
+        else {
+            multiplier -= 0.08;
+            if (Math.random() < 0.1) warning = "Kanatlardan açık veriliyor";
+        }
+    } else if (team.width === Width.VERY_WIDE) {
+        if (avg('passing') < 14) multiplier -= 0.08; // Long passes fail
+        if (avgList(wings, 'pace') >= 14) multiplier += 0.08;
+    }
+
+    // --- 4. ATTACK TRANSITION ---
+    if (team.attackingTransition === AttackingTransition.PUSH_FORWARD) {
+        if (avg('pace') >= 13) multiplier += 0.08; // Deadly counter
+        if (avgList(defenders, 'positioning') < 12) {
+            multiplier -= 0.08;
+            if (Math.random() < 0.1) warning = "Geri dönüşlerde zaafiyet";
+        }
+    } else if (team.attackingTransition === AttackingTransition.KEEP_SHAPE) {
+        multiplier -= 0.02; // Less offensive bite
+        if (avg('composure') >= 12) multiplier += 0.04;
+    }
+
+    // --- 5. CREATIVE ---
+    if (team.creative === CreativeFreedom.CREATIVE) {
+        if (avg('flair') >= 13) multiplier += 0.07;
+        else {
+            multiplier -= 0.07;
+            if (Math.random() < 0.1) warning = "Gereksiz çalım/şut denemesi";
+        }
+    } else if (team.creative === CreativeFreedom.DISCIPLINED) {
+        if (avg('decisions') < 12) multiplier += 0.03; // Helps bad teams avoid mistakes
+    }
+
+    // --- 6. SUPPORT RUNS ---
+    if (team.supportRuns === SupportRuns.LEFT || team.supportRuns === SupportRuns.RIGHT) {
+        // Overload one side
+        multiplier += 0.05;
+        // Risk on other side? (Abstracted)
+    } else if (team.supportRuns === SupportRuns.CENTER) {
+        if (avgList(mids, 'finishing') >= 11) multiplier += 0.06;
+    }
+
+    // --- 7. DRIBBLING ---
+    if (team.dribbling === Dribbling.ENCOURAGE) {
+        if (avg('dribbling') >= 14) multiplier += 0.08;
+        else {
+            multiplier -= 0.08;
+            if (Math.random() < 0.1) warning = "Çok fazla top kaybı (Dripling)";
+        }
+    } else if (team.dribbling === Dribbling.DISCOURAGE) {
+        multiplier += 0.02; // Safer
+    }
+
+    // --- 8. FOCUS AREA ---
+    if (team.focusArea === FocusArea.BOTH_WINGS) {
+        if (avgList(wings, 'crossing') >= 13) multiplier += 0.06;
+        if (avgList(mids, 'tackling') < 12) {
+             // Center weakness
+             multiplier -= 0.04;
+        }
+    }
+
+    // --- 9. PASS TARGET ---
+    if (team.passTarget === PassTarget.SPACE) {
+        if (avg('pace') >= 14) multiplier += 0.08;
+        else multiplier -= 0.05;
+    } else if (team.passTarget === PassTarget.FEET) {
+        if (avg('technique') >= 13) multiplier += 0.05;
+    }
+
+    // --- 10. PATIENCE ---
+    if (team.patience === Patience.EARLY_CROSS) {
+        // Rush attacks
+        if (avgList(strikers, 'heading') >= 14) multiplier += 0.08;
+        else multiplier -= 0.05; // Wasteful
+    } else if (team.patience === Patience.WORK_INTO_BOX) {
+        if (avg('composure') < 12) {
+            multiplier -= 0.05;
+            if (Math.random() < 0.1) warning = "Şut çekmekte geç kalınıyor";
+        }
+    }
+
+    // --- 11. LONG SHOTS ---
+    if (team.longShots === LongShots.ENCOURAGE) {
+        if (avg('longShots') >= 13) multiplier += 0.06;
+        else {
+            multiplier -= 0.06;
+            if (Math.random() < 0.1) warning = "Toplar dağa taşa gidiyor";
+        }
+    }
+
+    // --- 12. CROSSING ---
+    if (team.crossing === CrossingType.LOW) {
+        if (avgList(strikers, 'pace') >= 13) multiplier += 0.05;
+    } else if (team.crossing === CrossingType.HIGH) {
+        if (avgList(strikers, 'heading') >= 14) multiplier += 0.05;
+    }
+
+    // Default clamps
+    return { multiplier: Math.max(0.4, multiplier), warning };
+};
+
 export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: number, awayScore: number, stats: MatchStats, events: MatchEvent[] } => {
     const homeStr = calculateTeamStrength(home) + 5; // Home advantage
     const awayStr = calculateTeamStrength(away);
     
-    // Daha gerçekçi skor dağılımı için Weighted Random
-    // Güç farkı olasılıkları etkiler ama garantilemez.
-    const diff = homeStr - awayStr;
-    
     // Beklenen gol sayıları (Lambda for Poisson distribution approximation)
     let lambdaHome = 1.3;
     let lambdaAway = 1.0;
+    const diff = homeStr - awayStr;
 
-    // Güç farkına göre gol beklentisini ayarla
     if (diff > 20) { lambdaHome = 2.5; lambdaAway = 0.5; }
     else if (diff > 10) { lambdaHome = 1.9; lambdaAway = 0.8; }
     else if (diff > 0) { lambdaHome = 1.5; lambdaAway = 1.1; }
     else if (diff > -10) { lambdaHome = 1.1; lambdaAway = 1.4; }
     else { lambdaHome = 0.7; lambdaAway = 2.1; }
 
-    // Poisson benzeri dağılım fonksiyonu
     const getScore = (lambda: number) => {
         const L = Math.exp(-lambda);
         let p = 1.0;
@@ -205,18 +361,14 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
         const fwds = xi.filter(p => [Position.SNT, Position.SLK, Position.SGK].includes(p.position));
         const mids = xi.filter(p => [Position.OS, Position.OOS].includes(p.position));
         
-        // Golcü havuzunu oluştur (Forvetler daha ağırlıklı)
         const scorerPool = [...fwds, ...fwds, ...fwds, ...mids, ...mids, ...xi];
         
-        // Goals
         for(let i=0; i<score; i++) {
             const scorer = scorerPool.length > 0 ? scorerPool[Math.floor(Math.random() * scorerPool.length)] : xi[0];
             let assist = xi[Math.floor(Math.random() * xi.length)];
             if(assist.id === scorer.id) assist = xi.find(p => p.id !== scorer.id) || assist;
             
             const isPenalty = Math.random() < 0.10;
-            
-            // Dakika dağılımı (daha gerçekçi olması için sortlanacak)
             const minute = Math.floor(Math.random() * 90) + 1;
 
             events.push({
@@ -230,7 +382,6 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
             });
         }
 
-        // Yellow Cards
         const yellowCount = Math.floor(Math.random() * 3);
         for(let i=0; i<yellowCount; i++) {
             const sinner = xi[Math.floor(Math.random() * xi.length)];
@@ -243,7 +394,6 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
             });
         }
 
-        // Red Cards (Nadir)
         if(Math.random() < 0.03) {
             const sinner = xi[Math.floor(Math.random() * xi.length)];
             events.push({
@@ -255,7 +405,6 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
             });
         }
 
-        // Injuries (Nadir)
         if (Math.random() < 0.15) {
             const victim = xi[Math.floor(Math.random() * xi.length)];
             const injuryType = getWeightedInjury();
@@ -274,10 +423,8 @@ export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: nu
 
     events.sort((a,b) => a.minute - b.minute);
 
-    // İstatistikleri oluştur (Artık skora göre tutarlı)
     const stats = generateMatchStats(home.players, away.players, homeScore, awayScore);
     
-    // Ratingleri oluştur
     const { homeRatings, awayRatings } = calculateRatingsFromEvents(home, away, events, homeScore, awayScore);
     const mvpInfo = determineMVP(homeRatings, awayRatings);
     
@@ -305,13 +452,25 @@ export const simulateMatchStep = (
     currentScore: {h:number, a:number},
     existingEvents: MatchEvent[] = []
 ): MatchEvent | null => {
+    // Base Event Chance
     if (Math.random() > 0.55) return null; 
+
+    // Calculate Dynamic Tactical Strength
+    const homeTactics = calculateTacticalEfficiency(home, minute);
+    const awayTactics = calculateTacticalEfficiency(away, minute);
+
+    if (homeTactics.warning && Math.random() < 0.05) {
+        return { minute, description: `Ev sahibi: ${homeTactics.warning}`, type: 'INFO', teamName: home.name };
+    }
+    if (awayTactics.warning && Math.random() < 0.05) {
+        return { minute, description: `Deplasman: ${awayTactics.warning}`, type: 'INFO', teamName: away.name };
+    }
 
     const homeReds = existingEvents.filter(e => e.type === 'CARD_RED' && e.teamName === home.name).length;
     const awayReds = existingEvents.filter(e => e.type === 'CARD_RED' && e.teamName === away.name).length;
 
-    let homeStr = calculateTeamStrength(home) + 5;
-    let awayStr = calculateTeamStrength(away);
+    let homeStr = (calculateTeamStrength(home) + 5) * homeTactics.multiplier;
+    let awayStr = calculateTeamStrength(away) * awayTactics.multiplier;
 
     if (homeReds > 0) homeStr *= (1 - (homeReds * 0.15));
     if (awayReds > 0) awayStr *= (1 - (awayReds * 0.15));
