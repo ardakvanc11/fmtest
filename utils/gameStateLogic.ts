@@ -1,6 +1,5 @@
 
-
-import { GameState, Team, MatchEvent, MatchStats, SeasonSummary, SeasonChampion, IncomingOffer } from '../types';
+import { GameState, Team, MatchEvent, MatchStats, SeasonSummary, SeasonChampion, IncomingOffer, Position } from '../types';
 import { 
     simulateAiDailyTransfers, 
     simulateBackgroundMatch, 
@@ -13,9 +12,9 @@ import {
     resetForNewSeason,
     recalculateTeamStrength,
     simulatePlayerDevelopmentAndAging,
-    generateAiOffersForUser, // NEW IMPORT
-    getAssistantTrainingConfig, // NEW IMPORT
-    applyTraining // NEW IMPORT
+    generateAiOffersForUser, 
+    getAssistantTrainingConfig, 
+    applyTraining 
 } from './gameEngine';
 import { isSameDay, addDays, isTransferWindowOpen, generateFixtures } from './calendarAndFixtures';
 import { getWeightedInjury } from './matchLogic';
@@ -34,12 +33,36 @@ export const processNextDayLogic = (
     if (nextDateObj.getDate() === 1 && nextDateObj.getMonth() === 6) { 
         const myTeam = currentState.teams.find(t => t.id === currentState.myTeamId);
         let summary: SeasonSummary | null = null;
+        let lastSeasonGoalAchieved = false;
+        
         if (myTeam) {
             summary = archiveSeason(myTeam, currentState.teams, nextDateObj.getFullYear());
+            
+            // Check if goal achieved (Rank logic)
+            const sorted = [...currentState.teams].sort((a, b) => {
+                if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points;
+                return (b.stats.gf - b.stats.ga) - (a.stats.gf - a.stats.ga);
+            });
+            const rank = sorted.findIndex(t => t.id === myTeam.id) + 1;
+            const exp = myTeam.board.expectations;
+            if (exp === 'Şampiyonluk' && rank === 1) lastSeasonGoalAchieved = true;
+            else if (exp === 'Üst Sıralar' && rank <= 5) lastSeasonGoalAchieved = true;
+            else if (exp === 'Ligde Kalmak' && rank <= 15) lastSeasonGoalAchieved = true;
         }
 
         let resetTeams = resetForNewSeason(currentState.teams);
         const newFixtures = generateFixtures(resetTeams, nextDateObj.getFullYear());
+
+        // Tracking updates
+        let newFfpYears = currentState.consecutiveFfpYears;
+        if (myTeam) {
+            const annualWages = myTeam.players.reduce((s, p) => s + (p.wage || 0), 0);
+            if (myTeam.wageBudget && annualWages <= myTeam.wageBudget) {
+                newFfpYears++;
+            } else {
+                newFfpYears = 0;
+            }
+        }
 
         return {
             currentDate: nextDate,
@@ -48,24 +71,50 @@ export const processNextDayLogic = (
             fixtures: newFixtures,
             lastSeasonSummary: summary,
             seasonChampion: null,
-            incomingOffers: [] // Reset incoming offers on new season
+            incomingOffers: [],
+            yearsAtCurrentClub: currentState.yearsAtCurrentClub + 1,
+            consecutiveFfpYears: newFfpYears,
+            lastSeasonGoalAchieved: lastSeasonGoalAchieved
         };
     }
 
     let updatedTeams = [...currentState.teams];
     let updatedFixtures = [...currentState.fixtures];
     let updatedManager = currentState.manager ? { ...currentState.manager } : null;
-    let lastTrainingReport = currentState.lastTrainingReport; // Default to old report if no training today
+    let lastTrainingReport = currentState.lastTrainingReport || [];
 
-    // Negatif Bütçe Cezası
+    // --- BOARD TRUST UPDATES (DAILY) ---
     if (currentState.myTeamId && updatedManager) {
         const myTeam = updatedTeams.find(t => t.id === currentState.myTeamId);
-        if (myTeam && myTeam.budget < 0) {
-            let penalty = 0;
-            if (myTeam.budget >= -10) penalty = 10;
-            else if (myTeam.budget >= -30) penalty = 15;
-            else penalty = 35;
-            updatedManager.trust.board = Math.max(0, updatedManager.trust.board - penalty);
+        if (myTeam) {
+            let trustChange = 0;
+
+            // 1. Negative Budget Penalty
+            if (myTeam.budget < 0) {
+                let penalty = 0.5; // Daily small hit
+                if (myTeam.budget >= -10) penalty = 0.2;
+                else if (myTeam.budget >= -30) penalty = 0.5;
+                else penalty = 1.0;
+                trustChange -= penalty;
+            }
+
+            // 2. Wage Budget Penalty (New)
+            const currentTotalWages = myTeam.players.reduce((a, b) => a + (b.wage || 0), 0);
+            if (myTeam.wageBudget && currentTotalWages > myTeam.wageBudget) {
+                // ~0.3 per day => ~9 points per month penalty for overspending wage
+                trustChange -= 0.3; 
+            }
+
+            // 3. Reputation Bonus (New)
+            if (myTeam.initialReputation && myTeam.reputation >= myTeam.initialReputation + 0.1) {
+                // Small trickle bonus for maintaining high reputation
+                trustChange += 0.1;
+            }
+
+            // Apply updates
+            if (trustChange !== 0) {
+                updatedManager.trust.board = Math.max(0, Math.min(100, updatedManager.trust.board + trustChange));
+            }
         }
     }
 
@@ -239,11 +288,7 @@ export const processNextDayLogic = (
                 
                 // 3. Condition Recovery (UPDATED FOR FASTER RECOVERY)
                 if (!newP.injury) {
-                    // Temel iyileşme hızını artırdık.
-                    // Eskiden: stamina / 4 (Ortalama 3-4 puan/gün) -> 10 günde full.
-                    // Yeni: 10 + (stamina / 2) (Ortalama 15-20 puan/gün) -> 3-4 günde full.
                     const baseRecovery = 10 + (newP.stats.stamina * 0.5);
-                    
                     let durationMultiplier = 1.0;
                     const lastDur = newP.lastInjuryDurationDays || 0;
                     if (lastDur > 0) {
@@ -251,17 +296,46 @@ export const processNextDayLogic = (
                         else if (lastDur >= 56) durationMultiplier = 0.45;
                         else if (lastDur >= 28) durationMultiplier = 0.7;
                     }
-                    
-                    // Antrenman yapıldıysa iyileşme yavaşlar, dinlenildiyse bonus alır
                     if (didTrain) durationMultiplier *= 0.5; 
                     else durationMultiplier *= 1.2; 
-
                     newP.condition = Math.min(100, (newP.condition || 0) + baseRecovery * durationMultiplier);
                 }
 
                 // 4. DEVELOPMENT & AGING LOGIC (NEW)
-                // Applies daily checks for skill progression/regression
                 newP = simulatePlayerDevelopmentAndAging(newP, didTrain);
+
+                // --- 5. POSITION EVOLUTION (FIXED: Passive progress enabled) ---
+                if (isMyTeam && newP.positionTrainingTarget) {
+                    // Mevki çalışması her gün ilerler. 
+                    // Antrenman yapılmışsa tam hız (1/7 hafta), yapılmamışsa yarı hız (1/14 hafta).
+                    const baseProgress = 1/7;
+                    const tickProgress = didTrain ? baseProgress : baseProgress * 0.5;
+                    
+                    newP.positionTrainingProgress = Number(((newP.positionTrainingProgress || 0) + tickProgress).toFixed(3));
+                    
+                    if (newP.positionTrainingProgress >= (newP.positionTrainingRequired || 12)) {
+                        const oldPos = newP.position;
+                        const newPos = newP.positionTrainingTarget;
+                        
+                        if (newP.secondaryPosition === newPos) {
+                            newP.position = newPos;
+                            newP.secondaryPosition = oldPos;
+                        } else {
+                            newP.secondaryPosition = newPos;
+                        }
+
+                        lastTrainingReport.push({
+                            playerId: newP.id,
+                            playerName: newP.name,
+                            message: `YENİ MEVKİ! Artık ${newPos} mevkisinde de görev alabilir.`,
+                            type: 'POSITIVE'
+                        });
+
+                        newP.positionTrainingTarget = undefined;
+                        newP.positionTrainingProgress = undefined;
+                        newP.positionTrainingRequired = undefined;
+                    }
+                }
 
                 return newP;
             })
@@ -340,10 +414,9 @@ export const processNextDayLogic = (
     if (updatedManager && (updatedManager.trust.board < 30 || updatedManager.trust.fans < 35)) {
         if(updatedManager.trust.board < 30) handleGameOver("Yönetim kurulu acil toplantısı sonrası görevine son verildi. Gerekçe: Başarısız sonuçlar ve güven kaybı.");
         else handleGameOver("Taraftar baskısı dayanılmaz hale geldi. Yönetim, taraftarların isteği üzerine sözleşmeni feshetti.");
-        return null; // State güncellemesi yapma, Game Over ekranına geçiş MainContent içinde tetiklenecek
+        return null;
     }
 
-    // Include withdrawn offers news
     const filteredNews = [...withdrawnNews, ...transferNews, ...dailyNews, ...currentState.news].slice(0, 30);
 
     return {
@@ -356,7 +429,7 @@ export const processNextDayLogic = (
         transferList: newTransferList,
         trainingPerformed: false,
         seasonChampion: seasonChampion,
-        lastTrainingReport: lastTrainingReport, // Persist or update report
+        lastTrainingReport: lastTrainingReport,
         incomingOffers: newIncomingOffers
     };
 };

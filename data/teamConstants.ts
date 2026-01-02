@@ -9,6 +9,7 @@ import { getRandomSponsorForReputation } from './sponsorData';
 export const TEAM_TEMPLATES = [
     { 
         name: 'Ayıboğanspor SK', 
+        president: 'Recep İvedik',
         logo: 'https://i.imgur.com/eV74XlV.png', 
         jersey: 'https://imgur.com/7PcfX6O.png',
         jerseyGK: 'https://imgur.com/DMnuhsQ.png', 
@@ -39,6 +40,7 @@ export const TEAM_TEMPLATES = [
     },
     { 
         name: 'Kedispor', 
+        president: 'Kedi Koç',
         logo: 'https://i.imgur.com/VSUm10b.png',
         jersey: 'https://imgur.com/abV3t3m.png',
         jerseyGK: 'https://imgur.com/CP63fXc.png', 
@@ -69,6 +71,7 @@ export const TEAM_TEMPLATES = [
     },
     { 
         name: 'Eşşekboğanspor FK', 
+        president: 'Ahmet Ateş',
         logo: 'https://i.imgur.com/T1RiW8H.png',
         jersey: 'https://imgur.com/Zv3XZTY.png',
         jerseyGK: 'https://imgur.com/aKFKHs7.png', 
@@ -99,6 +102,7 @@ export const TEAM_TEMPLATES = [
     },
     { 
         name: 'Maymunspor', 
+        president: 'Cango Reis',
         logo: 'https://i.imgur.com/kvhASjK.png',
         jersey: 'https://imgur.com/jfH3kal.png',
         colors: ['bg-purple-800', 'text-white'], 
@@ -128,6 +132,7 @@ export const TEAM_TEMPLATES = [
     },
     { 
         name: 'Arıspor', 
+        president: 'Criminal Hamza',
         logo: 'https://i.imgur.com/7vkiuxd.png',
         jersey: 'https://imgur.com/PidWwuV.png',
         jerseyGK: 'https://imgur.com/EF7HVUU.png', 
@@ -147,7 +152,7 @@ export const TEAM_TEMPLATES = [
             {year: '1983/84', rank: 16}, {year: '1984/85', rank: 15}, {year: '1985/86', rank: 16}, {year: '1986/87', rank: 12},
             {year: '1987/88', rank: 4}, {year: '1988/89', rank: 14}, {year: '1989/90', rank: 14}, {year: '1990/91', rank: 10},
             {year: '1991/92', rank: 13}, {year: '1992/93', rank: 12}, {year: '1993/94', rank: 10}, {year: '1994/95', rank: 15},
-            {year: '1995/96', rank: 13}, {year: '1996/97', rank: 12}, {year: '1997/98', rank: 11}, {year: '1998/99', rank: 13},
+            {year: '1995/96', rank: 13}, {year: '1996/97', rank: 12}, {year: '1997/98', rank: 11}, {year: '1998/99', rank: 11},
             {year: '1999/00', rank: 14}, {year: '2000/01', rank: 14}, {year: '2001/02', rank: 8}, {year: '2002/03', rank: 17},
             {year: '2003/04', rank: 14}, {year: '2004/05', rank: 16}, {year: '2005/06', rank: 13}, {year: '2006/07', rank: 14},
             {year: '2007/08', rank: 15}, {year: '2008/09', rank: 13}, {year: '2009/10', rank: 14},
@@ -158,6 +163,7 @@ export const TEAM_TEMPLATES = [
     },
     { 
         name: 'Köpekspor', 
+        president: 'KöpekAdam',
         logo: 'https://i.imgur.com/OoPWVvx.png',
         jersey: 'https://imgur.com/C2xKJtO.png',
         jerseyGK: 'https://imgur.com/hHtmxQv.png', 
@@ -188,6 +194,7 @@ export const TEAM_TEMPLATES = [
     },
     { 
         name: 'Bulgariaspor', 
+        president: 'Ivan Petrov',
         logo: 'https://i.imgur.com/RuCGNuc.png',
         jersey: 'https://imgur.com/eHAW2Fg.png',
         jerseyGK: 'https://imgur.com/Nz7hWFC.png', 
@@ -218,6 +225,7 @@ export const TEAM_TEMPLATES = [
     },
     { 
         name: 'Bedirspor', 
+        president: 'Bedir Usta',
         logo: 'https://i.imgur.com/pPchTUI.png',
         jersey: 'https://imgur.com/bdI85Wq.png',
         jerseyGK: 'https://imgur.com/eT3Qn69.png', 
@@ -248,6 +256,7 @@ export const TEAM_TEMPLATES = [
     },
     { 
         name: 'Yakhubspor', 
+        president: 'Yakup Usta',
         logo: 'https://i.imgur.com/vcN5VhI.png',
         jersey: 'https://imgur.com/k64QPcT.png',
         jerseyGK: 'https://imgur.com/H2oygfo.png', 
@@ -278,6 +287,7 @@ export const TEAM_TEMPLATES = [
     },
     { 
         name: 'Tekirspor', 
+        president: 'Tekir Saran',
         logo: 'https://i.imgur.com/JhXtd58.png',
         jersey: 'https://imgur.com/augQrXj.png',
         jerseyGK: 'https://imgur.com/G73BOHq.png', 
@@ -308,6 +318,7 @@ export const TEAM_TEMPLATES = [
     },
     { 
         name: 'Uzunoğullarıspor', 
+        president: 'İbrahim Uzunoğlu',
         logo: 'https://i.imgur.com/S4TVTee.png',
         jersey: 'https://imgur.com/BOyr0e6.png',
         jerseyGK: 'https://imgur.com/wAOAVng.png', 
@@ -325,7 +336,7 @@ export const TEAM_TEMPLATES = [
         debt: 9, // M€
         leagueHistory: [
             {year: '1983/84', rank: 9}, {year: '1984/85', rank: 9}, {year: '1985/86', rank: 7}, {year: '1986/87', rank: 9},
-            {year: '1987/88', rank: 6}, {year: '1988/89', rank: 6}, {year: '1989/90', rank: 15}, {year: '1990/91', rank: 17},
+            {year: '1887/88', rank: 6}, {year: '1988/89', rank: 6}, {year: '1989/90', rank: 15}, {year: '1990/91', rank: 17},
             {year: '1991/92', rank: 14}, {year: '1992/93', rank: 15}, {year: '1993/94', rank: 6}, {year: '1994/95', rank: 9},
             {year: '1995/96', rank: 12}, {year: '1996/97', rank: 11}, {year: '1997/98', rank: 11}, {year: '1998/99', rank: 9},
             {year: '1999/00', rank: 18}, {year: '2000/01', rank: 7}, {year: '2001/02', rank: 16}, {year: '2002/03', rank: 8},
@@ -338,6 +349,7 @@ export const TEAM_TEMPLATES = [
     },
     { 
         name: 'Hamsispor', 
+        president: 'Laz Ali',
         logo: 'https://i.imgur.com/LqtejWJ.png',
         jersey: 'https://imgur.com/BP2TPF8.png',
         jerseyGK: 'https://imgur.com/rhp2PXq.png', 
@@ -368,6 +380,7 @@ export const TEAM_TEMPLATES = [
     },
     { 
         name: 'Osurukspor', 
+        president: 'Nihat Gazozcu',
         logo: 'https://i.imgur.com/Iz505sK.png',
         jersey: 'https://imgur.com/eqUzVTA.png',
         jerseyGK: 'https://imgur.com/ZjPlTwJ.png', 
@@ -398,6 +411,7 @@ export const TEAM_TEMPLATES = [
     },
     { 
         name: 'Yeni Bozkurtspor', 
+        president: 'Alparslan Yıldırım',
         logo: 'https://i.imgur.com/n17A3Cw.png',
         jersey: 'https://imgur.com/QtcPbrG.png',
         jerseyGK: 'https://imgur.com/syiHDWW.png', 
@@ -427,7 +441,8 @@ export const TEAM_TEMPLATES = [
         ]
     },
     { 
-        name: 'Civciv FK', 
+        name: 'Civcivspor', 
+        president: 'Cem Civcivcioğlu',
         logo: 'https://i.imgur.com/eUpKqYk.png',
         jersey: 'https://imgur.com/9JuH2nU.png',
         jerseyGK: 'https://imgur.com/00KMILk.png', 
@@ -458,6 +473,7 @@ export const TEAM_TEMPLATES = [
     },
     { 
         name: 'Aston Karakoçan', 
+        president: 'Sir Mehmet Karakoç',
         logo: 'https://i.imgur.com/sw63G9H.png',
         jersey: 'https://imgur.com/z3S5RuL.png',
         jerseyGK: 'https://imgur.com/HXvBipD.png', 
@@ -488,6 +504,7 @@ export const TEAM_TEMPLATES = [
     },
     { 
         name: 'Küheylanspor', 
+        president: 'Ferhat Atlı',
         logo: 'https://i.imgur.com/WG9bJgB.png',
         jersey: 'https://imgur.com/QDHs7Sy.png',
         jerseyGK: 'https://imgur.com/r4F2Ykh.png', 
@@ -518,6 +535,7 @@ export const TEAM_TEMPLATES = [
     },
     { 
         name: 'İslamspor', 
+        president: 'Oflu Hoca',
         logo: 'https://i.imgur.com/JROZfTX.png',
         jersey: 'https://imgur.com/g5voy0X.png',
         jerseyGK: 'https://imgur.com/W71pkOG.png', 
@@ -642,7 +660,8 @@ export const initializeTeams = (): Team[] => {
         const sleeveSponsor = getRandomSponsorForReputation(tmpl.baseReputation, 'sleeve');
 
         // Generate Board & Staff
-        const presidentName = `${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]} ${LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)]}`;
+        // Use fixed president from template if provided
+        const presidentName = tmpl.president || `${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]} ${LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)]}`;
         
         // Facility Levels based on target strength (roughly)
         const facLevel = Math.max(1, Math.min(20, Math.floor(tmpl.targetStrength / 5)));
@@ -665,6 +684,7 @@ export const initializeTeams = (): Team[] => {
             wageBudget: Number((estimatedWages * 1.1).toFixed(1)), 
             players,
             reputation: tmpl.baseReputation, 
+            initialReputation: tmpl.baseReputation, // Set initial reputation
             leagueHistory: tmpl.leagueHistory || [], 
             
             sponsors: {
@@ -673,11 +693,18 @@ export const initializeTeams = (): Team[] => {
                 sleeve: { name: sleeveSponsor.name, yearlyValue: sleeveSponsor.value, expiryYear: 2026 }
             },
 
-            // New Management Data
+            // Management Data
             board: {
                 presidentName,
                 expectations: tmpl.targetStrength > 80 ? 'Şampiyonluk' : tmpl.targetStrength > 75 ? 'Üst Sıralar' : 'Ligde Kalmak',
                 patience: Math.floor(Math.random() * 10) + 10 // 10-20
+            },
+            boardRequests: { // NEW
+                stadiumBuilt: false,
+                trainingUpgradesCount: 0,
+                youthUpgradesCount: 0,
+                trainingLastRep: tmpl.baseReputation,
+                youthLastRep: tmpl.baseReputation
             },
             staff: generateStaff(tmpl.baseReputation),
             facilities: {

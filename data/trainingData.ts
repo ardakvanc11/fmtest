@@ -1,5 +1,5 @@
 
-import { IndividualTrainingType } from '../types';
+import { IndividualTrainingType, Position } from '../types';
 
 export const INDIVIDUAL_PROGRAMS = [
     {
@@ -102,3 +102,45 @@ export const INDIVIDUAL_PROGRAMS = [
         target: ['GK']
     }
 ];
+
+// --- POSITION ADAPTATION CONSTANTS ---
+export const POSITION_TRANSITION_TIME = (current: Position, target: Position): number | null => {
+    if (current === target) return 0;
+    if (current === Position.GK || target === Position.GK) return null; // Kaleci devşirilemez
+
+    const isFullback = (p: Position) => [Position.SLB, Position.SGB].includes(p);
+    const isWing = (p: Position) => [Position.SLK, Position.SGK].includes(p);
+    const isMid = (p: Position) => [Position.OS, Position.OOS].includes(p);
+
+    // KOLAY (12 Hafta)
+    // Kanatlar <-> Bekler
+    if (isWing(current) && isFullback(target)) return 12;
+    if (isFullback(current) && isWing(target)) return 12;
+    // STP <-> OS
+    if (current === Position.STP && target === Position.OS) return 12;
+    if (current === Position.OS && target === Position.STP) return 20; // Bek-Stoper 20 kuralı baz alındı
+    // OS <-> OOS (User said "orta saha defansif orta saha" which are both OS in our system, let's treat internal Mid transitions as 12)
+    if (isMid(current) && isMid(target)) return 12;
+
+    // ORTALAMA (20 Hafta)
+    // OS <-> Kanat
+    if (isMid(current) && isWing(target)) return 20;
+    if (isWing(current) && isMid(target)) return 20;
+    // Forvet -> Kanat
+    if (current === Position.SNT && isWing(target)) return 20;
+    if (isWing(current) && target === Position.SNT) return 20;
+    // Bek -> Stoper
+    if (isFullback(current) && target === Position.STP) return 20;
+    if (current === Position.STP && isFullback(target)) return 20;
+
+    // ZOR (36 Hafta)
+    // Forvet <-> Orta Saha
+    if (current === Position.SNT && isMid(target)) return 36;
+    if (isMid(current) && target === Position.SNT) return 36;
+    // Kanat -> OOS
+    if (isWing(current) && target === Position.OOS) return 36;
+    if (target === Position.OOS && isWing(current)) return 36;
+
+    // Default Fallback for very weird transitions
+    return 48;
+};

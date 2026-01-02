@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { GameState } from '../types';
 import { initializeTeams } from '../data/teamConstants';
 import { GAME_CALENDAR } from '../data/gameConstants';
@@ -14,6 +14,12 @@ export const useGameLifecycle = (
     navigation: any,
     coreSetters: any
 ) => {
+    // Kayıt sırasında her zaman en güncel state'e erişmek için ref kullanıyoruz
+    const stateRef = useRef(gameState);
+    useEffect(() => {
+        stateRef.current = gameState;
+    }, [gameState]);
+
     // Timer Logic
     useEffect(() => {
         let interval: any;
@@ -36,7 +42,8 @@ export const useGameLifecycle = (
         if(saved) {
             try {
                 const parsed = JSON.parse(saved);
-                // Basic migration checks
+                
+                // Migration ve Eksik Veri Kontrolleri
                 if (typeof parsed.playTime === 'undefined') parsed.playTime = 0;
                 if (typeof parsed.lastSeenInjuryCount === 'undefined') parsed.lastSeenInjuryCount = 0;
                 if (!parsed.currentDate) parsed.currentDate = GAME_CALENDAR.START_DATE.toISOString();
@@ -44,7 +51,6 @@ export const useGameLifecycle = (
                 if (!parsed.incomingOffers) parsed.incomingOffers = [];
                 if (!parsed.seasonChampion) parsed.seasonChampion = null;
                 
-                // Manager Stats Checks
                 if (parsed.manager && parsed.manager.stats) {
                     if (typeof parsed.manager.stats.leagueTitles === 'undefined') parsed.manager.stats.leagueTitles = 0;
                     if (typeof parsed.manager.stats.domesticCups === 'undefined') parsed.manager.stats.domesticCups = 0;
@@ -54,7 +60,6 @@ export const useGameLifecycle = (
                     if (typeof parsed.manager.stats.transferIncomeThisMonth === 'undefined') parsed.manager.stats.transferIncomeThisMonth = 0;
                 }
                 
-                // Staff Relations Check
                 if (parsed.manager && !parsed.manager.staffRelations) {
                     parsed.manager.staffRelations = [
                         { id: '1', name: 'Ahmet Arslan', role: 'Kulüp Başkanı', value: 50, avatarColor: 'bg-indigo-600' },
@@ -65,7 +70,6 @@ export const useGameLifecycle = (
                     ];
                 }
 
-                // Financial & Team Checks
                 if (parsed.teams) {
                     parsed.teams = parsed.teams.map((t: any) => {
                         if (!t.financialRecords) {
@@ -87,18 +91,22 @@ export const useGameLifecycle = (
                 }
 
                 setGameState(parsed);
+                
+                // Eğer oyun zaten başladıysa direkt Home'a yönlendir
                 if(parsed.isGameStarted) {
                     navigation.setViewHistory(['home']);
                     navigation.setHistoryIndex(0);
                 }
-            } catch(e) { console.error("Save load failed", e); }
+            } catch(e) { 
+                console.error("Save load failed", e); 
+            }
         }
     }, []);
 
     const handleStart = (name: string, year: string, country: string) => {
         const teams = initializeTeams();
         const fixtures = generateFixtures(teams, 2025); 
-        const marketCount = Math.floor(Math.random() * 1001) + 5000;
+        const marketCount = Math.floor(Math.random() * 500) + 1000;
         const transferList = generateTransferMarket(marketCount, GAME_CALENDAR.START_DATE.toISOString());
         const news = generateWeeklyNews(1, fixtures, teams);
 
@@ -145,7 +153,10 @@ export const useGameLifecycle = (
             pendingTransfers: [],
             incomingOffers: [],
             seasonChampion: null,
-            lastSeasonSummary: null
+            lastSeasonSummary: null,
+            consecutiveFfpYears: 0,
+            yearsAtCurrentClub: 0,
+            lastSeasonGoalAchieved: false
         };
         setGameState(newState);
         navigation.navigateTo('team_select');
@@ -172,9 +183,18 @@ export const useGameLifecycle = (
         navigation.setHistoryIndex(0);
     };
 
-    const handleSave = () => {
-        localStorage.setItem('sthl_save_v3_daily', JSON.stringify(gameState));
-    };
+    // Kaydetme butonu için kullanılan asıl fonksiyon
+    const handleSave = useCallback(() => {
+        try {
+            if (!stateRef.current) return;
+            const data = JSON.stringify(stateRef.current);
+            localStorage.setItem('sthl_save_v3_daily', data);
+            console.log("Oyun başarıyla kaydedildi.");
+        } catch (error) {
+            console.error("Kayıt hatası:", error);
+            alert("Oyun kaydedilemedi! Tarayıcı depolama alanı dolu olabilir veya bir hata oluştu.");
+        }
+    }, []);
 
     const handleNewGame = () => {
         localStorage.removeItem('sthl_save_v3_daily');
@@ -182,10 +202,10 @@ export const useGameLifecycle = (
             managerName: null, manager: null, myTeamId: null, currentWeek: 1,
             currentDate: GAME_CALENDAR.START_DATE.toISOString(), teams: [], fixtures: [],
             messages: [], isGameStarted: false, transferList: [], trainingPerformed: false,
-            news: [], playTime: 0, lastSeenInjuryCount: 0, pendingTransfers: [], incomingOffers: [], seasonChampion: null, lastSeasonSummary: null
+            news: [], playTime: 0, lastSeenInjuryCount: 0, pendingTransfers: [], incomingOffers: [], 
+            seasonChampion: null, lastSeasonSummary: null, consecutiveFfpYears: 0, yearsAtCurrentClub: 0, lastSeasonGoalAchieved: false
         });
         
-        // Reset Selection States via coreSetters
         coreSetters.setSelectedPlayerForDetail(null);
         coreSetters.setSelectedTeamForDetail(null);
         coreSetters.setMatchResultData(null);
@@ -197,7 +217,7 @@ export const useGameLifecycle = (
         navigation.setHistoryIndex(0);
     };
 
-    const handleNextDay = () => {
+    const handleNextWeek = () => {
         const result = processNextDayLogic(gameState, (reason) => {
             coreSetters.setGameOverReason(reason);
             navigation.setViewHistory(['game_over']);
@@ -236,7 +256,7 @@ export const useGameLifecycle = (
         handleSelectTeam,
         handleSave,
         handleNewGame,
-        handleNextDay,
+        handleNextWeek,
         handleRetire,
         handleTerminateContract
     };

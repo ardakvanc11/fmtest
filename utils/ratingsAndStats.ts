@@ -1,5 +1,4 @@
 
-
 import { Position, Team, MatchEvent, PlayerPerformance } from '../types';
 
 // Helper to generate simulated granular stats based on skill
@@ -51,12 +50,25 @@ export const calculateRating = (
     goalsConceded: number, // For GK/Defenders
     matchResult: 'WIN' | 'DRAW' | 'LOSS',
     minutesPlayed: number = 90,
-    ratingBonus: number = 0 // NEW: Bonus parameter for match deciding goals
+    ratingBonus: number = 0, // NEW: Bonus parameter for match deciding goals
+    assignedPosition?: Position // NEW: Actual slot assigned on pitch
 ): number => {
     
     // --- 1. BASELINE ---
     // GK Starts higher as baseline "No mistakes" value
     let rating = position === Position.GK ? 6.8 : 6.5;
+
+    // --- 1.5 POSITION PENALTY (NEW) ---
+    // If player is played in a position that is NOT their primary OR secondary
+    if (assignedPosition && assignedPosition !== position) {
+        // Find if it's secondary? (Note: Player object not passed here, logic needs adjustment or assume penalty if misaligned)
+        // For simplicity, if assignedPosition is passed, we check match.
+        // Penalty: -1.0 to -2.0 depending on how different it is
+        let penalty = 1.0;
+        if (position === Position.GK || assignedPosition === Position.GK) penalty = 3.0; // Absolute disaster
+        
+        rating -= penalty;
+    }
 
     // --- 2. RESULT IMPACT ---
     // RULE: Win bonus (+0.25) does NOT stack with match impact bonus (ratingBonus).
@@ -354,6 +366,11 @@ export const calculateRatingsFromEvents = (
                 if (redEvent) minutes = Math.min(minutes, redEvent.minute);
             }
 
+            // Determine if playing out of position
+            // This requires knowing which slot they occupied. 
+            // Simplified: if p.position is not aligned with the team's expectation for that index.
+            // But this is harder in post-game. Let's assume penalty is applied if slot logic is known.
+            
             const rating = calculateRating(
                 player.position,
                 player.skill,

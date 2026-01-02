@@ -1,8 +1,9 @@
-
+import React from 'react';
 import { GameState, SponsorDeal } from '../types';
 
 export const useFinance = (
     gameState: GameState,
+    // Add comment above the fix
     setGameState: React.Dispatch<React.SetStateAction<GameState>>
 ) => {
 

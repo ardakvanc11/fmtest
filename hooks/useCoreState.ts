@@ -1,7 +1,6 @@
 
-
 import { useState, useEffect } from 'react';
-import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, PendingTransfer, IncomingOffer } from '../types';
+import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, PendingTransfer, IncomingOffer, BoardInteraction } from '../types';
 import { GAME_CALENDAR } from '../data/gameConstants';
 import { INITIAL_MESSAGES } from '../data/messagePool';
 
@@ -25,7 +24,10 @@ export const useCoreState = () => {
         incomingOffers: [],
         seasonChampion: null,
         lastSeasonSummary: null,
-        lastTrainingReport: [] // NEW
+        lastTrainingReport: [],
+        consecutiveFfpYears: 0,
+        yearsAtCurrentClub: 0,
+        lastSeasonGoalAchieved: false
     });
 
     // Selection States
@@ -35,6 +37,9 @@ export const useCoreState = () => {
     const [selectedFixtureForDetail, setSelectedFixtureForDetail] = useState<Fixture | null>(null);
     const [selectedFixtureInfo, setSelectedFixtureInfo] = useState<Fixture | null>(null); 
     const [gameOverReason, setGameOverReason] = useState<string | null>(null);
+
+    // Board Room State
+    const [boardInteraction, setBoardInteraction] = useState<BoardInteraction | null>(null);
 
     // Negotiation States
     const [negotiatingTransferPlayer, setNegotiatingTransferPlayer] = useState<Player | null>(null);
@@ -72,6 +77,7 @@ export const useCoreState = () => {
         selectedFixtureForDetail, setSelectedFixtureForDetail,
         selectedFixtureInfo, setSelectedFixtureInfo,
         gameOverReason, setGameOverReason,
+        boardInteraction, setBoardInteraction,
         negotiatingTransferPlayer, setNegotiatingTransferPlayer,
         incomingTransfer, setIncomingTransfer,
         theme, toggleTheme

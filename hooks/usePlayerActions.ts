@@ -1,6 +1,6 @@
 
-
-import { GameState, Player, IncomingOffer, PendingTransfer, TrainingConfig, IndividualTrainingType } from '../types';
+import React from 'react';
+import { GameState, Player, IncomingOffer, PendingTransfer, TrainingConfig, IndividualTrainingType, Position } from '../types';
 import { calculateTransferStrengthImpact, recalculateTeamStrength, calculateMonthlyNetFlow, applyTraining } from '../utils/gameEngine';
 import { generateStarSoldRiotTweets } from '../utils/newsAndSocial';
 
@@ -55,6 +55,28 @@ export const usePlayerActions = (
         setGameState(prev => ({
             ...prev,
             teams: prev.teams.map(t => t.id === myTeam.id ? updatedTeam : t)
+        }));
+    };
+
+    const handleAssignPositionTraining = (playerId: string, target: Position, weeks: number) => {
+        const myTeam = gameState.teams.find(t => t.id === gameState.myTeamId);
+        if (!myTeam) return;
+
+        const updatedPlayers = myTeam.players.map(p => {
+            if (p.id === playerId) {
+                return { 
+                    ...p, 
+                    positionTrainingTarget: target, 
+                    positionTrainingRequired: weeks,
+                    positionTrainingProgress: 0 
+                };
+            }
+            return p;
+        });
+
+        setGameState(prev => ({
+            ...prev,
+            teams: prev.teams.map(t => t.id === myTeam.id ? { ...t, players: updatedPlayers } : t)
         }));
     };
 
@@ -520,6 +542,7 @@ export const usePlayerActions = (
         handleTrain,
         handleToggleTrainingDelegation,
         handleAssignIndividualTraining,
+        handleAssignPositionTraining, // NEW
         handleBuyPlayer,
         handleSellPlayer,
         handleAcceptOffer,

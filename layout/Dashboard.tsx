@@ -1,8 +1,7 @@
-
-import React, { useState } from 'react';
-import { GameState } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { GameState, Player } from '../types';
 import { getFormattedDate, isSameDay } from '../utils/calendarAndFixtures';
-import { Home, Users, Briefcase, DollarSign, Calendar, Dumbbell, Smartphone, Save, RotateCcw, X, Menu, ChevronLeft, ChevronRight, PlayCircle, Sun, Moon, Activity, PieChart, Shield, AlertCircle, Trophy, TrendingUp } from 'lucide-react';
+import { Home, Smartphone, Users, Briefcase, Activity, DollarSign, Trophy, Calendar, PieChart, Shield, Target, Dumbbell, TrendingUp, Sun, Moon, Save, RotateCcw, Menu, ChevronLeft, ChevronRight, X, PlayCircle, Search, User, AlertCircle } from 'lucide-react';
 
 const NavItem = ({ id, label, icon: Icon, badge, onClick, currentView, isMatchMode, isAlert }: any) => (
     <button 
@@ -37,7 +36,9 @@ const Dashboard = ({
     onForward,
     canBack,
     canForward,
-    injuredCount
+    injuredCount,
+    onTeamClick,
+    onPlayerClick
 }: { 
     state: GameState, 
     onNavigate: (view: string) => void, 
@@ -52,7 +53,9 @@ const Dashboard = ({
     onForward: () => void,
     canBack: boolean,
     canForward: boolean,
-    injuredCount?: number
+    injuredCount?: number,
+    onTeamClick: (id: string) => void,
+    onPlayerClick: (p: Player) => void
 }) => {
     const myTeam = state.teams.find(t => t.id === state.myTeamId);
     const dateInfo = getFormattedDate(state.currentDate);
@@ -89,9 +92,44 @@ const Dashboard = ({
     // Notification State
     const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
+    // Search State
+    const [searchTerm, setSearchTerm] = useState('');
+    const [showSearchResults, setShowSearchResults] = useState(false);
+    const searchRef = useRef<HTMLDivElement>(null);
+
     // Determine if we need padding (standard views) or full screen (match views/game over)
     const noPaddingViews = ['match_live', 'locker_room', 'game_over', 'contract_negotiation'];
     const usePadding = !noPaddingViews.includes(currentView);
+
+    // Handle Click Outside for Search
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+                setShowSearchResults(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // Filter Logic
+    const filteredTeams = searchTerm.length >= 2 
+        ? state.teams.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 3) 
+        : [];
+    
+    const filteredPlayers = searchTerm.length >= 2
+        ? state.teams.flatMap(t => t.players).filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 5)
+        : [];
+
+    const handleSearchResultClick = (type: 'TEAM' | 'PLAYER', data: any) => {
+        setSearchTerm('');
+        setShowSearchResults(false);
+        if (type === 'TEAM') {
+            onTeamClick(data.id);
+        } else {
+            onPlayerClick(data);
+        }
+    };
 
     return (
         <div className="flex h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-sans relative overflow-hidden transition-colors duration-300">
@@ -124,6 +162,7 @@ const Dashboard = ({
                         <NavItem id="fixtures" label="Fikstür" icon={Calendar} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                         <NavItem id="finance" label="Finans" icon={PieChart} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} isAlert={isFinancialCrisis} />
                         <NavItem id="my_team_detail" label="Takım Profili" icon={Shield} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
+                        <NavItem id="objectives" label="Kulüp Hedefleri" icon={Target} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                         <NavItem id="training" label="Antrenman" icon={Dumbbell} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                         <NavItem id="development" label="Gelişim Merkezi" icon={TrendingUp} onClick={(id:string) => {onNavigate(id); setMobileMenuOpen(false);}} currentView={currentView} isMatchMode={isMatchMode} />
                     </nav>
@@ -227,11 +266,68 @@ const Dashboard = ({
                     </div>
 
                     <div className="flex items-center gap-2 md:gap-4 shrink-0">
-                         {/* Budget - Hidden on very small screens if needed, mostly visible */}
-                         <div className={`hidden sm:flex items-center space-x-2 font-mono text-sm md:text-base ${myTeam && myTeam.budget < 0 ? 'text-red-600 dark:text-red-500 font-bold animate-pulse' : 'text-green-600 dark:text-green-400'}`}>
-                            <DollarSign size={16} />
-                            <span>{myTeam?.budget?.toFixed(1)} M€</span>
-                        </div>
+                         {/* SEARCH BAR (Replaces Budget) */}
+                         <div className="relative hidden sm:block" ref={searchRef}>
+                            <div className="flex items-center bg-slate-100 dark:bg-slate-700 rounded-full px-4 py-1.5 w-48 lg:w-64 border border-slate-200 dark:border-slate-600 focus-within:border-yellow-500 transition-colors">
+                                <Search size={16} className="text-slate-400 mr-2" />
+                                <input 
+                                    type="text" 
+                                    placeholder="Takım veya Oyuncu Ara..." 
+                                    className="bg-transparent border-none outline-none text-xs md:text-sm text-slate-800 dark:text-slate-200 w-full placeholder-slate-400"
+                                    value={searchTerm}
+                                    onChange={(e) => {
+                                        setSearchTerm(e.target.value);
+                                        setShowSearchResults(true);
+                                    }}
+                                    onFocus={() => setShowSearchResults(true)}
+                                    disabled={isMatchMode}
+                                />
+                            </div>
+                            
+                            {/* Search Dropdown */}
+                            {showSearchResults && searchTerm.length >= 2 && (
+                                <div className="absolute top-full right-0 mt-2 w-72 bg-white dark:bg-slate-800 rounded-lg shadow-2xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+                                    {filteredTeams.length > 0 && (
+                                        <div>
+                                            <div className="text-[10px] uppercase font-bold text-slate-500 px-3 py-2 bg-slate-50 dark:bg-slate-900/50">Takımlar</div>
+                                            {filteredTeams.map(t => (
+                                                <div 
+                                                    key={t.id} 
+                                                    onClick={() => handleSearchResultClick('TEAM', t)}
+                                                    className="flex items-center gap-3 px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+                                                >
+                                                    {t.logo ? <img src={t.logo} className="w-6 h-6 object-contain"/> : <div className={`w-6 h-6 rounded-full ${t.colors[0]}`}></div>}
+                                                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{t.name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    
+                                    {filteredPlayers.length > 0 && (
+                                        <div>
+                                            <div className="text-[10px] uppercase font-bold text-slate-500 px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700">Oyuncular</div>
+                                            {filteredPlayers.map(p => (
+                                                <div 
+                                                    key={p.id} 
+                                                    onClick={() => handleSearchResultClick('PLAYER', p)}
+                                                    className="flex items-center gap-3 px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+                                                >
+                                                    <div className="bg-slate-200 dark:bg-slate-600 rounded-full p-1"><User size={12}/></div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{p.name}</span>
+                                                        <span className="text-[10px] text-slate-500 dark:text-slate-400">{p.position} • {p.skill} Güç</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {filteredTeams.length === 0 && filteredPlayers.length === 0 && (
+                                        <div className="p-4 text-center text-xs text-slate-500 italic">Sonuç bulunamadı.</div>
+                                    )}
+                                </div>
+                            )}
+                         </div>
                         
                         {/* Date */}
                         <div className="flex items-center space-x-2 text-yellow-600 dark:text-yellow-400 font-mono border border-slate-300 dark:border-slate-600 px-2 md:px-3 py-1 rounded bg-slate-100 dark:bg-slate-700 justify-center transition-colors">

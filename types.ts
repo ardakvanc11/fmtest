@@ -1,5 +1,4 @@
 
-
 export enum Position {
     GK = 'GK',
     SLB = 'SLB', // Sol Bek
@@ -13,9 +12,6 @@ export enum Position {
 }
 
 // --- NEW DETAILED TACTICAL ENUMS ---
-
-// TOPA SAHİPKEN (IN POSSESSION)
-
 export enum PassingStyle {
     EXTREME_SHORT = 'Aşırı Kısa Pas',
     SHORT = 'Kısa Pas',
@@ -129,7 +125,6 @@ export enum GKDistributionSpeed {
 }
 
 // TOP RAKİPTEYKEN (OUT OF POSSESSION)
-
 export enum PressingLine {
     LOW = 'Geride',
     MID = 'Ortada',
@@ -181,8 +176,6 @@ export enum PressingFocus {
     BALANCED = 'Dengeli',
     WINGS = 'Kanatlardan Prese Zorla'
 }
-
-// --- NEW ADDITIONS FOR COMPATIBILITY ---
 
 export enum Mentality {
     VERY_DEFENSIVE = 'Çok Defansif',
@@ -240,7 +233,7 @@ export enum TrainingType {
     PHYSICAL = 'Fiziksel',
     TACTICAL = 'Taktiksel',
     MATCH_PREP = 'Maç Hazırlığı',
-    SET_PIECES = 'Duran Top' // NEW
+    SET_PIECES = 'Duran Top'
 }
 
 export enum TrainingIntensity {
@@ -289,7 +282,6 @@ export enum PlayerPersonality {
 }
 
 // --- NEW MANAGEMENT INTERFACES ---
-
 export interface ClubStaff {
     role: string;
     name: string;
@@ -312,8 +304,24 @@ export interface ClubBoard {
     patience: number; // 1-20 (Yönetim sabrı)
 }
 
-// --- INTERFACES ---
+export interface BoardRequestsState {
+    stadiumBuilt: boolean;
+    trainingUpgradesCount: number;
+    youthUpgradesCount: number;
+    trainingLastRep: number;
+    youthLastRep: number;
+}
 
+// --- BOARD ROOM TYPES ---
+export interface BoardInteraction {
+    requestId: string;
+    requestType: string;
+    managerMessage: string;
+    boardResponse: string;
+    status: 'IDLE' | 'PENDING' | 'ACCEPTED' | 'REJECTED';
+}
+
+// --- INTERFACES ---
 export interface HalftimeTalkOption {
     id: string;
     text: string;
@@ -329,7 +337,7 @@ export interface PlayerSeasonStats {
     ratings: number[]; 
     averageRating: number;
     matchesPlayed: number;
-    processedMatchIds: string[]; // NEW: To prevent double counting
+    processedMatchIds: string[];
 }
 
 export interface PlayerStats {
@@ -375,7 +383,6 @@ export interface PlayerStats {
     naturalFitness: number; // Vücut Zindeliği
     jumping: number;        // Zıplama
     
-    // Legacy support
     shooting?: number;
     defending?: number;
 }
@@ -434,13 +441,18 @@ export interface Player {
     nextNegotiationWeek?: number; 
     activePromises?: string[]; 
     transferListed?: boolean;
-    trainingFocus?: string; // Legacy field
-    activeTraining?: IndividualTrainingType; // Active Individual Training Program
-    personality?: PlayerPersonality; // NEW: Player Personality
-    activeTrainingWeeks?: number; // NEW: Weeks spent on current individual program
-    developmentFeedback?: string; // NEW: Feedback string (e.g. "Gelişiyor")
-    statProgress?: Record<string, number>; // NEW: Hidden Decimal Progress for Stats
-    recentAttributeChanges?: Record<string, 'UP' | 'DOWN' | 'PARTIAL_UP'>; // NEW: Tracks recent changes for UI feedback (Green/Red arrows)
+    trainingFocus?: string;
+    activeTraining?: IndividualTrainingType;
+    personality?: PlayerPersonality;
+    activeTrainingWeeks?: number;
+    developmentFeedback?: string;
+    statProgress?: Record<string, number>;
+    recentAttributeChanges?: Record<string, 'UP' | 'DOWN' | 'PARTIAL_UP'>;
+    
+    // Position Evolution
+    positionTrainingTarget?: Position;
+    positionTrainingProgress?: number; // Current weeks trained
+    positionTrainingRequired?: number; // Total weeks required
 }
 
 export interface FinancialRecords {
@@ -517,27 +529,25 @@ export interface Team {
     initialDebt: number; 
     wageBudget?: number; 
     players: Player[]; 
-    reputation: number; 
+    reputation: number;
+    initialReputation?: number; // Added for objective tracking 
     
-    // --- FINANCIALS ---
     financialRecords: FinancialRecords; 
     transferHistory: TransferRecord[]; 
     sponsors: TeamSponsors; 
 
-    // --- MANAGEMENT & FACILITIES (NEW) ---
     board: ClubBoard;
+    boardRequests: BoardRequestsState;
     staff: ClubStaff[];
     facilities: ClubFacilities;
 
-    // --- TACTICS (UPDATED) ---
-    gameSystem?: GameSystem; // NEW FIELD
+    gameSystem?: GameSystem;
     formation: string; 
     mentality: Mentality; 
     tactic?: TacticStyle; 
     attackStyle?: AttackStyle; 
     pressingStyle?: PressingStyle; 
     
-    // In Possession
     passing: PassingStyle;
     tempo: Tempo;
     width: Width;
@@ -556,7 +566,6 @@ export interface Team {
     crossing?: CrossingType;
     gkDistSpeed?: GKDistributionSpeed;
 
-    // Out of Possession
     pressingLine?: PressingLine;
     defLine: DefensiveLine;
     defLineMobility?: DefLineMobility;
@@ -566,11 +575,9 @@ export interface Team {
     preventCrosses?: PreventCrosses;
     pressFocus: PressingFocus;
     
-    // Training
-    trainingConfig?: TrainingConfig; // NEW FIELD
-    isTrainingDelegated?: boolean; // NEW: Persistent delegation flag
+    trainingConfig?: TrainingConfig;
+    isTrainingDelegated?: boolean;
 
-    // Legacy support fields
     timeWasting?: TimeWasting; 
     finalThird?: any; 
     
@@ -640,7 +647,7 @@ export interface ManagerProfile {
         media: number; 
     };
     playerRelations: { playerId: string; name: string; value: number }[]; 
-    staffRelations: StaffRelation[]; // NEW FIELD
+    staffRelations: StaffRelation[];
     history: string[]; 
 }
 
@@ -715,8 +722,6 @@ export interface SeasonSummary {
     trophiesWon: string[]; 
     transfersIn: TransferImpact[];
 }
-
-// --- MISSING INTERFACES ADDED ---
 
 /**
  * Represents a significant event during a simulated match.
@@ -855,5 +860,8 @@ export interface GameState {
     incomingOffers: IncomingOffer[]; 
     seasonChampion?: SeasonChampion | null; 
     lastSeasonSummary?: SeasonSummary | null; 
-    lastTrainingReport?: TrainingReportItem[]; // NEW: For storing training feedback
+    lastTrainingReport?: TrainingReportItem[]; 
+    consecutiveFfpYears: number;
+    yearsAtCurrentClub: number;
+    lastSeasonGoalAchieved: boolean;
 }
