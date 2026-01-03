@@ -1,5 +1,5 @@
 
-import { Team, Player, MatchEvent, MatchStats, Position, Tackling, PlayerPerformance, Fixture, PassingStyle, Tempo, Width, AttackingTransition, CreativeFreedom, SupportRuns, Dribbling, FocusArea, PressingLine, DefensiveLine, DefLineMobility, PressIntensity, DefensiveTransition, PreventCrosses, PressingFocus, Patience, PassTarget, LongShots, CrossingType, GKDistributionSpeed, SetPiecePlay, PlayStrategy, GoalKickType, GKDistributionTarget } from '../types';
+import { Team, Player, MatchEvent, MatchStats, Position, Tackling, PlayerPerformance, Fixture, PassingStyle, Tempo, Width, AttackingTransition, CreativeFreedom, SupportRuns, Dribbling, FocusArea, PassTarget, Patience, LongShots, CrossingType, GKDistributionSpeed, PressingLine, DefensiveLine, DefLineMobility, PressIntensity, DefensiveTransition, PreventCrosses, PressingFocus, SetPiecePlay, PlayStrategy, GoalKickType, GKDistributionTarget, Mentality } from '../types';
 import { INJURY_TYPES, RIVALRIES } from '../constants';
 import { MATCH_INFO_MESSAGES } from '../data/infoPool';
 import { GOAL_TEXTS, SAVE_TEXTS, MISS_TEXTS, FOUL_TEXTS, YELLOW_CARD_TEXTS, YELLOW_CARD_AGGRESSIVE_TEXTS, OFFSIDE_TEXTS, CORNER_TEXTS } from '../data/eventTexts';
@@ -159,7 +159,7 @@ export const getWeightedInjury = () => {
 };
 
 // --- NEW TACTICAL ENGINE LOGIC ---
-const calculateTacticalEfficiency = (team: Team, minute: number): { multiplier: number, warning?: string } => {
+const calculateTacticalEfficiency = (team: Team, minute: number, scoreDiff: number): { multiplier: number, warning?: string, longShotBonus?: boolean } => {
     let multiplier = 1.0;
     const xi = team.players.slice(0, 11);
     
@@ -177,29 +177,117 @@ const calculateTacticalEfficiency = (team: Team, minute: number): { multiplier: 
     const strikers = xi.filter(p => p.position === Position.SNT);
     
     let warning = undefined;
+    let longShotBonus = false;
+
+    // --- 1. KAOS KONTROLÜ (Liderlik, Takım Oyunu ve Moral Düşükse Çok Hücum Felakettir) ---
+    if (team.mentality === Mentality.VERY_ATTACKING) {
+        const leadership = avg('leadership');
+        const teamwork = avg('teamwork');
+        
+        // Eşik değerler: Liderlik veya Takım Oyunu 12'nin altındaysa veya Moral %50'nin altındaysa
+        if (leadership < 12 || teamwork < 12 || team.morale < 50) {
+            multiplier -= 0.35; // Ciddi ceza
+            if (Math.random() < 0.20) {
+                warning = "KAOS: Diziliş bozuldu! Oyuncular kafasına göre oynuyor.";
+            }
+        }
+    }
+
+    // --- 2. GERİ DÖNÜŞ (KARARLILIK BONUSU) ---
+    // Gerideysen ve Hücum/Çok Hücum oynuyorsan
+    if (scoreDiff < 0 && (team.mentality === Mentality.ATTACKING || team.mentality === Mentality.VERY_ATTACKING)) {
+        const determination = avg('determination');
+        // Kararlılık yüksekse gizli bonus
+        if (determination >= 12) {
+            multiplier += 0.15; // Gizli kararlılık bonusu
+            longShotBonus = true; // Uzaktan şut eventi artırma flag'i
+        }
+    }
+
+    // --- 3. SKORU KORUMA (KONSANTRASYON BONUSU) ---
+    // Öndeysen ve Defansif/Çok Defansif oynuyorsan
+    if (scoreDiff > 0 && (team.mentality === Mentality.DEFENSIVE || team.mentality === Mentality.VERY_DEFENSIVE)) {
+        const concentration = avg('concentration');
+        if (concentration >= 12) {
+            multiplier += 0.15; // Gizli konsantrasyon bonusu (Hata yapma olasılığı düşer)
+        } else {
+            // Konsantrasyon düşükse geriye yaslanmak intihar olabilir
+            multiplier -= 0.05;
+            if (Math.random() < 0.05) warning = "Savunma konsantrasyonunu kaybediyor.";
+        }
+    }
+
+    // --- MENTALITY LOGIC (New) ---
+    switch (team.mentality) {
+        case Mentality.VERY_DEFENSIVE:
+            // "Top rakipte, Az pozisyon, Net pozisyon az verilir"
+            const vd_defScore = (avg('positioning') + avg('concentration')) / 2;
+            if (vd_defScore >= 13) multiplier += 0.08; 
+            else {
+                multiplier -= 0.05; // Bad defense can't park the bus properly
+                if (Math.random() < 0.05) warning = "Savunma konsantrasyonu dağıldı.";
+            }
+            // Offensive penalty (less chances created)
+            multiplier -= 0.12; 
+            break;
+
+        case Mentality.DEFENSIVE:
+            // "Dengeli savunma, Kontraya çıkma isteği artar"
+            const d_score = (avg('pace') + avg('positioning') + avg('firstTouch')) / 3;
+            if (d_score >= 12) multiplier += 0.05;
+            break;
+
+        case Mentality.STANDARD:
+            // "En stabil mod"
+            multiplier += 0.03; 
+            break;
+
+        case Mentality.ATTACKING:
+            // "Hatlar öne çıkar, Yaratıcılık ↑, Bitiricilik ↑, Karar alma ↓ (risk)"
+            const a_att = (avg('flair') + avg('finishing')) / 2;
+            const a_risk = (avg('decisions') + avg('positioning')) / 2;
+            
+            if (a_att >= 13) multiplier += 0.08;
+            
+            if (a_risk < 12) {
+                multiplier -= 0.04;
+                if (Math.random() < 0.05) warning = "Savunma arkası açık veriyor.";
+            }
+            break;
+
+        case Mentality.VERY_ATTACKING:
+            // "Kumar. Son 10-15 dk modu."
+            const va_ment = (avg('bravery') + avg('determination')) / 2;
+            const va_def = (avg('concentration') + avg('positioning')) / 2;
+            
+            if (va_ment >= 14) multiplier += 0.15; // High pressure
+            else multiplier -= 0.05; // Panic
+
+            if (va_def < 12) {
+                multiplier -= 0.10; // Exposed
+                if (Math.random() < 0.10) warning = "Savunma disiplini tamamen kayboldu.";
+            }
+            break;
+    }
 
     // --- 1. PASSING STYLE ---
     if (team.passing === PassingStyle.EXTREME_SHORT) {
-        // En yakın opsiyon dışında pas yok. Pas süresi uzar, şut düşer.
-        // Penalty if under pressure (avg composure/decision low)
         if (avg('passing') >= 14 && avg('composure') >= 13) {
-            multiplier += 0.05; // Tiki-taka master
+            multiplier += 0.05; 
         } else {
-            multiplier -= 0.05; // Stuck with ball
+            multiplier -= 0.05; 
             if (avg('decisions') < 12 && Math.random() < 0.1) warning = "Savunmada riskli paslaşma!";
         }
     } else if (team.passing === PassingStyle.SHORT) {
         if (avg('passing') >= 12) multiplier += 0.04;
     } else if (team.passing === PassingStyle.DIRECT) {
         if (avg('vision') >= 12 && avg('pace') >= 12) multiplier += 0.06;
-        else multiplier -= 0.04; // Too many lost balls
+        else multiplier -= 0.04; 
     } else if (team.passing === PassingStyle.PUMP_BALL) {
-        // "İleri Şişir" - Midfield stats ignored, Striker Physical is key
-        // Possession penalty implicit (lower base mult)
-        multiplier -= 0.10; // Possession penalty
+        multiplier -= 0.10; 
         const stStrength = avgList(strikers, 'physical') + avgList(strikers, 'heading');
-        if (stStrength >= 28) { // 14+ avg
-            multiplier += 0.25; // Huge boost if target man exists
+        if (stStrength >= 28) { 
+            multiplier += 0.25; 
         } else {
             if (Math.random() < 0.1) warning = "Forvetler top indiremiyor";
         }
@@ -207,16 +295,15 @@ const calculateTacticalEfficiency = (team: Team, minute: number): { multiplier: 
 
     // --- 2. TEMPO ---
     if (team.tempo === Tempo.VERY_SLOW) {
-        multiplier -= 0.10; // Chance creation drops significantly
-        if (avg('passing') >= 13) multiplier += 0.05; // But control increases
+        multiplier -= 0.10; 
+        if (avg('passing') >= 13) multiplier += 0.05; 
     } else if (team.tempo === Tempo.HIGH) {
-        if (avg('decisions') < 12) multiplier -= 0.05; // Mistakes
+        if (avg('decisions') < 12) multiplier -= 0.05; 
     } else if (team.tempo === Tempo.BEAST_MODE) {
-        // "Hayvan Gibi"
         if (minute <= 60) {
-            multiplier += 0.15; // Huge boost early game
+            multiplier += 0.15; 
         } else {
-            multiplier -= 0.30; // Huge drop after 60
+            multiplier -= 0.30; 
             if (Math.random() < 0.15) warning = "Takım fiziksel olarak çöktü (Beast Mode)";
         }
     }
@@ -229,19 +316,19 @@ const calculateTacticalEfficiency = (team: Team, minute: number): { multiplier: 
             if (Math.random() < 0.1) warning = "Kanatlardan açık veriliyor";
         }
     } else if (team.width === Width.VERY_WIDE) {
-        if (avg('passing') < 14) multiplier -= 0.08; // Long passes fail
+        if (avg('passing') < 14) multiplier -= 0.08; 
         if (avgList(wings, 'pace') >= 14) multiplier += 0.08;
     }
 
     // --- 4. ATTACK TRANSITION ---
     if (team.attackingTransition === AttackingTransition.PUSH_FORWARD) {
-        if (avg('pace') >= 13) multiplier += 0.08; // Deadly counter
+        if (avg('pace') >= 13) multiplier += 0.08; 
         if (avgList(defenders, 'positioning') < 12) {
             multiplier -= 0.08;
             if (Math.random() < 0.1) warning = "Geri dönüşlerde zaafiyet";
         }
     } else if (team.attackingTransition === AttackingTransition.KEEP_SHAPE) {
-        multiplier -= 0.02; // Less offensive bite
+        multiplier -= 0.02; 
         if (avg('composure') >= 12) multiplier += 0.04;
     }
 
@@ -253,14 +340,12 @@ const calculateTacticalEfficiency = (team: Team, minute: number): { multiplier: 
             if (Math.random() < 0.1) warning = "Gereksiz çalım/şut denemesi";
         }
     } else if (team.creative === CreativeFreedom.DISCIPLINED) {
-        if (avg('decisions') < 12) multiplier += 0.03; // Helps bad teams avoid mistakes
+        if (avg('decisions') < 12) multiplier += 0.03; 
     }
 
     // --- 6. SUPPORT RUNS ---
     if (team.supportRuns === SupportRuns.LEFT || team.supportRuns === SupportRuns.RIGHT) {
-        // Overload one side
         multiplier += 0.05;
-        // Risk on other side? (Abstracted)
     } else if (team.supportRuns === SupportRuns.CENTER) {
         if (avgList(mids, 'finishing') >= 11) multiplier += 0.06;
     }
@@ -273,14 +358,13 @@ const calculateTacticalEfficiency = (team: Team, minute: number): { multiplier: 
             if (Math.random() < 0.1) warning = "Çok fazla top kaybı (Dripling)";
         }
     } else if (team.dribbling === Dribbling.DISCOURAGE) {
-        multiplier += 0.02; // Safer
+        multiplier += 0.02; 
     }
 
     // --- 8. FOCUS AREA ---
     if (team.focusArea === FocusArea.BOTH_WINGS) {
         if (avgList(wings, 'crossing') >= 13) multiplier += 0.06;
         if (avgList(mids, 'tackling') < 12) {
-             // Center weakness
              multiplier -= 0.04;
         }
     }
@@ -295,9 +379,8 @@ const calculateTacticalEfficiency = (team: Team, minute: number): { multiplier: 
 
     // --- 10. PATIENCE ---
     if (team.patience === Patience.EARLY_CROSS) {
-        // Rush attacks
         if (avgList(strikers, 'heading') >= 14) multiplier += 0.08;
-        else multiplier -= 0.05; // Wasteful
+        else multiplier -= 0.05; 
     } else if (team.patience === Patience.WORK_INTO_BOX) {
         if (avg('composure') < 12) {
             multiplier -= 0.05;
@@ -322,7 +405,7 @@ const calculateTacticalEfficiency = (team: Team, minute: number): { multiplier: 
     }
 
     // Default clamps
-    return { multiplier: Math.max(0.4, multiplier), warning };
+    return { multiplier: Math.max(0.4, multiplier), warning, longShotBonus };
 };
 
 export const simulateBackgroundMatch = (home: Team, away: Team): { homeScore: number, awayScore: number, stats: MatchStats, events: MatchEvent[] } => {
@@ -455,9 +538,13 @@ export const simulateMatchStep = (
     // Base Event Chance
     if (Math.random() > 0.55) return null; 
 
-    // Calculate Dynamic Tactical Strength
-    const homeTactics = calculateTacticalEfficiency(home, minute);
-    const awayTactics = calculateTacticalEfficiency(away, minute);
+    // Score Difference
+    const homeScoreDiff = currentScore.h - currentScore.a;
+    const awayScoreDiff = currentScore.a - currentScore.h;
+
+    // Calculate Dynamic Tactical Strength with specific scenarios
+    const homeTactics = calculateTacticalEfficiency(home, minute, homeScoreDiff);
+    const awayTactics = calculateTacticalEfficiency(away, minute, awayScoreDiff);
 
     if (homeTactics.warning && Math.random() < 0.05) {
         return { minute, description: `Ev sahibi: ${homeTactics.warning}`, type: 'INFO', teamName: home.name };
@@ -545,10 +632,19 @@ export const simulateMatchStep = (
     };
 
     let currentGoalProb = 0.05; 
+    
+    // NEW: MENTALITY IMPACT ON GOAL PROBABILITY
+    if (home.mentality === Mentality.VERY_DEFENSIVE || away.mentality === Mentality.VERY_DEFENSIVE) {
+        currentGoalProb *= 0.7; // Reduce goal chance significantly (Parking bus)
+    }
+    if (home.mentality === Mentality.VERY_ATTACKING || away.mentality === Mentality.VERY_ATTACKING) {
+        currentGoalProb *= 1.3; // Increase goal chance (Open game)
+    }
+
     const maxReds = Math.max(homeReds, awayReds);
-    if (maxReds === 1) currentGoalProb = 0.06;
-    else if (maxReds === 2) currentGoalProb = 0.08;
-    else if (maxReds >= 3) currentGoalProb = 0.12;
+    if (maxReds === 1) currentGoalProb += 0.01;
+    else if (maxReds === 2) currentGoalProb += 0.03;
+    else if (maxReds >= 3) currentGoalProb += 0.07;
 
     const homeExhausted = home.players.slice(0, 11).filter(p => (p.condition !== undefined ? p.condition : p.stats.stamina) < 50).length;
     const awayExhausted = away.players.slice(0, 11).filter(p => (p.condition !== undefined ? p.condition : p.stats.stamina) < 50).length;
@@ -564,7 +660,12 @@ export const simulateMatchStep = (
     const PROB_SAVE = 0.07;
     const PROB_OFFSIDE = 0.10;
     const PROB_CORNER = 0.13;
-    const PROB_MISS = 0.15;
+    
+    // ADJUST MISS PROBABILITY IF LONG SHOTS ARE ENCOURAGED
+    let PROB_MISS = 0.15;
+    if (homeTactics.longShotBonus || awayTactics.longShotBonus) {
+        PROB_MISS += 0.05; // More attempts, more misses likely
+    }
     
     const T_GOAL = PROB_GOAL;
     const T_INJURY = T_GOAL + PROB_INJURY;
@@ -577,9 +678,15 @@ export const simulateMatchStep = (
     if (eventRoll < T_GOAL) { 
         const isHome = Math.random() < offensiveDominance;
         const activeTeam = isHome ? home : away;
+        const activeTactics = isHome ? homeTactics : awayTactics;
         const d = getScorer(activeTeam);
         
-        const text = fillTemplate(pick(GOAL_TEXTS), { scorer: d.scorer.name, assist: d.assist.name, team: activeTeam.name });
+        let text = fillTemplate(pick(GOAL_TEXTS), { scorer: d.scorer.name, assist: d.assist.name, team: activeTeam.name });
+
+        // Add special description for comeback determination bonus
+        if (activeTactics.longShotBonus && Math.random() < 0.4) {
+            text = `UZAKLARDAN FÜZE! ${d.scorer.name}, geride olmanın hırsıyla yaklaşık 30 metreden vurdu ve fileleri havalandırdı!`;
+        }
 
         let varOutcome: 'GOAL' | 'NO_GOAL' | undefined = undefined;
         if (Math.random() < 0.25) { 
@@ -717,7 +824,15 @@ export const simulateMatchStep = (
         const player = getPlayer(activeTeam);
         const defender = getPlayer(defenderTeam);
 
-        const text = fillTemplate(pick(MISS_TEXTS), { player: player.name, defender: defender.name });
+        // Determination bonus makes players take more shots, potentially missing wildly if skill is low
+        // but creates "desperate attempt" narrative
+        const activeTactics = activeTeam.id === home.id ? homeTactics : awayTactics;
+        let text = fillTemplate(pick(MISS_TEXTS), { player: player.name, defender: defender.name });
+        
+        if (activeTactics.longShotBonus && Math.random() < 0.4) {
+            text = `${player.name} kaleyi görünce çok uzaklardan şansını denedi ama top farklı şekilde auta gitti. (Hırsından köpürüyor!)`;
+        }
+
         return { 
             minute, 
             description: text, 

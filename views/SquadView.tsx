@@ -5,7 +5,7 @@ import PlayerRow from '../components/shared/PlayerRow';
 import { ArrowUpDown, Users, Activity } from 'lucide-react';
 import TeamDynamicsView from './TeamDynamicsView';
 
-const SquadView = ({ team, onPlayerClick, manager }: { team: Team, onPlayerClick: (p: Player) => void, manager: ManagerProfile }) => {
+const SquadView = ({ team, onPlayerClick, manager, currentWeek }: { team: Team, onPlayerClick: (p: Player) => void, manager: ManagerProfile, currentWeek: number }) => {
     const [viewMode, setViewMode] = useState<'SQUAD' | 'DYNAMICS'>('SQUAD');
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
 
@@ -127,7 +127,7 @@ const SquadView = ({ team, onPlayerClick, manager }: { team: Team, onPlayerClick
                         ))}
                     </div>
                 ) : (
-                    <TeamDynamicsView team={team} manager={manager} onPlayerClick={onPlayerClick} />
+                    <TeamDynamicsView team={team} manager={manager} onPlayerClick={onPlayerClick} currentWeek={currentWeek} />
                 )}
             </div>
         </div>

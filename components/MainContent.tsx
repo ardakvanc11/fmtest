@@ -517,6 +517,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     team={myTeam} 
                     onPlayerClick={handleShowPlayerDetail}
                     manager={gameState.manager!} 
+                    currentWeek={gameState.currentWeek}
                 />
             )}
 
@@ -630,6 +631,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     allTeams={gameState.teams}
                     fixtures={gameState.fixtures}
                     currentDate={gameState.currentDate}
+                    currentWeek={gameState.currentWeek}
                     manager={gameState.manager!}
                     myTeamId={gameState.myTeamId!}
                     onClose={() => {
@@ -651,6 +653,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     allTeams={gameState.teams}
                     fixtures={gameState.fixtures}
                     currentDate={gameState.currentDate}
+                    currentWeek={gameState.currentWeek}
                     manager={gameState.manager!}
                     myTeamId={gameState.myTeamId!}
                     onClose={() => goBack()}

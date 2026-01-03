@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Team, Player, Fixture, ManagerProfile, Position } from '../types';
 import { ChevronLeft, Trophy, Users, Home, Star, DollarSign, BarChart3, Wallet, Globe, TrendingUp, TrendingDown, Landmark, Scale, Activity, Calendar, Goal, Zap, Disc, AlertCircle, ArrowRight, ArrowLeft, History, Archive, ArrowRightLeft, Coins, CheckCircle, Building2, User, Briefcase, School, HardHat, Target, Sparkles, UserPlus, FileSignature, Wallet2, Building, ToggleLeft, ToggleRight, Bug, LayoutTemplate } from 'lucide-react';
@@ -13,6 +14,7 @@ interface TeamDetailViewProps {
     allTeams: Team[];
     fixtures: Fixture[];
     currentDate: string;
+    currentWeek: number;
     manager: ManagerProfile;
     myTeamId: string;
     onClose: () => void;
@@ -82,7 +84,7 @@ const generateLeagueHistory = (team: Team) => {
 
 // --- MAIN COMPONENT ---
 
-const TeamDetailView = ({ team, allTeams, fixtures, currentDate, manager, myTeamId, onClose, onPlayerClick, onTeamClick, onBoardRequest, yearsAtClub = 0, lastSeasonGoalAchieved = false, consecutiveFfpYears = 0 }: TeamDetailViewProps) => {
+const TeamDetailView = ({ team, allTeams, fixtures, currentDate, currentWeek, manager, myTeamId, onClose, onPlayerClick, onTeamClick, onBoardRequest, yearsAtClub = 0, lastSeasonGoalAchieved = false, consecutiveFfpYears = 0 }: TeamDetailViewProps) => {
     const [activeTab, setActiveTab] = useState<'GENERAL' | 'SQUAD' | 'FIXTURES' | 'TRANSFERS' | 'HISTORY' | 'MANAGEMENT' | 'TACTICS'>('GENERAL');
 
     const sortedTeams = [...allTeams].sort((a, b) => {
@@ -301,40 +303,42 @@ const TeamDetailView = ({ team, allTeams, fixtures, currentDate, manager, myTeam
                                     <div className="w-24 h-24 rounded-full bg-gradient-to-br from-slate-200 to-slate-400 border-4 border-slate-100 dark:border-slate-600 flex items-center justify-center shadow-lg"><User size={48} className="text-slate-600"/></div>
                                     <div className="mt-3 text-center"><div className="text-sm font-bold text-slate-500 uppercase tracking-wider">Kulüp Başkanı</div><div className="text-xl font-black text-slate-900 dark:text-white">{team.board.presidentName}</div></div>
                                 </div>
-                                <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-1 gap-6">
-                                    <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <div className="text-sm font-black text-yellow-600 dark:text-yellow-500 uppercase flex items-center gap-2"><Sparkles size={18}/> Yönetim Talepleri</div>
-                                        </div>
+                                {team.id === myTeamId && (
+                                    <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-1 gap-6">
+                                        <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-xl border border-slate-200 dark:border-slate-700">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <div className="text-sm font-black text-yellow-600 dark:text-yellow-500 uppercase flex items-center gap-2"><Sparkles size={18}/> Yönetim Talepleri</div>
+                                            </div>
 
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            {[
-                                                { id: 'NEW_STADIUM', label: 'Yeni Stadyum İnşası', icon: Home, can: canRequestStadium, cond: '3 Yıl Görev & Hedef' },
-                                                { id: 'UPGRADE_TRAINING', label: 'Antrenman Geliştir', icon: Zap, can: canRequestTraining, cond: `+${(0.4 * Math.pow(3, team.boardRequests.trainingUpgradesCount)).toFixed(1)} İtibar` },
-                                                { id: 'UPGRADE_YOUTH', label: 'Altyapı Geliştir', icon: School, can: canRequestYouth, cond: `+${(0.3 * Math.pow(3, team.boardRequests.youthUpgradesCount)).toFixed(1)} İtibar` },
-                                                { id: 'INC_TRANSFER_BUDGET', label: 'Ek Transfer Bütçesi', icon: Wallet2, can: canRequestBudget, cond: 'Menajer Gücü > 65' },
-                                                { id: 'WAGE_PERCENTAGE', label: 'Maaş Bütçesi Artışı', icon: Coins, can: canRequestFfp, cond: '2 Yıl FFP Uyumu' },
-                                                { id: 'NEW_CONTRACT', label: 'Yeni Sözleşme Görüşmesi', icon: FileSignature, can: canRequestContract, cond: 'Hedef Gerçekleştirme' }
-                                            ].map(req => (
-                                                <button 
-                                                    key={req.id}
-                                                    disabled={!req.can}
-                                                    onClick={() => req.can && onBoardRequest && onBoardRequest(req.id)}
-                                                    className={`p-4 rounded-lg border-2 text-left transition-all flex flex-col justify-between h-32 ${req.can ? 'bg-white dark:bg-slate-800 border-yellow-500/50 hover:border-yellow-500 shadow-md hover:scale-[1.02]' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800 opacity-60'}`}
-                                                >
-                                                    <div className="flex justify-between items-start">
-                                                        <req.icon size={20} className={req.can ? 'text-yellow-600' : 'text-slate-400'}/>
-                                                        {req.can && <CheckCircle className="text-green-500" size={16}/>}
-                                                    </div>
-                                                    <div>
-                                                        <div className={`text-xs font-bold ${req.can ? 'text-slate-900 dark:text-white' : 'text-slate-50'}`}>{req.label}</div>
-                                                        <div className="text-[10px] text-slate-400 mt-1 font-mono uppercase">{req.cond}</div>
-                                                    </div>
-                                                </button>
-                                            ))}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                {[
+                                                    { id: 'NEW_STADIUM', label: 'Yeni Stadyum İnşası', icon: Home, can: canRequestStadium, cond: '3 Yıl Görev & Hedef' },
+                                                    { id: 'UPGRADE_TRAINING', label: 'Antrenman Geliştir', icon: Zap, can: canRequestTraining, cond: `+${(0.4 * Math.pow(3, team.boardRequests.trainingUpgradesCount)).toFixed(1)} İtibar` },
+                                                    { id: 'UPGRADE_YOUTH', label: 'Altyapı Geliştir', icon: School, can: canRequestYouth, cond: `+${(0.3 * Math.pow(3, team.boardRequests.youthUpgradesCount)).toFixed(1)} İtibar` },
+                                                    { id: 'INC_TRANSFER_BUDGET', label: 'Ek Transfer Bütçesi', icon: Wallet2, can: canRequestBudget, cond: 'Menajer Gücü > 65' },
+                                                    { id: 'WAGE_PERCENTAGE', label: 'Maaş Bütçesi Artışı', icon: Coins, can: canRequestFfp, cond: '2 Yıl FFP Uyumu' },
+                                                    { id: 'NEW_CONTRACT', label: 'Yeni Sözleşme Görüşmesi', icon: FileSignature, can: canRequestContract, cond: 'Hedef Gerçekleştirme' }
+                                                ].map(req => (
+                                                    <button 
+                                                        key={req.id}
+                                                        disabled={!req.can}
+                                                        onClick={() => req.can && onBoardRequest && onBoardRequest(req.id)}
+                                                        className={`p-4 rounded-lg border-2 text-left transition-all flex flex-col justify-between h-32 ${req.can ? 'bg-white dark:bg-slate-800 border-yellow-500/50 hover:border-yellow-500 shadow-md hover:scale-[1.02]' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800 opacity-60'}`}
+                                                    >
+                                                        <div className="flex justify-between items-start">
+                                                            <req.icon size={20} className={req.can ? 'text-yellow-600' : 'text-slate-400'}/>
+                                                            {req.can && <CheckCircle className="text-green-500" size={16}/>}
+                                                        </div>
+                                                        <div>
+                                                            <div className={`text-xs font-bold ${req.can ? 'text-slate-900 dark:text-white' : 'text-slate-50'}`}>{req.label}</div>
+                                                            <div className="text-[10px] text-slate-400 mt-1 font-mono uppercase">{req.cond}</div>
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                         </div>
 
@@ -371,7 +375,7 @@ const TeamDetailView = ({ team, allTeams, fixtures, currentDate, manager, myTeam
                     </div>
                 )}
 
-                {activeTab === 'SQUAD' && (<div className="animate-in fade-in slide-in-from-bottom-2"><SquadView team={team} onPlayerClick={onPlayerClick} manager={manager} /></div>)}
+                {activeTab === 'SQUAD' && (<div className="animate-in fade-in slide-in-from-bottom-2"><SquadView team={team} onPlayerClick={onPlayerClick} manager={manager} currentWeek={currentWeek} /></div>)}
                 {activeTab === 'FIXTURES' && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                         {futureMatches.length > 0 && (<div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden"><div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700"><h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><Calendar className="text-blue-500" size={20}/> Gelecek Maçlar</h3></div><div className="divide-y divide-slate-100 dark:divide-slate-700">{futureMatches.slice(0, 8).map(f => { const opponentId = f.homeTeamId === team.id ? f.awayTeamId : f.homeTeamId; const opponent = allTeams.find(t => t.id === opponentId); const isHome = f.homeTeamId === team.id; return (<div key={f.id} onClick={() => onTeamClick(opponentId)} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition cursor-pointer"><div className="flex items-center gap-4"><div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${isHome ? 'bg-green-600' : 'bg-red-600'}`}>{isHome ? 'EV' : 'DEP'}</div><div><div className="font-bold text-slate-900 dark:text-white">{opponent?.name}</div><div className="text-xs text-slate-500">{getFormattedDate(f.date).label} • {getRelativeTime(f.date)}</div></div></div><div className="text-sm font-mono text-slate-400">20:00</div></div>); })}</div></div>)}

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Team, Player, ManagerProfile } from '../types';
+import { Team, Player, ManagerProfile, PlayerPersonality } from '../types';
 import { Users, AlertTriangle, Smile, Frown, Activity, Crown, Shield, User } from 'lucide-react';
 import PlayerFace from '../components/shared/PlayerFace';
 
@@ -8,9 +8,10 @@ interface TeamDynamicsViewProps {
     team: Team;
     manager: ManagerProfile;
     onPlayerClick: (p: Player) => void;
+    currentWeek: number; // Added currentWeek
 }
 
-const TeamDynamicsView: React.FC<TeamDynamicsViewProps> = ({ team, manager, onPlayerClick }) => {
+const TeamDynamicsView: React.FC<TeamDynamicsViewProps> = ({ team, manager, onPlayerClick, currentWeek }) => {
     // 1. Calculate Metrics
     const avgMorale = Math.round(team.players.reduce((sum, p) => sum + p.morale, 0) / team.players.length);
     const managerSupport = manager.trust.players;
@@ -31,12 +32,44 @@ const TeamDynamicsView: React.FC<TeamDynamicsViewProps> = ({ team, manager, onPl
     const others = sortedByInfluence.slice(10);
 
     // 3. Identify Issues (Unhappy Players)
-    const unhappyPlayers = team.players.filter(p => p.morale < 50 || p.seasonStats.averageRating < 6.0).map(p => {
-        let reason = "Genel Mutsuzluk";
-        if (p.seasonStats.matchesPlayed < 5 && p.skill > 75) reason = "Yeterli süre bulamıyor";
-        else if (managerSupport < 30) reason = "Menajere güvenmiyor";
-        else if (p.contractExpiry <= 2025) reason = "Yeni sözleşme bekliyor";
-        else if (p.seasonStats.averageRating < 6.0) reason = "Kötü performans nedeniyle baskı altında";
+    // Updated Logic: Context-aware reasons
+    const unhappyPlayers = team.players.filter(p => p.morale < 50).map(p => {
+        let reason = "Kişisel sebepler";
+        
+        const isStar = p.skill >= 80;
+        const isYoung = p.age < 22;
+        const lowTrust = managerSupport < 40;
+
+        // SEZON BAŞI (İlk 4 Hafta) - Süre şikayeti olmaz
+        if (currentWeek <= 4) {
+            if (p.transferListed) reason = "Transfer listesine konulduğu için tepkili";
+            else if (isStar && team.reputation < 3.5) reason = "Kulübün vizyonunu yetersiz buluyor";
+            else if (p.contractExpiry <= 2025) reason = "Sözleşme yenileme görüşmesi bekliyor";
+            else if (lowTrust) reason = "Yeni teknik direktöre henüz güvenmiyor";
+            else if (p.personality === PlayerPersonality.AMBITIOUS) reason = "Daha büyük bir kulübe gitmek istiyor";
+            else reason = "Şehre ve kulübe uyum sürecinde zorlanıyor";
+        } 
+        // SEZON ORTASI
+        else {
+            const expectedApps = currentWeek * 0.5; // Beklenen maç sayısı (Yarısı)
+            const actualApps = p.seasonStats.matchesPlayed;
+
+            if (actualApps < expectedApps && ['STAR', 'IMPORTANT', 'FIRST_XI'].includes(p.squadStatus || '')) {
+                reason = "Yeterli forma şansı bulamadığını düşünüyor";
+            }
+            else if (p.seasonStats.averageRating < 6.0 && actualApps > 3) {
+                reason = "Kötü performansı nedeniyle baskı hissediyor";
+            }
+            else if (team.stats.points < (currentWeek * 1)) { // Kötü gidişat (Hafta başına 1 puandan az)
+                reason = "Takımın ligdeki konumundan endişeli";
+            }
+            else if (lowTrust) {
+                reason = "Menajerin kararlarını sorguluyor";
+            }
+            else {
+                reason = "Antrenman temposundan ve rolünden memnun değil";
+            }
+        }
         
         return { player: p, reason };
     });
