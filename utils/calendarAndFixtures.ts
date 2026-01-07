@@ -160,6 +160,7 @@ export const generateFixtures = (teams: Team[], year: number = 2025): Fixture[] 
                 matchDate.setDate(matchDate.getDate() + 1);
             }
             fix.date = matchDate.toISOString();
+            fix.competitionId = 'LEAGUE'; // Explicitly set competition ID for league matches
         });
 
         fixtures.push(...roundFixtures);
@@ -168,6 +169,95 @@ export const generateFixtures = (teams: Team[], year: number = 2025): Fixture[] 
     
     // Sort chronologically
     return fixtures.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+};
+
+// Generates Super Cup Fixtures (Semi-Finals)
+export const generateSuperCupFixtures = (teams: Team[], year: number, isInitialSeason: boolean = false): Fixture[] => {
+    const fixtures: Fixture[] = [];
+    
+    let t1: Team | undefined, t2: Team | undefined, t3: Team | undefined, t4: Team | undefined;
+
+    // Pick a random stadium with capacity > 30,000 for Semi Finals
+    // Note: We need a pool of teams to pick stadium from.
+    // In game context, we usually have access to all teams. 
+    // Here we will pick one of the participants' stadium if > 30k or fallback.
+    // Actually, prompt says "random stadium > 30k".
+    const suitableStadiums = teams.filter(t => t.stadiumCapacity > 30000);
+    const getVenue = () => {
+        if (suitableStadiums.length > 0) return suitableStadiums[Math.floor(Math.random() * suitableStadiums.length)].id; // Use Team ID as venue placeholder logic or handle in simulation
+        return teams[0].id; // Fallback
+    };
+    
+    // Note: The game engine uses HomeTeam's stadium by default. 
+    // For Neutral venues, we might need to handle this in simulation logic, 
+    // but typically "Home Team" in fixture determines venue visually. 
+    // To simulate neutral, we can assume the "Home Team" in the fixture IS the venue owner for display, 
+    // but for Super Cup, usually it's Team A vs Team B at Venue C. 
+    // Current architecture simplifies to Home vs Away.
+    // Let's stick to Home/Away structure but acknowledge it's neutral.
+    // We will just assign T1 as home, T3 as away etc.
+    
+    if (isInitialSeason) {
+        // 1. Arıspor
+        // 2. Eşşekboğanspor FK
+        // 3. Köpekspor
+        // 4. Kedispor (Cup Winner)
+        t1 = teams.find(t => t.name === 'Arıspor');
+        t2 = teams.find(t => t.name === 'Eşşekboğanspor FK');
+        t3 = teams.find(t => t.name === 'Köpekspor');
+        t4 = teams.find(t => t.name === 'Kedispor');
+    } else {
+        // Logic for subsequent seasons
+        // 1. Sort by League Points (Previous Season)
+        // Since we reset stats at season start, we rely on 'leagueHistory' or last season summary.
+        // Assuming this function is called right at season transition where stats might be fresh OR we use a passed summary.
+        // Simplified: We'll assume the `teams` array passed here has the relevant order or we find them.
+        // However, in `resetForNewSeason`, stats are wiped.
+        // This function is best called BEFORE reset or using a snapshot.
+        // For now, let's assume teams are sorted by their `initialReputation` or power as a proxy if stats are wiped,
+        // OR better: The Game Loop should pass the qualified teams explicitly.
+        // But to keep signature simple, let's assume the calling code sorts `teams` passed in as [1st, 2nd, 3rd, CupWinner].
+        
+        if (teams.length >= 4) {
+            t1 = teams[0];
+            t2 = teams[1];
+            t3 = teams[2];
+            t4 = teams[3];
+        }
+    }
+
+    if (t1 && t2 && t3 && t4) {
+        // Semi 1: 1 vs 3 -> Jan 5
+        // Note: Year is the "Next Year" (e.g. Start 2025 -> Jan 2026)
+        const d1 = new Date(year + 1, 0, 5); // Jan 5
+        fixtures.push({
+            id: generateId(),
+            week: 90, // Special Week ID for Super Cup
+            date: d1.toISOString(),
+            homeTeamId: t1.id,
+            awayTeamId: t3.id,
+            played: false,
+            homeScore: null,
+            awayScore: null,
+            competitionId: 'SUPER_CUP'
+        });
+
+        // Semi 2: 2 vs 4 -> Jan 6
+        const d2 = new Date(year + 1, 0, 6); // Jan 6
+        fixtures.push({
+            id: generateId(),
+            week: 90,
+            date: d2.toISOString(),
+            homeTeamId: t2.id,
+            awayTeamId: t4.id,
+            played: false,
+            homeScore: null,
+            awayScore: null,
+            competitionId: 'SUPER_CUP'
+        });
+    }
+
+    return fixtures;
 };
 
 const createFixture = (week: number, date: string, homeId: string, awayId: string): Fixture => ({

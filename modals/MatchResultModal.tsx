@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Team, MatchStats, MatchEvent } from '../types';
-import { MonitorPlay, Syringe, Disc, Users, BarChart2, Star, RefreshCw, X } from 'lucide-react';
+import { MonitorPlay, Syringe, Disc, Users, BarChart2, Star, RefreshCw, X, Target } from 'lucide-react';
 import PlayerFace from '../components/shared/PlayerFace';
 
 const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, events, onProceed, onSkip }: {homeTeam: Team, awayTeam: Team, homeScore: number, awayScore: number, stats: MatchStats, events: MatchEvent[], onProceed: () => void, onSkip?: () => void }) => {
@@ -21,7 +22,11 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
         e.type === 'MISS' // Optional: Show missed penalties or huge chances
     ).sort((a,b) => a.minute - b.minute);
 
-    const getEventIcon = (type: MatchEvent['type']) => {
+    const getEventIcon = (type: MatchEvent['type'], desc: string) => {
+        // Special icon for penalty shootout goals
+        if (type === 'GOAL' && desc.includes('Penaltı Atışları')) return <Target size={16} className="text-green-500 fill-green-500"/>;
+        if (type === 'MISS' && desc.includes('Penaltı Atışları')) return <Target size={16} className="text-red-500 fill-red-500"/>;
+
         switch(type) {
             case 'GOAL': return <Disc size={16} className="text-white fill-white"/>; // Ball representation
             case 'CARD_YELLOW': return <div className="w-3 h-4 bg-yellow-500 rounded-sm border border-yellow-600 shadow-sm"></div>;
@@ -29,6 +34,7 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
             case 'INJURY': return <Syringe size={16} className="text-red-400"/>;
             case 'VAR': return <MonitorPlay size={16} className="text-purple-400"/>;
             case 'SUBSTITUTION': return <RefreshCw size={16} className="text-green-400"/>;
+            case 'MISS': return <Target size={16} className="text-slate-400"/>;
             default: return null;
         }
     };
@@ -36,6 +42,12 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
     // Helper to find player name from ID if scorer name is missing (e.g. for Cards/Injuries)
     const getPlayerName = (event: MatchEvent) => {
         if (event.scorer) return event.scorer;
+        if (event.description.includes('Penaltı Atışları')) {
+            // Extract Name for shootout: "Penaltı Atışları: [NAME] (Team) ..."
+            const match = event.description.match(/Penaltı Atışları: (.*?) \(/);
+            if (match) return match[1];
+        }
+
         if (event.playerId) {
             const player = homeTeam.players.find(p => p.id === event.playerId) || awayTeam.players.find(p => p.id === event.playerId);
             if (player) return player.name;
@@ -58,9 +70,9 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
             </div>
             <div className="space-y-1">
                 {ratings.sort((a:any, b:any) => b.rating - a.rating).map((p:any, i:number) => {
-                    // Calculate goals and assists from events directly to ensure accuracy
-                    const goalCount = events.filter(e => e.type === 'GOAL' && e.scorer === p.name).length;
-                    const assistCount = events.filter(e => e.type === 'GOAL' && e.assist === p.name).length;
+                    // Calculate goals and assists from events directly to ensure accuracy (exclude shootout)
+                    const goalCount = events.filter(e => e.type === 'GOAL' && e.scorer === p.name && e.minute <= 120).length;
+                    const assistCount = events.filter(e => e.type === 'GOAL' && e.assist === p.name && e.minute <= 120).length;
                     
                     const playerObj = team.players.find(pl => pl.id === p.playerId);
 
@@ -115,14 +127,19 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
                 className="text-center mb-6 animate-in zoom-in duration-500 w-full max-w-4xl mt-10 cursor-default"
                 onClick={(e) => e.stopPropagation()} // Stop propagation to prevent closing when clicking content
              >
-                 <div className="text-6xl font-mono font-bold text-white mb-4 bg-slate-900 px-8 py-4 rounded-xl border border-slate-700 shadow-2xl flex items-center justify-center gap-8">
+                 <div className="text-6xl font-mono font-bold text-white mb-4 bg-slate-900 px-8 py-4 rounded-xl border border-slate-700 shadow-2xl flex items-center justify-center gap-8 relative">
                      <div className="flex flex-col items-center">
                         <img src={homeTeam.logo} className="w-20 h-20 object-contain mb-2"/>
                         <span className="text-sm font-sans font-normal text-slate-400 truncate w-20 text-center">{homeTeam.name}</span>
                      </div>
                      <div className="flex flex-col items-center">
                         <span>{homeScore} - {awayScore}</span>
-                        <span className="text-xl text-slate-500 font-sans font-bold tracking-widest mt-[-0.5rem]">İY: {halfTimeHomeScore}-{halfTimeAwayScore}</span>
+                        {stats.pkHome !== undefined && stats.pkAway !== undefined && (
+                            <span className="text-2xl text-yellow-500 font-bold tracking-tight">
+                                (PEN: {stats.pkHome}-{stats.pkAway})
+                            </span>
+                        )}
+                        <span className="text-xl text-slate-500 font-sans font-bold tracking-widest mt-0">İY: {halfTimeHomeScore}-{halfTimeAwayScore}</span>
                      </div>
                      <div className="flex flex-col items-center">
                         <img src={awayTeam.logo} className="w-20 h-20 object-contain mb-2"/>
@@ -149,6 +166,7 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
                                  const isHome = e.teamName === homeTeam.name;
                                  const isGoal = e.type === 'GOAL';
                                  const playerName = getPlayerName(e);
+                                 const isShootout = e.minute > 120;
                                  
                                  return (
                                      <div key={i} className="flex items-center justify-between mb-2 relative w-full group hover:bg-white/5 rounded-lg transition-colors py-1">
@@ -158,13 +176,16 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
                                                  <div className="flex flex-col items-end text-right">
                                                      <div className="flex items-center gap-2 justify-end">
                                                         {playerName && <span className={`text-sm font-bold ${isGoal ? 'text-green-400' : 'text-white'}`}>{playerName}</span>}
-                                                        {getEventIcon(e.type)}
+                                                        {getEventIcon(e.type, e.description)}
                                                      </div>
                                                      {e.type === 'SUBSTITUTION' && (
                                                          <span className="text-xs text-white font-bold mt-0.5">{e.description}</span>
                                                      )}
-                                                     {isGoal && e.assist && (
+                                                     {isGoal && e.assist && e.minute <= 120 && (
                                                          <span className="text-[10px] text-slate-400">Asist: {e.assist}</span>
+                                                     )}
+                                                     {isShootout && (
+                                                         <span className="text-[9px] text-yellow-500 font-bold uppercase">SERİ PENALTI</span>
                                                      )}
                                                  </div>
                                              ) : <div className="w-full h-1"></div>}
@@ -172,7 +193,7 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
 
                                          {/* Center (Minute) */}
                                          <div className="w-8 h-8 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center text-xs font-bold text-slate-300 z-10 shrink-0 shadow-lg group-hover:border-slate-400 group-hover:text-white transition-colors">
-                                             {e.minute}'
+                                             {isShootout ? 'P' : e.minute + "'"}
                                          </div>
 
                                          {/* Right Side (Away) */}
@@ -180,14 +201,17 @@ const MatchResultModal = ({ homeTeam, awayTeam, homeScore, awayScore, stats, eve
                                              {!isHome ? (
                                                  <div className="flex flex-col items-start text-left">
                                                      <div className="flex items-center gap-2">
-                                                        {getEventIcon(e.type)}
+                                                        {getEventIcon(e.type, e.description)}
                                                         {playerName && <span className={`text-sm font-bold ${isGoal ? 'text-green-400' : 'text-white'}`}>{playerName}</span>}
                                                      </div>
                                                      {e.type === 'SUBSTITUTION' && (
                                                          <span className="text-xs text-white font-bold mt-0.5">{e.description}</span>
                                                      )}
-                                                     {isGoal && e.assist && (
+                                                     {isGoal && e.assist && e.minute <= 120 && (
                                                          <span className="text-[10px] text-slate-400">Asist: {e.assist}</span>
+                                                     )}
+                                                     {isShootout && (
+                                                         <span className="text-[9px] text-yellow-500 font-bold uppercase">SERİ PENALTI</span>
                                                      )}
                                                  </div>
                                              ) : <div className="w-full h-1"></div>}

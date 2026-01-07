@@ -1,9 +1,10 @@
 
+
 import React, { useEffect, useRef, useCallback } from 'react';
 import { GameState } from '../types';
 import { initializeTeams } from '../data/teamConstants';
 import { GAME_CALENDAR } from '../data/gameConstants';
-import { generateFixtures, generateTransferMarket, generateWeeklyNews } from '../utils/gameEngine';
+import { generateFixtures, generateTransferMarket, generateWeeklyNews, generateSuperCupFixtures } from '../utils/gameEngine';
 import { calculateManagerSalary } from '../utils/teamCalculations';
 import { processNextDayLogic } from '../utils/gameStateLogic';
 import { INITIAL_MESSAGES } from '../data/messagePool';
@@ -71,7 +72,13 @@ export const useGameLifecycle = (
                 }
 
                 if (parsed.teams) {
-                    parsed.teams = parsed.teams.map((t: any) => {
+                    parsed.teams = parsed.teams.map((t: any, index: number) => {
+                        if (!t.leagueId) {
+                            // Migration for existing saves: Assume first 18 are league 1, rest league 2 if any (or just default)
+                            // Since older saves only had 18 teams, they are all 'LEAGUE'
+                            t.leagueId = index < 18 ? 'LEAGUE' : 'LEAGUE_1';
+                        }
+
                         if (!t.financialRecords) {
                             t.financialRecords = {
                                 income: { transfers: 0, tv: 0, merch: 0, loca: 0, gate: 0, sponsor: 0 },
@@ -105,7 +112,20 @@ export const useGameLifecycle = (
 
     const handleStart = (name: string, year: string, country: string) => {
         const teams = initializeTeams();
-        const fixtures = generateFixtures(teams, 2025); 
+        
+        // Split teams by league to generate correct fixtures
+        const superLeagueTeams = teams.filter(t => t.leagueId === 'LEAGUE');
+        const league1Teams = teams.filter(t => t.leagueId === 'LEAGUE_1');
+
+        const fixturesSL = generateFixtures(superLeagueTeams, 2025);
+        const fixturesL1 = generateFixtures(league1Teams, 2025);
+        
+        // Generate Initial Super Cup Fixtures
+        const fixturesSuperCup = generateSuperCupFixtures(superLeagueTeams, 2025, true);
+        
+        // Combine fixtures
+        const fixtures = [...fixturesSL, ...fixturesL1, ...fixturesSuperCup];
+
         const marketCount = Math.floor(Math.random() * 500) + 1000;
         const transferList = generateTransferMarket(marketCount, GAME_CALENDAR.START_DATE.toISOString());
         const news = generateWeeklyNews(1, fixtures, teams);

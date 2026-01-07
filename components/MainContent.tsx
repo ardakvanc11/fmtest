@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GameState, Team, Player, Fixture, MatchEvent, MatchStats, PendingTransfer, SponsorDeal, IncomingOffer, TrainingConfig, IndividualTrainingType, BoardInteraction, Position } from '../types';
 import { FileWarning, LogOut, Trophy, Building2, BarChart3, ArrowRightLeft, Wallet, Clock, TrendingUp, TrendingDown, Crown } from 'lucide-react';
+import { isSameDay } from '../utils/calendarAndFixtures';
 
 // Views
 import IntroScreen from '../views/IntroScreen';
@@ -70,8 +71,8 @@ interface MainContentProps {
     handleTrain: (config: TrainingConfig) => void; 
     handleAssignIndividualTraining: (playerId: string, type: IndividualTrainingType) => void; 
     handleAssignPositionTraining: (playerId: string, target: Position, weeks: number) => void; // NEW
-    handleMatchFinish: (hScore: number, aScore: number, events: MatchEvent[], stats: MatchStats) => void;
-    handleFastSimulate: () => void;
+    handleMatchFinish: (hScore: number, aScore: number, events: MatchEvent[], stats: MatchStats, fixtureId?: string) => void;
+    handleFastSimulate: (fixtureId?: string) => void; // UPDATED TYPE
     handleShowTeamDetail: (teamId: string) => void;
     handleShowPlayerDetail: (player: Player) => void;
     handleBuyPlayer: (player: Player) => void;
@@ -185,6 +186,16 @@ const MainContent: React.FC<MainContentProps> = (props) => {
     // State for Negotiation Mode (Buying vs Selling)
     const [negotiationMode, setNegotiationMode] = useState<'BUY' | 'SELL'>('BUY');
     const [initialSellOffer, setInitialSellOffer] = useState<number>(0);
+
+    // FIX: Lock the match ID when entering the match flow to prevent switching to the next match mid-process
+    const [playingFixtureId, setPlayingFixtureId] = useState<string | null>(null);
+
+    // Reset locked match when returning to home to avoid stale state
+    useEffect(() => {
+        if (currentView === 'home') {
+            setPlayingFixtureId(null);
+        }
+    }, [currentView]);
 
     // Function to handle budget updates from Finance View
     const handleBudgetUpdate = (newTransferBudget: number, newWageBudget: number) => {
@@ -382,6 +393,59 @@ const MainContent: React.FC<MainContentProps> = (props) => {
         const wageBudgetLimit = myTeam.wageBudget !== undefined ? myTeam.wageBudget : currentTotalWages;
         maxAllowedWage = Math.max(0, wageBudgetLimit - committedWagesOthers);
     }
+    
+    // --- DETERMINE ACTIVE FIXTURE FOR PREVIEW AND SIMULATION ---
+    // Correctly prioritize Today's match to avoid stale fixture bugs
+    const getActiveFixture = () => {
+        // 1. If we have a locked match ID (e.g. from Preview), use it strictly
+        if (playingFixtureId) {
+            return gameState.fixtures.find(f => f.id === playingFixtureId);
+        }
+
+        // 2. Try finding a match for TODAY
+        const todayMatch = gameState.fixtures.find(f => 
+            (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId) && 
+            !f.played && 
+            isSameDay(f.date, gameState.currentDate)
+        );
+        
+        if (todayMatch) return todayMatch;
+
+        // 3. Fallback (should typically not be reached if navigation logic is correct, but safe fallback)
+        return gameState.fixtures.find(f => (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId) && !f.played);
+    }
+
+    const activeMatchFixture = getActiveFixture();
+    
+    // Resolve teams for preview/simulation based on the Active Fixture
+    const matchPreviewHomeTeam = activeMatchFixture ? gameState.teams.find(t => t.id === activeMatchFixture.homeTeamId) : null;
+    const matchPreviewAwayTeam = activeMatchFixture ? gameState.teams.find(t => t.id === activeMatchFixture.awayTeamId) : null;
+
+    // Wrapped Handlers for Match Locking
+    const handleMatchProceed = () => {
+        if (activeMatchFixture) {
+            setPlayingFixtureId(activeMatchFixture.id); // Lock this fixture ID
+            navigateTo('locker_room');
+        }
+    };
+
+    const handleMatchFinishWrapper = (hScore: number, aScore: number, events: MatchEvent[], stats: MatchStats, fixtureId?: string) => {
+        // Use the passed ID or fallback to locked state
+        const targetId = fixtureId || playingFixtureId;
+        handleMatchFinish(hScore, aScore, events, stats, targetId || undefined);
+        setPlayingFixtureId(null); // Unlock after match
+    };
+
+    const handleFastSimulateWrapper = () => {
+        // If simulating from Locker Room, ensure we use the locked fixture if available
+        if (playingFixtureId) {
+            // Find specific fixture to simulate and PASS ID to hook
+            handleFastSimulate(playingFixtureId);
+            setPlayingFixtureId(null);
+        } else {
+            handleFastSimulate();
+        }
+    };
 
     return (
         <Dashboard 
@@ -410,8 +474,8 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                 />
             )}
 
-            {/* Season Champion Celebration Modal */}
-            {gameState.seasonChampion && (
+            {/* Season Champion Celebration Modal - ONLY SHOW ON HOME VIEW */}
+            {gameState.seasonChampion && currentView === 'home' && (
                 <ChampionCelebrationModal 
                     champion={gameState.seasonChampion} 
                     onClose={handleCloseCelebration}
@@ -509,6 +573,7 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                     onTeamClick={handleShowTeamDetail}
                     onFixtureClick={(f) => setSelectedFixtureForDetail(f)}
                     myTeam={myTeam}
+                    onPlayerClick={handleShowPlayerDetail} // Added missing prop
                 />
             )}
             
@@ -716,13 +781,13 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                 />
             )}
 
-            {currentView === 'match_preview' && myTeam && (
+            {currentView === 'match_preview' && myTeam && activeMatchFixture && matchPreviewHomeTeam && matchPreviewAwayTeam && (
                 <div className="h-full bg-slate-50 dark:bg-slate-900 overflow-y-auto p-4 transition-colors duration-300">
                     <MatchPreview 
-                        fixture={gameState.fixtures.find(f => f.week === gameState.currentWeek && (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId))!}
-                        homeTeam={gameState.teams.find(t => t.id === (gameState.fixtures.find(f => f.week === gameState.currentWeek && (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId))?.homeTeamId))!}
-                        awayTeam={gameState.teams.find(t => t.id === (gameState.fixtures.find(f => f.week === gameState.currentWeek && (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId))?.awayTeamId))!}
-                        onProceed={() => navigateTo('locker_room')}
+                        fixture={activeMatchFixture}
+                        homeTeam={matchPreviewHomeTeam}
+                        awayTeam={matchPreviewAwayTeam}
+                        onProceed={handleMatchProceed} // Lock Match ID here
                     />
                 </div>
             )}
@@ -738,22 +803,23 @@ const MainContent: React.FC<MainContentProps> = (props) => {
                             }));
                         }}
                         onStartMatch={() => navigateTo('match_live')}
-                        onSimulateMatch={handleFastSimulate}
+                        onSimulateMatch={handleFastSimulateWrapper}
                         currentWeek={gameState.currentWeek}
                     />
                 </div>
             )}
 
-            {currentView === 'match_live' && myTeam && (
+            {currentView === 'match_live' && myTeam && activeMatchFixture && matchPreviewHomeTeam && matchPreviewAwayTeam && (
                 <div className="h-full w-full bg-black">
                     <MatchSimulation 
-                        homeTeam={gameState.fixtures.find(f => (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId) && !f.played) ? gameState.teams.find(t => t.id === gameState.fixtures.find(f => (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId) && !f.played)!.homeTeamId)! : myTeam}
-                        awayTeam={gameState.fixtures.find(f => (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId) && !f.played) ? gameState.teams.find(t => t.id === gameState.fixtures.find(f => (f.homeTeamId === gameState.myTeamId || f.awayTeamId === gameState.myTeamId) && !f.played)!.awayTeamId)! : myTeam}
+                        homeTeam={matchPreviewHomeTeam}
+                        awayTeam={matchPreviewAwayTeam}
                         userTeamId={myTeam.id}
-                        onFinish={handleMatchFinish}
+                        onFinish={handleMatchFinishWrapper}
                         allTeams={gameState.teams}
                         fixtures={gameState.fixtures}
                         managerTrust={gameState.manager?.trust.players || 50}
+                        fixtureId={playingFixtureId || activeMatchFixture.id} // Pass locked ID
                     />
                 </div>
             )}

@@ -31,12 +31,20 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
     // Next 4 matches (not played)
     const futureMatches = myFixtures.filter(f => !f.played).slice(0, 4);
 
-    // Calculate Ranking
-    const sortedTeams = [...teams].sort((a, b) => {
+    // Determine current league context
+    const currentLeagueId = team.leagueId || 'LEAGUE';
+    
+    // Filter teams based on the current league of the user
+    const leagueTeams = teams.filter(t => t.leagueId === currentLeagueId || (!t.leagueId && currentLeagueId === 'LEAGUE'));
+
+    // Calculate Ranking within the specific league
+    const sortedTeams = [...leagueTeams].sort((a, b) => {
         if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points;
         return (b.stats.gf - b.stats.ga) - (a.stats.gf - a.stats.ga);
     });
     const rank = sortedTeams.findIndex(t => t.id === team.id) + 1;
+
+    const leagueName = currentLeagueId === 'LEAGUE_1' ? "Hayvanlar 1. Ligi" : "Süper Toto Hayvanlar Ligi";
 
     // Calculate Form
     const form = calculateForm(team.id, fixtures);
@@ -268,8 +276,8 @@ const HomeView = ({ manager, team, teams, myTeamId, currentWeek, fixtures, onTea
 
                         {/* Standings Table */}
                         <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                            <h2 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white mb-4">Puan Durumu</h2>
-                            <StandingsTable teams={teams} myTeamId={myTeamId} fixtures={fixtures} onTeamClick={onTeamClick} compact={window.innerWidth < 768}/>
+                            <h2 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white mb-4">{leagueName} Puan Durumu</h2>
+                            <StandingsTable teams={leagueTeams} myTeamId={myTeamId} fixtures={fixtures} onTeamClick={onTeamClick} compact={window.innerWidth < 768} leagueName={leagueName}/>
                         </div>
                     </div>
                 </div>

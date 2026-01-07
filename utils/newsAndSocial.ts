@@ -237,7 +237,15 @@ export const generateWeeklyNews = (week: number, fixtures: Fixture[], teams: Tea
             return;
         }
 
-        // For other computer matches, generate tweets
+        // FİLTRELEME: Eğer maç 1. Lig (Süper Lig Dışı) maçıysa tweet atma.
+        // Takımın leagueId özelliğini kontrol ediyoruz.
+        const homeTeam = teams.find(t => t.id === fixture.homeTeamId);
+        // Varsayılan olarak leagueId yoksa (eski save) Süper Lig kabul et, varsa kontrol et.
+        if (homeTeam && homeTeam.leagueId === 'LEAGUE_1') {
+            return;
+        }
+
+        // For other computer matches (Super League), generate tweets
         const matchTweets = generateMatchTweets(fixture, teams, false);
         socialFeed.push(...matchTweets);
     });
@@ -282,11 +290,6 @@ export const generateWeeklyNews = (week: number, fixtures: Fixture[], teams: Tea
                 const starPlayers = [...myTeam.players].sort((a,b) => b.skill - a.skill).slice(0, 2);
                 
                 starPlayers.forEach(star => {
-                    // Probability Adjustment:
-                    // Was 60% daily chance (too high).
-                    // New: 8% chance per player per day.
-                    // With 2 stars, this gives roughly ~15% chance of *a* tweet per day.
-                    // This averages out to 1 tweet every 6-7 days approx.
                     if (Math.random() < 0.08) {
                         const fan = FAN_NAMES[Math.floor(Math.random() * FAN_NAMES.length)];
                         const templates = [
@@ -358,17 +361,22 @@ export const generateWeeklyNews = (week: number, fixtures: Fixture[], teams: Tea
 
         // Add a random generic rumor from another team
         if (Math.random() > 0.3) {
-            const randomFan = FAN_NAMES[Math.floor(Math.random() * FAN_NAMES.length)];
-            const randomTeam = teams[Math.floor(Math.random() * teams.length)];
-            const content = genericRumors[Math.floor(Math.random() * genericRumors.length)];
+            // FİLTRELEME: Sadece Süper Lig takımlarından rastgele seç
+            const superLeagueTeams = teams.filter(t => t.leagueId !== 'LEAGUE_1');
             
-            socialFeed.push({
-                id: generateId(),
-                week,
-                type: 'TRANSFER',
-                title: `${randomFan.name}|${randomFan.handle}|${randomTeam.name}`,
-                content: content
-            });
+            if (superLeagueTeams.length > 0) {
+                const randomFan = FAN_NAMES[Math.floor(Math.random() * FAN_NAMES.length)];
+                const randomTeam = superLeagueTeams[Math.floor(Math.random() * superLeagueTeams.length)];
+                const content = genericRumors[Math.floor(Math.random() * genericRumors.length)];
+                
+                socialFeed.push({
+                    id: generateId(),
+                    week,
+                    type: 'TRANSFER',
+                    title: `${randomFan.name}|${randomFan.handle}|${randomTeam.name}`,
+                    content: content
+                });
+            }
         }
     }
 

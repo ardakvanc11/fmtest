@@ -34,7 +34,7 @@ const TeamSelection = ({ teams, onSelect }: { teams: Team[], onSelect: (id: stri
                                         <span>Şampiyonluk:</span>
                                         <div className="flex items-center gap-1 text-yellow-600 dark:text-yellow-500 font-bold">
                                             <Trophy size={16} className="fill-yellow-500" />
-                                            {team.championships}
+                                            {team.leagueId === 'LEAGUE_1' ? 0 : team.championships}
                                         </div>
                                     </div>
                                     <div className="flex justify-between">

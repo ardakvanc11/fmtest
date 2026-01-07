@@ -303,7 +303,7 @@ export const calculateRatingsFromEvents = (
 
         if (result === 'WIN') {
             const myGoalsEvents = events
-                .filter(e => e.type === 'GOAL' && e.teamName === team.name)
+                .filter(e => e.type === 'GOAL' && e.teamName === team.name && e.minute <= 120) // Only regulation/extra time
                 .sort((a,b) => a.minute - b.minute);
             
             const winningGoalEvent = myGoalsEvents[oppScore];
@@ -335,7 +335,8 @@ export const calculateRatingsFromEvents = (
         // For simplicity, we rate everyone who stepped on the pitch.
 
         let ratings = allActivePlayers.map(player => {
-            const playerEvents = events.filter(e => e.teamName === team.name);
+            // Filter events strictly for regulation time for stats
+            const playerEvents = events.filter(e => e.teamName === team.name && e.minute <= 120);
             
             const goals = playerEvents.filter(e => e.type === 'GOAL' && e.scorer === player.name).length;
             const assists = playerEvents.filter(e => e.type === 'GOAL' && e.assist === player.name).length;

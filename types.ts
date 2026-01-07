@@ -514,6 +514,7 @@ export interface SetPieceTakers {
 
 export interface Team {
     id: string;
+    leagueId?: string; // LEAGUE or LEAGUE_1
     name: string;
     colors: [string, string]; 
     logo?: string;
@@ -774,6 +775,8 @@ export interface MatchStats {
     homeRatings: PlayerPerformance[];
     awayRatings: PlayerPerformance[];
     managerCards?: 'NONE' | 'YELLOW' | 'RED';
+    pkHome?: number; // Penalty Kick score for Home Team
+    pkAway?: number; // Penalty Kick score for Away Team
 }
 
 /**
@@ -790,6 +793,9 @@ export interface Fixture {
     awayScore: number | null;
     matchEvents?: MatchEvent[];
     stats?: MatchStats;
+    competitionId?: string; // Optional: 'LEAGUE', 'CUP', 'SUPER_CUP'
+    pkHome?: number;
+    pkAway?: number;
 }
 
 /**

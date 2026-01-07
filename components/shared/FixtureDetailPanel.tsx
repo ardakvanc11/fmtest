@@ -81,7 +81,6 @@ const FixtureDetailPanel: React.FC<FixtureDetailPanelProps> = ({ fixture, homeTe
         fillRate = Math.min(0.998, Math.max(0.02, fillRate));
 
         // Calculate exact number (Pseudo-realistic randomness)
-        // Using fixture ID to keep it consistent across renders for the same match
         const seed = fixture.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
         const randomVariation = (seed % 1000) - 500; // -500 to +500
         
@@ -131,29 +130,20 @@ const FixtureDetailPanel: React.FC<FixtureDetailPanelProps> = ({ fixture, homeTe
 
     return (
         <div className={isModal ? containerClass : "contents"}>
-            {/* Backdrop only for Modal */}
             {isModal && (
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
             )}
 
-            {/* Panel */}
             <div className={panelClass}>
-                
-                {/* Close Button only for Modal */}
                 {isModal && onClose && (
-                    <button 
-                        onClick={onClose}
-                        className="absolute top-4 right-4 z-20 p-2 bg-black/50 text-white rounded-full hover:bg-red-600 transition"
-                    >
+                    <button onClick={onClose} className="absolute top-4 right-4 z-20 p-2 bg-black/50 text-white rounded-full hover:bg-red-600 transition">
                         <X size={20} />
                     </button>
                 )}
 
-                {/* Header Card */}
                 <div className={`relative bg-gradient-to-br from-red-900 via-slate-900 to-black p-4 flex flex-col justify-center items-center text-center border-b-4 border-yellow-500 overflow-hidden shrink-0`}>
                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
                     
-                    {/* Top Info */}
                     <div className="relative z-10 flex flex-col items-center mb-4 mt-4">
                         <span className="text-yellow-500 font-bold text-sm tracking-widest uppercase mb-1 flex items-center gap-1">
                             <Trophy size={14} /> Süper Toto Hayvanlar Ligi
@@ -165,9 +155,7 @@ const FixtureDetailPanel: React.FC<FixtureDetailPanelProps> = ({ fixture, homeTe
                         </div>
                     </div>
 
-                    {/* Matchup & Score */}
                     <div className="relative z-10 w-full flex items-start justify-between px-1">
-                        {/* Home - CLICKABLE */}
                         <div 
                             className="flex flex-col items-center w-1/3 cursor-pointer hover:scale-105 transition-transform group"
                             onClick={() => onTeamClick && onTeamClick(homeTeam.id)}
@@ -175,8 +163,6 @@ const FixtureDetailPanel: React.FC<FixtureDetailPanelProps> = ({ fixture, homeTe
                         >
                             <img src={homeTeam.logo} className="w-16 h-16 object-contain drop-shadow-xl mb-2 group-hover:brightness-110" />
                             <span className="text-white font-bold text-sm md:text-base leading-tight truncate w-full mb-2 group-hover:text-yellow-400 transition-colors">{homeTeam.name}</span>
-                            
-                            {/* Home Goals List */}
                             {fixture.played && (
                                 <div className="flex flex-col gap-0.5 w-full items-center">
                                     {homeGoals.map((g, i) => (
@@ -188,18 +174,23 @@ const FixtureDetailPanel: React.FC<FixtureDetailPanelProps> = ({ fixture, homeTe
                             )}
                         </div>
 
-                        {/* VS / Score */}
                         <div className="flex flex-col items-center justify-start w-1/3 pt-4">
                             {fixture.played ? (
-                                <span className="text-4xl font-mono font-black text-white tracking-widest bg-black/40 px-3 py-1 rounded border border-white/10 shadow-lg">
-                                    {fixture.homeScore}-{fixture.awayScore}
-                                </span>
+                                <>
+                                    <span className="text-4xl font-mono font-black text-white tracking-widest bg-black/40 px-3 py-1 rounded border border-white/10 shadow-lg">
+                                        {fixture.homeScore}-{fixture.awayScore}
+                                    </span>
+                                    {fixture.pkHome !== undefined && (
+                                        <span className="text-xs text-slate-400 font-mono mt-2 bg-black/50 px-2 py-0.5 rounded">
+                                            PEN: {fixture.pkHome}-{fixture.pkAway}
+                                        </span>
+                                    )}
+                                </>
                             ) : (
                                 <span className="text-3xl font-black text-slate-500 italic">VS</span>
                             )}
                         </div>
 
-                        {/* Away - CLICKABLE */}
                         <div 
                             className="flex flex-col items-center w-1/3 cursor-pointer hover:scale-105 transition-transform group"
                             onClick={() => onTeamClick && onTeamClick(awayTeam.id)}
@@ -207,8 +198,6 @@ const FixtureDetailPanel: React.FC<FixtureDetailPanelProps> = ({ fixture, homeTe
                         >
                             <img src={awayTeam.logo} className="w-16 h-16 object-contain drop-shadow-xl mb-2 group-hover:brightness-110" />
                             <span className="text-white font-bold text-sm md:text-base leading-tight truncate w-full mb-2 group-hover:text-yellow-400 transition-colors">{awayTeam.name}</span>
-                            
-                            {/* Away Goals List */}
                             {fixture.played && (
                                 <div className="flex flex-col gap-0.5 w-full items-center">
                                     {awayGoals.map((g, i) => (
@@ -222,10 +211,7 @@ const FixtureDetailPanel: React.FC<FixtureDetailPanelProps> = ({ fixture, homeTe
                     </div>
                 </div>
 
-                {/* Content Scroll Area */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-900">
-                    
-                    {/* Stadium Info & Attendance */}
                     <div className="p-6 border-b border-slate-800">
                         <div className="flex items-start gap-4">
                             <div className="bg-slate-800 p-3 rounded-lg border border-slate-700">
@@ -239,7 +225,6 @@ const FixtureDetailPanel: React.FC<FixtureDetailPanelProps> = ({ fixture, homeTe
                                         <Users size={14} className="text-slate-400"/> 
                                         <span>Kapasite: <span className="text-slate-300 font-mono">{homeTeam.stadiumCapacity.toLocaleString()}</span></span>
                                     </div>
-                                    {/* Ticketed Attendance */}
                                     {fixture.played && attendance && (
                                         <div className="text-slate-500 text-xs flex items-center gap-2">
                                             <Ticket size={14} className="text-green-500"/> 
@@ -251,24 +236,20 @@ const FixtureDetailPanel: React.FC<FixtureDetailPanelProps> = ({ fixture, homeTe
                         </div>
                     </div>
 
-                    {/* Player Ratings (If Played) */}
                     {fixture.played && fixture.stats && (
                         <div className="p-6 border-b border-slate-800 bg-slate-900/50">
                             <h4 className="text-white text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2">
                                 <Users size={16} className="text-yellow-500"/> Maç Performansları
                             </h4>
                             
-                            {/* Home Team Ratings - ONLY SHOW IF USER IS HOME TEAM */}
                             {fixture.stats.homeRatings && fixture.stats.homeRatings.length > 0 && homeTeam.id === myTeamId &&
                                 renderRatings(fixture.stats.homeRatings, homeTeam.name, homeTeam.colors)
                             }
                             
-                            {/* Away Team Ratings - ONLY SHOW IF USER IS AWAY TEAM */}
                             {fixture.stats.awayRatings && fixture.stats.awayRatings.length > 0 && awayTeam.id === myTeamId &&
                                 renderRatings(fixture.stats.awayRatings, awayTeam.name, awayTeam.colors)
                             }
 
-                            {/* Fallback msg if neither is user team (e.g. browsing other fixtures, though typical flow filters these) */}
                             {(!myTeamId || (homeTeam.id !== myTeamId && awayTeam.id !== myTeamId)) && (
                                 <div className="text-slate-500 italic text-xs">
                                     Sadece kendi takımınızın detaylı performans verilerini görebilirsiniz.
@@ -277,7 +258,6 @@ const FixtureDetailPanel: React.FC<FixtureDetailPanelProps> = ({ fixture, homeTe
                         </div>
                     )}
 
-                    {/* Previous Meetings */}
                     <div className="p-6">
                         <h4 className="text-slate-400 text-xs uppercase font-bold tracking-wider mb-4 flex items-center gap-2">
                             <History size={16} /> Önceki Karşılaşmalar
@@ -290,11 +270,7 @@ const FixtureDetailPanel: React.FC<FixtureDetailPanelProps> = ({ fixture, homeTe
                                 </div>
                             ) : (
                                 history.map(h => {
-                                    // Calculate Logic based on the PANEL'S perspective (homeTeam prop)
-                                    // homeTeam.id is the "Context Team"
-                                    
                                     const wasContextHome = h.homeTeamId === homeTeam.id;
-                                    
                                     const contextScore = wasContextHome ? h.homeScore! : h.awayScore!;
                                     const opponentScore = wasContextHome ? h.awayScore! : h.homeScore!;
                                     
@@ -320,6 +296,9 @@ const FixtureDetailPanel: React.FC<FixtureDetailPanelProps> = ({ fixture, homeTe
                                                 </span>
                                                 <span className="bg-black/50 text-white font-mono font-bold px-2 py-1 rounded text-sm border border-slate-600">
                                                     {h.homeScore}-{h.awayScore}
+                                                    {h.pkHome !== undefined && (
+                                                        <span className="text-[9px] text-slate-400 ml-1">(P)</span>
+                                                    )}
                                                 </span>
                                                 <span className={`text-sm font-bold ${h.awayTeamId === awayTeam.id ? 'text-white' : 'text-slate-400'}`}>
                                                     {h.awayTeamId === awayTeam.id ? awayTeam.name : homeTeam.name}

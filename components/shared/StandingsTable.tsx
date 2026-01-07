@@ -10,9 +10,10 @@ interface StandingsTableProps {
     onTeamClick?: (id: string) => void;
     liveScores?: { homeId: string, awayId: string, homeScore: number, awayScore: number };
     fixtures?: Fixture[]; 
+    leagueName?: string; // Added prop for dynamic league name
 }
 
-const StandingsTable = ({ teams, myTeamId, compact, onTeamClick, liveScores, fixtures }: StandingsTableProps) => {
+const StandingsTable = ({ teams, myTeamId, compact, onTeamClick, liveScores, fixtures, leagueName }: StandingsTableProps) => {
     let displayTeams = [...teams];
     
     if (liveScores) {
@@ -46,6 +47,10 @@ const StandingsTable = ({ teams, myTeamId, compact, onTeamClick, liveScores, fix
         return (b.stats.gf - b.stats.ga) - (a.stats.gf - a.stats.ga);
     });
 
+    // Default name if not provided
+    const displayLeagueName = leagueName || "Süper Toto Hayvanlar Ligi";
+    const isLeague1 = displayLeagueName.includes('1. Lig');
+
     return (
         <div className="flex flex-col gap-4">
             <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
@@ -70,8 +75,31 @@ const StandingsTable = ({ teams, myTeamId, compact, onTeamClick, liveScores, fix
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                         {sorted.map((team, index) => {
                             const form = (!compact && fixtures) ? calculateForm(team.id, fixtures) : [];
-                            const isEuropeanSpot = index < 4;
                             const isRelegationSpot = index > sorted.length - 4;
+                            
+                            let rankClass = '';
+                            let barClass = '';
+
+                            if (isLeague1) {
+                                if (index < 2) { // 1st & 2nd
+                                    rankClass = 'text-blue-600 dark:text-blue-400';
+                                    barClass = 'bg-blue-500';
+                                } else if (index < 6) { // 3rd, 4th, 5th, 6th
+                                    rankClass = 'text-green-600 dark:text-green-400';
+                                    barClass = 'bg-green-500';
+                                } else if (isRelegationSpot) {
+                                    rankClass = 'text-red-600 dark:text-red-400';
+                                    barClass = 'bg-red-500';
+                                }
+                            } else {
+                                if (index < 4) {
+                                    rankClass = 'text-green-600 dark:text-green-400';
+                                    barClass = 'bg-green-500';
+                                } else if (isRelegationSpot) {
+                                    rankClass = 'text-red-600 dark:text-red-400';
+                                    barClass = 'bg-red-500';
+                                }
+                            }
 
                             return (
                                 <tr 
@@ -79,10 +107,9 @@ const StandingsTable = ({ teams, myTeamId, compact, onTeamClick, liveScores, fix
                                     onClick={() => onTeamClick && onTeamClick(team.id)}
                                     className={`hover:bg-slate-200 dark:hover:bg-slate-700/50 cursor-pointer transition ${team.id === myTeamId ? 'bg-yellow-50 dark:bg-slate-800/80 ring-1 ring-inset ring-yellow-500/20' : ''}`}
                                 >
-                                    <td className={`px-3 py-3 text-center font-bold relative ${isEuropeanSpot ? 'text-green-600 dark:text-green-400' : isRelegationSpot ? 'text-red-600 dark:text-red-400' : ''}`}>
+                                    <td className={`px-3 py-3 text-center font-bold relative ${rankClass}`}>
                                         {/* Qualification Bar */}
-                                        {isEuropeanSpot && <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-500"></div>}
-                                        {isRelegationSpot && <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500"></div>}
+                                        {barClass && <div className={`absolute left-0 top-0 bottom-0 w-1 ${barClass}`}></div>}
                                         {index + 1}
                                     </td>
                                     <td className="px-3 py-3 font-medium text-slate-900 dark:text-white flex items-center gap-2">
@@ -129,15 +156,29 @@ const StandingsTable = ({ teams, myTeamId, compact, onTeamClick, liveScores, fix
             {/* League Legend */}
             {!compact && (
                 <div className="flex flex-wrap gap-4 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 bg-green-500 rounded-sm"></div>
-                        <span>Avrupa Kupaları</span>
-                    </div>
+                    {isLeague1 ? (
+                        <>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 bg-blue-500 rounded-sm"></div>
+                                <span>Direkt Süper Lig</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 bg-green-500 rounded-sm"></div>
+                                <span>Play-Off</span>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-2.5 h-2.5 bg-green-500 rounded-sm"></div>
+                            <span>Üst Sıralar</span>
+                        </div>
+                    )}
+
                     <div className="flex items-center gap-1.5">
                         <div className="w-2.5 h-2.5 bg-red-500 rounded-sm"></div>
-                        <span>Küme Düşme Hattı</span>
+                        <span>Alt Sıralar</span>
                     </div>
-                    <div className="ml-auto italic opacity-60">Süper Toto Hayvanlar Ligi (18 Takım)</div>
+                    <div className="ml-auto italic opacity-60">{displayLeagueName} ({sorted.length} Takım)</div>
                 </div>
             )}
         </div>

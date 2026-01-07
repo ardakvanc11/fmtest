@@ -563,6 +563,349 @@ export const TEAM_TEMPLATES = [
             {year: '2015/16', rank: 7}, {year: '2016/17', rank: 8}, {year: '2017/18', rank: 7}, {year: '2018/19', rank: 8}, {year: '2019/20', rank: 7}, {year: '2020/21', rank: 8},
             {year: '2021/22', rank: 7}, {year: '2022/23', rank: 8}, {year: '2023/24', rank: 7}, {year: '2024/25', rank: 8}
         ]
+    },
+    // --- 1. LİG TEAMS ---
+    { 
+        name: 'Kartalspor', 
+        logo: 'https://i.imgur.com/LGVIYxf.png',
+        colors: ['bg-black', 'text-white'], 
+        targetStrength: 70, 
+        baseReputation: 2.8, 
+        budget: 3, 
+        fans: 1500000, 
+        stadium: 'Kartal Yuvası', 
+        capacity: 15000, 
+        championships: 3, 
+        leagueHistory: [
+            {year: '2004/05', rank: 3}, {year: '2005/06', rank: 6}, {year: '2006/07', rank: 2}, {year: '2007/08', rank: 8},
+            {year: '2008/09', rank: 8}, {year: '2009/10', rank: 6}, {year: '2010/11', rank: 7}, {year: '2011/12', rank: 7},
+            {year: '2012/13', rank: 8}, {year: '2013/14', rank: 8}, {year: '2014/15', rank: 1}, {year: '2015/16', rank: 6},
+            {year: '2016/17', rank: 7}, {year: '2017/18', rank: 9}, {year: '2018/19', rank: 7}, {year: '2019/20', rank: 7},
+            {year: '2020/21', rank: 1}, {year: '2021/22', rank: 7}, {year: '2022/23', rank: 2}, {year: '2023/24', rank: 7}, {year: '2024/25', rank: 1}
+        ] 
+    },
+    { 
+        name: 'Çakalsaray', 
+        logo: 'https://i.imgur.com/GF1PCY4.png',
+        colors: ['bg-yellow-500', 'text-red-600'], 
+        targetStrength: 66, 
+        baseReputation: 2.5, 
+        budget: 2, 
+        fans: 1300000, 
+        stadium: 'Çakal İni', 
+        capacity: 12000, 
+        championships: 2, 
+        leagueHistory: [
+            {year: '2004/05', rank: 5}, {year: '2005/06', rank: 4}, {year: '2006/07', rank: 6}, {year: '2007/08', rank: 1},
+            {year: '2008/09', rank: 5}, {year: '2009/10', rank: 3}, {year: '2010/11', rank: 4}, {year: '2011/12', rank: 5},
+            {year: '2012/13', rank: 3}, {year: '2013/14', rank: 6}, {year: '2014/15', rank: 4}, {year: '2015/16', rank: 1},
+            {year: '2016/17', rank: 5}, {year: '2017/18', rank: 2}, {year: '2018/19', rank: 6}, {year: '2019/20', rank: 3},
+            {year: '2020/21', rank: 5}, {year: '2021/22', rank: 2}, {year: '2022/23', rank: 4}, {year: '2023/24', rank: 4}, {year: '2024/25', rank: 6}
+        ] 
+    },
+    { 
+        name: 'Panterspor', 
+        logo: 'https://i.imgur.com/3u9jWKs.png',
+        colors: ['bg-gray-900', 'text-purple-500'], 
+        targetStrength: 69, 
+        baseReputation: 2.7, 
+        budget: 2, 
+        fans: 1400000, 
+        stadium: 'Kara Orman', 
+        capacity: 7000, 
+        championships: 1, 
+        leagueHistory: [
+            {year: '2004/05', rank: 12}, {year: '2005/06', rank: 10}, {year: '2006/07', rank: 11}, {year: '2007/08', rank: 11},
+            {year: '2008/09', rank: 10}, {year: '2009/10', rank: 11}, {year: '2010/11', rank: 10}, {year: '2011/12', rank: 10},
+            {year: '2012/13', rank: 11}, {year: '2013/14', rank: 12}, {year: '2014/15', rank: 11}, {year: '2015/16', rank: 10},
+            {year: '2016/17', rank: 10}, {year: '2017/18', rank: 11}, {year: '2018/19', rank: 11}, {year: '2019/20', rank: 1},
+            {year: '2020/21', rank: 10}, {year: '2021/22', rank: 11}, {year: '2022/23', rank: 10}, {year: '2023/24', rank: 11}, {year: '2024/25', rank: 11}
+        ] 
+    },
+    { 
+        name: 'Anadoluspor', 
+        logo: 'https://i.imgur.com/aGXOlFU.png',
+        colors: ['bg-red-600', 'text-white'], 
+        targetStrength: 66, 
+        baseReputation: 2.5, 
+        budget: 4, 
+        fans: 1650000, 
+        stadium: 'Atatürk Anadolu Stadı', 
+        capacity: 80000, 
+        championships: 4, 
+        leagueHistory: [
+            {year: '2004/05', rank: 1}, {year: '2005/06', rank: 3}, {year: '2006/07', rank: 2}, {year: '2007/08', rank: 4},
+            {year: '2008/09', rank: 1}, {year: '2009/10', rank: 5}, {year: '2010/11', rank: 2}, {year: '2011/12', rank: 3},
+            {year: '2012/13', rank: 2}, {year: '2013/14', rank: 4}, {year: '2014/15', rank: 2}, {year: '2015/16', rank: 3},
+            {year: '2016/17', rank: 2}, {year: '2017/18', rank: 5}, {year: '2018/19', rank: 1}, {year: '2019/20', rank: 4},
+            {year: '2020/21', rank: 2}, {year: '2021/22', rank: 3}, {year: '2022/23', rank: 2}, {year: '2023/24', rank: 1}, {year: '2024/25', rank: 2}
+        ] 
+    },
+    { 
+        name: 'Parsbahçe', 
+        logo: 'https://i.imgur.com/xKDLviR.png',
+        colors: ['bg-blue-900', 'text-yellow-400'], 
+        targetStrength: 65, 
+        baseReputation: 2.4, 
+        budget: 1, 
+        fans: 1200000, 
+        stadium: 'Pars Arena', 
+        capacity: 4500, 
+        championships: 1, 
+        leagueHistory: [
+            {year: '2004/05', rank: 9}, {year: '2005/06', rank: 8}, {year: '2006/07', rank: 7}, {year: '2007/08', rank: 7},
+            {year: '2008/09', rank: 9}, {year: '2009/10', rank: 8}, {year: '2010/11', rank: 9}, {year: '2011/12', rank: 8},
+            {year: '2012/13', rank: 7}, {year: '2013/14', rank: 7}, {year: '2014/15', rank: 9}, {year: '2015/16', rank: 8},
+            {year: '2016/17', rank: 1}, {year: '2017/18', rank: 5}, {year: '2018/19', rank: 9}, {year: '2019/20', rank: 9},
+            {year: '2020/21', rank: 8}, {year: '2021/22', rank: 9}, {year: '2022/23', rank: 8}, {year: '2023/24', rank: 9}, {year: '2024/25', rank: 9}
+        ] 
+    },
+    { 
+        name: 'KaraKargaspor', 
+        logo: 'https://i.imgur.com/O84pRZh.png',
+        colors: ['bg-black', 'text-gray-400'], 
+        targetStrength: 65, 
+        baseReputation: 2.4, 
+        budget: 1, 
+        fans: 180000, 
+        stadium: 'Karga Yuvası', 
+        capacity: 6500, 
+        championships: 0, 
+        leagueHistory: [
+            {year: '2004/05', rank: 14}, {year: '2005/06', rank: 12}, {year: '2006/07', rank: 13}, {year: '2007/08', rank: 14},
+            {year: '2008/09', rank: 15}, {year: '2009/10', rank: 14}, {year: '2010/11', rank: 15}, {year: '2011/12', rank: 13},
+            {year: '2012/13', rank: 14}, {year: '2013/14', rank: 15}, {year: '2014/15', rank: 14}, {year: '2015/16', rank: 13},
+            {year: '2016/17', rank: 14}, {year: '2017/18', rank: 13}, {year: '2018/19', rank: 15}, {year: '2019/20', rank: 14},
+            {year: '2020/21', rank: 15}, {year: '2021/22', rank: 13}, {year: '2022/23', rank: 14}, {year: '2023/24', rank: 15}, {year: '2024/25', rank: 14}
+        ] 
+    },
+    { 
+        name: 'Balıkspor', 
+        logo: 'https://i.imgur.com/5fXIImw.png',
+        colors: ['bg-cyan-500', 'text-white'], 
+        targetStrength: 64, 
+        baseReputation: 2.3, 
+        budget: 1, 
+        fans: 350000, 
+        stadium: 'Akvaryum', 
+        capacity: 8500, 
+        championships: 0, 
+        leagueHistory: [
+            {year: '2004/05', rank: 15}, {year: '2005/06', rank: 13}, {year: '2006/07', rank: 14}, {year: '2007/08', rank: 15},
+            {year: '2008/09', rank: 16}, {year: '2009/10', rank: 15}, {year: '2010/11', rank: 16}, {year: '2011/12', rank: 14},
+            {year: '2012/13', rank: 15}, {year: '2013/14', rank: 16}, {year: '2014/15', rank: 15}, {year: '2015/16', rank: 14},
+            {year: '2016/17', rank: 15}, {year: '2017/18', rank: 14}, {year: '2018/19', rank: 16}, {year: '2019/20', rank: 15},
+            {year: '2020/21', rank: 16}, {year: '2021/22', rank: 14}, {year: '2022/23', rank: 15}, {year: '2023/24', rank: 16}, {year: '2024/25', rank: 15}
+        ] 
+    },
+    { 
+        name: 'Sansarspor', 
+        logo: 'https://i.imgur.com/56itsyB.png',
+        colors: ['bg-amber-800', 'text-yellow-300'], 
+        targetStrength: 64, 
+        baseReputation: 2.3, 
+        budget: 1, 
+        fans: 240000, 
+        stadium: 'Sansar Stadı', 
+        capacity: 8000, 
+        championships: 1, 
+        leagueHistory: [
+            {year: '2004/05', rank: 10}, {year: '2005/06', rank: 11}, {year: '2006/07', rank: 9}, {year: '2007/08', rank: 10},
+            {year: '2008/09', rank: 11}, {year: '2009/10', rank: 9}, {year: '2010/11', rank: 8}, {year: '2011/12', rank: 9},
+            {year: '2012/13', rank: 9}, {year: '2013/14', rank: 9}, {year: '2014/15', rank: 10}, {year: '2015/16', rank: 9},
+            {year: '2016/17', rank: 9}, {year: '2017/18', rank: 1}, {year: '2018/19', rank: 10}, {year: '2019/20', rank: 10},
+            {year: '2020/21', rank: 9}, {year: '2021/22', rank: 10}, {year: '2022/23', rank: 9}, {year: '2023/24', rank: 10}, {year: '2024/25', rank: 10}
+        ] 
+    },
+    { 
+        name: 'Baykuşspor', 
+        logo: 'https://i.imgur.com/hhQcSJ2.png',
+        colors: ['bg-red-900', 'text-yellow-500'], 
+        targetStrength: 62, 
+        baseReputation: 2.1, 
+        budget: 1, 
+        fans: 420000, 
+        stadium: 'Gece Parkı', 
+        capacity: 7500, 
+        championships: 0, 
+        leagueHistory: [
+            {year: '2004/05', rank: 17}, {year: '2005/06', rank: 15}, {year: '2006/07', rank: 16}, {year: '2007/08', rank: 17},
+            {year: '2008/09', rank: 18}, {year: '2009/10', rank: 17}, {year: '2010/11', rank: 18}, {year: '2011/12', rank: 16},
+            {year: '2012/13', rank: 17}, {year: '2013/14', rank: 18}, {year: '2014/15', rank: 17}, {year: '2015/16', rank: 16},
+            {year: '2016/17', rank: 17}, {year: '2017/18', rank: 16}, {year: '2018/19', rank: 18}, {year: '2019/20', rank: 17},
+            {year: '2020/21', rank: 18}, {year: '2021/22', rank: 16}, {year: '2022/23', rank: 17}, {year: '2023/24', rank: 18}, {year: '2024/25', rank: 17}
+        ] 
+    },
+    { 
+        name: 'Bozkurtspor', 
+        logo: 'https://i.imgur.com/gXgY2zm.png',
+        colors: ['bg-gray-500', 'text-black'], 
+        targetStrength: 63, 
+        baseReputation: 2.2, 
+        budget: 2, 
+        fans: 2130000, 
+        stadium: 'Bozkurt Arena', 
+        capacity: 8000, 
+        championships: 0, 
+        leagueHistory: [
+            {year: '2004/05', rank: 13}, {year: '2005/06', rank: 14}, {year: '2006/07', rank: 15}, {year: '2007/08', rank: 13},
+            {year: '2008/09', rank: 14}, {year: '2009/10', rank: 13}, {year: '2010/11', rank: 14}, {year: '2011/12', rank: 15},
+            {year: '2012/13', rank: 13}, {year: '2013/14', rank: 14}, {year: '2014/15', rank: 13}, {year: '2015/16', rank: 15},
+            {year: '2016/17', rank: 13}, {year: '2017/18', rank: 15}, {year: '2018/19', rank: 14}, {year: '2019/20', rank: 13},
+            {year: '2020/21', rank: 14}, {year: '2021/22', rank: 15}, {year: '2022/23', rank: 13}, {year: '2023/24', rank: 14}, {year: '2024/25', rank: 13}
+        ] 
+    },
+    { 
+        name: 'Kurtpençe FK', 
+        logo: 'https://i.imgur.com/XS0k2yL.png',
+        colors: ['bg-red-900', 'text-white'], 
+        targetStrength: 68, 
+        baseReputation: 2.6, 
+        budget: 1, 
+        fans: 350000, 
+        stadium: 'Pençe Stadı', 
+        capacity: 13000, 
+        championships: 1, 
+        leagueHistory: [
+            {year: '2004/05', rank: 7}, {year: '2005/06', rank: 5}, {year: '2006/07', rank: 8}, {year: '2007/08', rank: 9},
+            {year: '2008/09', rank: 7}, {year: '2009/10', rank: 2}, {year: '2010/11', rank: 5}, {year: '2011/12', rank: 3},
+            {year: '2012/13', rank: 1}, {year: '2013/14', rank: 4}, {year: '2014/15', rank: 8}, {year: '2015/16', rank: 5},
+            {year: '2016/17', rank: 3}, {year: '2017/18', rank: 7}, {year: '2018/19', rank: 8}, {year: '2019/20', rank: 8},
+            {year: '2020/21', rank: 7}, {year: '2021/22', rank: 8}, {year: '2022/23', rank: 6}, {year: '2023/24', rank: 8}, {year: '2024/25', rank: 7}
+        ] 
+    },
+    { 
+        name: 'Şahinspor', 
+        logo: 'https://i.imgur.com/OKqHz7E.png',
+        colors: ['bg-blue-900', 'text-white'], 
+        targetStrength: 69, 
+        baseReputation: 2.7, 
+        budget: 1, 
+        fans: 380000, 
+        stadium: 'Gök Kubbe', 
+        capacity: 16500, 
+        championships: 3, 
+        leagueHistory: [
+            {year: '2004/05', rank: 4}, {year: '2005/06', rank: 2}, {year: '2006/07', rank: 1}, {year: '2007/08', rank: 3},
+            {year: '2008/09', rank: 2}, {year: '2009/10', rank: 4}, {year: '2010/11', rank: 3}, {year: '2011/12', rank: 1},
+            {year: '2012/13', rank: 4}, {year: '2013/14', rank: 2}, {year: '2014/15', rank: 3}, {year: '2015/16', rank: 4},
+            {year: '2016/17', rank: 2}, {year: '2017/18', rank: 3}, {year: '2018/19', rank: 2}, {year: '2019/20', rank: 2},
+            {year: '2020/21', rank: 3}, {year: '2021/22', rank: 4}, {year: '2022/23', rank: 1}, {year: '2023/24', rank: 3}, {year: '2024/25', rank: 3}
+        ] 
+    },
+    { 
+        name: 'Koçspor', 
+        logo: 'https://i.imgur.com/15M6ab7.png',
+        colors: ['bg-green-600', 'text-white'], 
+        targetStrength: 66, 
+        baseReputation: 2.5, 
+        budget: 3, 
+        fans: 480000, 
+        stadium: 'Yeşil Vadi', 
+        capacity: 11500, 
+        championships: 1, 
+        leagueHistory: [
+            {year: '2004/05', rank: 2}, {year: '2005/06', rank: 1}, {year: '2006/07', rank: 3}, {year: '2007/08', rank: 5},
+            {year: '2008/09', rank: 4}, {year: '2009/10', rank: 2}, {year: '2010/11', rank: 6}, {year: '2011/12', rank: 4},
+            {year: '2012/13', rank: 5}, {year: '2013/14', rank: 3}, {year: '2014/15', rank: 6}, {year: '2015/16', rank: 7},
+            {year: '2016/17', rank: 8}, {year: '2017/18', rank: 4}, {year: '2018/19', rank: 3}, {year: '2019/20', rank: 5},
+            {year: '2020/21', rank: 4}, {year: '2021/22', rank: 6}, {year: '2022/23', rank: 7}, {year: '2023/24', rank: 5}, {year: '2024/25', rank: 4}
+        ] 
+    },
+    { 
+        name: 'Leoparspor', 
+        logo: 'https://i.imgur.com/as4o2BF.png',
+        colors: ['bg-yellow-400', 'text-black'], 
+        targetStrength: 64, 
+        baseReputation: 2.3, 
+        budget: 1, 
+        fans: 460000, 
+        stadium: 'Savana Park', 
+        capacity: 9500, 
+        championships: 0, 
+        leagueHistory: [
+            {year: '2004/05', rank: 16}, {year: '2005/06', rank: 17}, {year: '2006/07', rank: 17}, {year: '2007/08', rank: 16},
+            {year: '2008/09', rank: 17}, {year: '2009/10', rank: 16}, {year: '2010/11', rank: 17}, {year: '2011/12', rank: 18},
+            {year: '2012/13', rank: 16}, {year: '2013/14', rank: 17}, {year: '2014/15', rank: 16}, {year: '2015/16', rank: 17},
+            {year: '2016/17', rank: 16}, {year: '2017/18', rank: 17}, {year: '2018/19', rank: 17}, {year: '2019/20', rank: 16},
+            {year: '2020/21', rank: 17}, {year: '2021/22', rank: 17}, {year: '2022/23', rank: 16}, {year: '2023/24', rank: 17}, {year: '2024/25', rank: 16}
+        ] 
+    },
+    { 
+        name: 'Kangalspor', 
+        logo: 'https://i.imgur.com/4SQKqMu.png',
+        colors: ['bg-stone-200', 'text-black'], 
+        targetStrength: 65, 
+        baseReputation: 2.4, 
+        budget: 2, 
+        fans: 1620000, 
+        stadium: 'Sivas Arena', 
+        capacity: 20500, 
+        championships: 1, 
+        leagueHistory: [
+            {year: '2004/05', rank: 6}, {year: '2005/06', rank: 9}, {year: '2006/07', rank: 4}, {year: '2007/08', rank: 2},
+            {year: '2008/09', rank: 6}, {year: '2009/10', rank: 7}, {year: '2010/11', rank: 1}, {year: '2011/12', rank: 6},
+            {year: '2012/13', rank: 2}, {year: '2013/14', rank: 5}, {year: '2014/15', rank: 7}, {year: '2015/16', rank: 3},
+            {year: '2016/17', rank: 6}, {year: '2017/18', rank: 8}, {year: '2018/19', rank: 4}, {year: '2019/20', rank: 6},
+            {year: '2020/21', rank: 2}, {year: '2021/22', rank: 3}, {year: '2022/23', rank: 5}, {year: '2023/24', rank: 2}, {year: '2024/25', rank: 5}
+        ] 
+    },
+    { 
+        name: 'Vaşakspor', 
+        logo: 'https://i.imgur.com/ik4tS0H.png',
+        colors: ['bg-orange-500', 'text-black'], 
+        targetStrength: 62, 
+        baseReputation: 2.1, 
+        budget: 1, 
+        fans: 410000, 
+        stadium: 'Dağ Evi', 
+        capacity: 7000, 
+        championships: 1, 
+        leagueHistory: [
+            {year: '2004/05', rank: 11}, {year: '2005/06', rank: 12}, {year: '2006/07', rank: 10}, {year: '2007/08', rank: 12},
+            {year: '2008/09', rank: 12}, {year: '2009/10', rank: 10}, {year: '2010/11', rank: 11}, {year: '2011/12', rank: 11},
+            {year: '2012/13', rank: 10}, {year: '2013/14', rank: 10}, {year: '2014/15', rank: 12}, {year: '2015/16', rank: 11},
+            {year: '2016/17', rank: 11}, {year: '2017/18', rank: 10}, {year: '2018/19', rank: 12}, {year: '2019/20', rank: 11},
+            {year: '2020/21', rank: 11}, {year: '2021/22', rank: 1}, {year: '2022/23', rank: 11}, {year: '2023/24', rank: 12}, {year: '2024/25', rank: 12}
+        ] 
+    },
+    { 
+        name: 'Keçispor', 
+        logo: 'https://i.imgur.com/C6zXezY.png',
+        colors: ['bg-green-700', 'text-white'], 
+        targetStrength: 63, 
+        baseReputation: 2.2, 
+        budget: 2, 
+        fans: 225000, 
+        stadium: 'Yayla Stadı', 
+        capacity: 7500, 
+        championships: 2, 
+        leagueHistory: [
+            {year: '2004/05', rank: 8}, {year: '2005/06', rank: 7}, {year: '2006/07', rank: 5}, {year: '2007/08', rank: 6},
+            {year: '2008/09', rank: 3}, {year: '2009/10', rank: 1}, {year: '2010/11', rank: 5}, {year: '2011/12', rank: 2},
+            {year: '2012/13', rank: 6}, {year: '2013/14', rank: 1}, {year: '2014/15', rank: 5}, {year: '2015/16', rank: 2},
+            {year: '2016/17', rank: 4}, {year: '2017/18', rank: 6}, {year: '2018/19', rank: 5}, {year: '2019/20', rank: 4},
+            {year: '2020/21', rank: 6}, {year: '2021/22', rank: 5}, {year: '2022/23', rank: 3}, {year: '2023/24', rank: 6}, {year: '2024/25', rank: 8}
+        ] 
+    },
+    { 
+        name: 'Akbabaspor', 
+        logo: 'https://i.imgur.com/Dei8Prh.png',
+        colors: ['bg-black', 'text-red-700'], 
+        targetStrength: 62, 
+        baseReputation: 2.1, 
+        budget: 1, 
+        fans: 200000, 
+        stadium: 'Kaya Park', 
+        capacity: 6500, 
+        championships: 0, 
+        leagueHistory: [
+            {year: '2004/05', rank: 18}, {year: '2005/06', rank: 18}, {year: '2006/07', rank: 18}, {year: '2007/08', rank: 18},
+            {year: '2008/09', rank: 19}, {year: '2009/10', rank: 18}, {year: '2010/11', rank: 18}, {year: '2011/12', rank: 17},
+            {year: '2012/13', rank: 18}, {year: '2013/14', rank: 18}, {year: '2014/15', rank: 18}, {year: '2015/16', rank: 18},
+            {year: '2016/17', rank: 18}, {year: '2017/18', rank: 18}, {year: '2018/19', rank: 18}, {year: '2019/20', rank: 18},
+            {year: '2020/21', rank: 18}, {year: '2021/22', rank: 18}, {year: '2022/23', rank: 18}, {year: '2023/24', rank: 18}, {year: '2024/25', rank: 18}
+        ] 
     }
 ];
 
@@ -604,8 +947,13 @@ const generateStaff = (reputation: number): ClubStaff[] => {
 };
 
 export const initializeTeams = (): Team[] => {
-    return TEAM_TEMPLATES.map((tmpl) => {
+    // Determine league assignment based on index
+    // First 18 teams -> Super League ('LEAGUE')
+    // Next 18 teams -> 1. Lig ('LEAGUE_1')
+    
+    return TEAM_TEMPLATES.map((tmpl, index) => {
         const teamId = generateId();
+        const leagueId = index < 18 ? 'LEAGUE' : 'LEAGUE_1';
         
         const maxForeigners = tmpl.targetStrength >= 80 ? 11 : 5;
         let currentForeigners = 0;
@@ -661,6 +1009,7 @@ export const initializeTeams = (): Team[] => {
 
         // Generate Board & Staff
         // Use fixed president from template if provided
+        // @ts-ignore - president is optional in template type but present in constant
         const presidentName = tmpl.president || `${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]} ${LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)]}`;
         
         // Facility Levels based on target strength (roughly)
@@ -668,19 +1017,24 @@ export const initializeTeams = (): Team[] => {
         
         return {
             id: teamId,
+            leagueId: leagueId,
             name: tmpl.name,
             colors: tmpl.colors as [string, string],
             logo: tmpl.logo,
             jersey: tmpl.jersey,
             championships: tmpl.championships,
+            // @ts-ignore
             domesticCups: tmpl.cups || 0,
+            // @ts-ignore
             superCups: tmpl.s_cups || 0,
+            // @ts-ignore
             europeanCups: tmpl.euro_cups || 0,
             fanBase: tmpl.fans,
             stadiumName: tmpl.stadium,
             stadiumCapacity: tmpl.capacity,
             budget: tmpl.budget,
-            initialDebt: tmpl.debt,
+            // @ts-ignore
+            initialDebt: tmpl.debt || 0,
             wageBudget: Number((estimatedWages * 1.1).toFixed(1)), 
             players,
             reputation: tmpl.baseReputation, 

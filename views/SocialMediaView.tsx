@@ -76,16 +76,22 @@ const SocialMediaView = ({ news, teams, messages, onUpdateMessages, onReply, isT
     // --- RUMOR GENERATION LOGIC ---
     useEffect(() => {
         if (isTransferWindowOpen && rumors.length === 0 && teams.length > 0) {
+            
+            // FİLTRELEME: Söylentiler sadece Süper Lig (League 1 olmayan) takımlar arasında dönsün
+            const superLeagueTeams = teams.filter(t => t.leagueId !== 'LEAGUE_1');
+            
+            if (superLeagueTeams.length < 2) return; // Yeterli takım yoksa dur
+
             const newRumors: Rumor[] = [];
             const count = 6; // Generate 6 daily rumors
 
             for (let i = 0; i < count; i++) {
                 const journalist = pick(JOURNALISTS);
-                const buyingTeam = pick(teams);
+                const buyingTeam = pick(superLeagueTeams); // Sadece Süper Lig'den alıcı
                 
                 // Avoid buying team selling to itself
-                const otherTeams = teams.filter(t => t.id !== buyingTeam.id);
-                const sellingTeam = pick(otherTeams);
+                const otherTeams = superLeagueTeams.filter(t => t.id !== buyingTeam.id);
+                const sellingTeam = pick(otherTeams); // Sadece Süper Lig'den satıcı (ya da dışarıdan ama bu scope'ta takımları sınırladık)
                 
                 // Pick a player to target
                 if (!sellingTeam || sellingTeam.players.length === 0) continue;

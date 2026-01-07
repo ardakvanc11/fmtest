@@ -8,6 +8,7 @@ import PitchVisual from '../components/shared/PitchVisual';
 import { calculateForm, calculateMonthlyNetFlow } from '../utils/teamCalculations';
 import { isSameDay, getFormattedDate } from '../utils/calendarAndFixtures';
 import { GAME_CALENDAR } from '../data/gameConstants';
+import StandingsTable from '../components/shared/StandingsTable';
 
 interface TeamDetailViewProps {
     team: Team;
@@ -87,11 +88,18 @@ const generateLeagueHistory = (team: Team) => {
 const TeamDetailView = ({ team, allTeams, fixtures, currentDate, currentWeek, manager, myTeamId, onClose, onPlayerClick, onTeamClick, onBoardRequest, yearsAtClub = 0, lastSeasonGoalAchieved = false, consecutiveFfpYears = 0 }: TeamDetailViewProps) => {
     const [activeTab, setActiveTab] = useState<'GENERAL' | 'SQUAD' | 'FIXTURES' | 'TRANSFERS' | 'HISTORY' | 'MANAGEMENT' | 'TACTICS'>('GENERAL');
 
-    const sortedTeams = [...allTeams].sort((a, b) => {
+    // Filter teams based on the current league of the VIEWED team
+    const currentLeagueId = team.leagueId || 'LEAGUE';
+    const leagueTeams = allTeams.filter(t => t.leagueId === currentLeagueId || (!t.leagueId && currentLeagueId === 'LEAGUE'));
+
+    const sortedTeams = [...leagueTeams].sort((a, b) => {
         if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points;
         return (b.stats.gf - b.stats.ga) - (a.stats.gf - a.stats.ga);
     });
     const rank = sortedTeams.findIndex(t => t.id === team.id) + 1;
+    
+    const leagueName = currentLeagueId === 'LEAGUE_1' ? "Hayvanlar 1. Ligi" : "Süper Toto Ligi";
+
     const squadValue = team.players.reduce((sum, p) => sum + p.value, 0);
     const form = calculateForm(team.id, fixtures);
     const reputation = team.reputation || 1.0;
@@ -163,6 +171,9 @@ const TeamDetailView = ({ team, allTeams, fixtures, currentDate, currentWeek, ma
     const canRequestFfp = consecutiveFfpYears >= 2;
     const canRequestContract = lastSeasonGoalAchieved;
 
+    // Display Championship Logic: Only Super League counts as "Major" championship in the header
+    const displayChampionships = team.leagueId === 'LEAGUE_1' ? 0 : team.championships;
+
     return (
         <div className="h-full bg-slate-100 dark:bg-slate-900 overflow-y-auto custom-scrollbar flex flex-col">
             
@@ -197,7 +208,10 @@ const TeamDetailView = ({ team, allTeams, fixtures, currentDate, currentWeek, ma
                         <div className="flex-1 text-center md:text-left">
                             <h2 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white mb-2 font-teko tracking-tight uppercase">{team.name}</h2>
                             <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-slate-600 dark:text-slate-300">
-                                <div className="flex gap-1.5 items-center font-bold text-yellow-600 dark:text-yellow-500"><Trophy size={18} className="fill-yellow-500"/><span className="text-lg">{team.championships} Şampiyonluk</span></div>
+                                <div className="flex gap-1.5 items-center font-bold text-yellow-600 dark:text-yellow-500">
+                                    <Trophy size={18} className="fill-yellow-500"/>
+                                    <span className="text-lg">{displayChampionships} Şampiyonluk</span>
+                                </div>
                                 <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 hidden sm:block"></div>
                                 <div className="flex gap-1.5 items-center"><Globe size={18} className="text-blue-500" /><span className="font-bold">Türkiye</span></div>
                                 <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 hidden sm:block"></div>
@@ -213,7 +227,7 @@ const TeamDetailView = ({ team, allTeams, fixtures, currentDate, currentWeek, ma
                 {activeTab === 'GENERAL' && (
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                            <StatCard label="Lig Sıralaması" value={`${rank}.`} subValue="Süper Toto Ligi" icon={TrendingUp} colorClass={rank === 1 ? 'text-yellow-500' : rank <= 3 ? 'text-green-500' : ''}/>
+                            <StatCard label="Lig Sıralaması" value={`${rank}.`} subValue={leagueName} icon={TrendingUp} colorClass={rank === 1 ? 'text-yellow-500' : rank <= 3 ? 'text-green-500' : ''}/>
                             <StatCard label="Banka Bakiyesi" value={`${team.budget.toFixed(1)} M€`} subValue="Kullanılabilir Bütçe" icon={Landmark} colorClass="text-emerald-600 dark:text-emerald-400" />
                             <StatCard label="Piyasa Değeri" value={`${squadValue.toFixed(1)} M€`} subValue="Kadro Toplamı" icon={Wallet} />
                             <StatCard label="Mali Durum" value={financeStatus} subValue="Aylık Net Akış" icon={Scale} colorClass={financeColor} />
@@ -402,13 +416,19 @@ const TeamDetailView = ({ team, allTeams, fixtures, currentDate, currentWeek, ma
                             <div className="absolute top-0 right-0 p-10 opacity-5"><Archive size={200} className="text-white"/></div>
                             <h3 className="text-xl font-bold text-yellow-500 uppercase tracking-widest mb-8 relative z-10 flex justify-center items-center gap-3"><Trophy size={24}/> Kulüp Müzesi</h3>
                             <div className="flex justify-center gap-12 flex-wrap relative z-10">
-                                <div className="flex flex-col items-center gap-2"><div className="w-24 h-24 bg-yellow-500/10 rounded-full flex items-center justify-center border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]"><Trophy size={48} className="text-yellow-400 fill-yellow-400"/></div><div className="text-4xl font-black text-white">{team.championships}</div><div className="text-xs uppercase text-slate-400 font-bold tracking-wider">Lig Şampiyonluğu</div></div>
+                                <div className="flex flex-col items-center gap-2">
+                                    <div className="w-24 h-24 bg-yellow-500/10 rounded-full flex items-center justify-center border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]"><Trophy size={48} className="text-yellow-400 fill-yellow-400"/></div>
+                                    <div className="text-4xl font-black text-white">{team.championships}</div>
+                                    <div className="text-xs uppercase text-slate-400 font-bold tracking-wider">
+                                        {team.leagueId === 'LEAGUE_1' ? '1. Lig Şampiyonluğu' : 'Şampiyonluk'}
+                                    </div>
+                                </div>
                                 <div className="flex flex-col items-center gap-2"><div className="w-24 h-24 bg-blue-500/10 rounded-full flex items-center justify-center border-2 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]"><Trophy size={48} className="text-blue-400 fill-blue-400"/></div><div className="text-4xl font-black text-white">{team.domesticCups || 0}</div><div className="text-xs uppercase text-slate-400 font-bold tracking-wider">Türkiye Kupası</div></div>
                                 <div className="flex flex-col items-center gap-2"><div className="w-24 h-24 bg-slate-500/10 rounded-full flex items-center justify-center border-2 border-slate-500 shadow-[0_0_20px_rgba(148,163,184,0.3)]"><Trophy size={48} className="text-slate-300 fill-slate-300"/></div><div className="text-4xl font-black text-white">{team.superCups || 0}</div><div className="text-xs uppercase text-slate-400 font-bold tracking-wider">Süper Kupa</div></div>
                                 <div className="flex flex-col items-center gap-2"><div className="w-24 h-24 bg-purple-500/10 rounded-full flex items-center justify-center border-2 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)]"><Trophy size={48} className="text-purple-400 fill-purple-400"/></div><div className="text-4xl font-black text-white">{team.europeanCups || 0}</div><div className="text-xs uppercase text-slate-400 font-bold tracking-wider">Avrupa Kupası</div></div>
                             </div>
                         </div>
-                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm"><div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700"><h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><History className="text-slate-500" size={20}/> Lig Geçmişi</h3></div><div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="bg-slate-100 dark:bg-slate-900 text-xs text-slate-500 uppercase font-bold"><tr><th className="px-6 py-3">Sezon</th><th className="px-6 py-3">Lig</th><th className="px-6 py-3 text-center">Sıralama</th></tr></thead><tbody className="divide-y divide-slate-100 dark:divide-slate-700">{history.map((h, i) => (<tr key={i} className={`hover:bg-slate-50 dark:hover:bg-slate-700/30 transition ${h.rank === 1 ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}`}><td className="px-6 py-3 font-mono font-bold text-slate-700 dark:text-slate-300">{h.year}</td><td className="px-6 py-3 text-slate-600 dark:text-slate-400">Süper Toto Ligi</td><td className="px-6 py-3 text-center">{h.rank === 1 ? (<span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-bold text-xs border border-yellow-200 dark:border-yellow-700"><Trophy size={10} className="fill-yellow-600"/> ŞAMPİYON</span>) : (<span className={`font-bold ${h.rank <= 4 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400'}`}>{h.rank}.</span>)}</td></tr>))}</tbody></table></div></div>
+                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm"><div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700"><h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2"><History className="text-slate-500" size={20}/> Lig Geçmişi</h3></div><div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="bg-slate-100 dark:bg-slate-900 text-xs text-slate-500 uppercase font-bold"><tr><th className="px-6 py-3">Sezon</th><th className="px-6 py-3">Lig</th><th className="px-6 py-3 text-center">Sıralama</th></tr></thead><tbody className="divide-y divide-slate-100 dark:divide-slate-700">{history.map((h, i) => (<tr key={i} className={`hover:bg-slate-50 dark:hover:bg-slate-700/30 transition ${h.rank === 1 ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}`}><td className="px-6 py-3 font-mono font-bold text-slate-700 dark:text-slate-300">{h.year}</td><td className="px-6 py-3 text-slate-600 dark:text-slate-400">{leagueName}</td><td className="px-6 py-3 text-center">{h.rank === 1 ? (<span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-bold text-xs border border-yellow-200 dark:border-yellow-700"><Trophy size={10} className="fill-yellow-600"/> ŞAMPİYON</span>) : (<span className={`font-bold ${h.rank <= 4 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400'}`}>{h.rank}.</span>)}</td></tr>))}</tbody></table></div></div>
                     </div>
                 )}
             </div>
